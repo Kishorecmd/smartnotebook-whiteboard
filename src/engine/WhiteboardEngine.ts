@@ -14,6 +14,7 @@ import { PanTool } from './tools/PanTool';
 import { TextTool } from './tools/TextTool';
 import { LaserTool } from './tools/LaserTool';
 import { SpotlightTool } from './tools/SpotlightTool';
+import { MagicPenTool } from './tools/MagicPenTool';
 import { ClearPageCommand } from './commands/ClearPageCommand';
 import { DeleteObjectsCommand } from './commands/DeleteObjectsCommand';
 import { AddObjectCommand } from './commands/AddObjectCommand';
@@ -164,6 +165,7 @@ export class WhiteboardEngine {
     this.tools.set('text', new TextTool());
     this.tools.set('laser', new LaserTool());
     this.tools.set('spotlight', new SpotlightTool());
+    this.tools.set('magic_pen', new MagicPenTool());
   }
 
   // --- Getters & Accessors ---

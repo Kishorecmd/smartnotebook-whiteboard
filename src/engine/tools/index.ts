@@ -6,3 +6,6 @@ export * from './ShapeTool';
 export * from './SelectTool';
 export * from './PanTool';
 export * from './TextTool';
+export * from './MagicPenTool';
+export * from './LaserTool';
+export * from './SpotlightTool';

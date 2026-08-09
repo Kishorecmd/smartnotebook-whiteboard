@@ -1,4 +1,4 @@
-export type ToolType = 'pen' | 'marker' | 'eraser' | 'shape' | 'text' | 'select' | 'pan' | 'laser' | 'spotlight';
+export type ToolType = 'pen' | 'magic_pen' | 'marker' | 'eraser' | 'shape' | 'text' | 'select' | 'pan' | 'laser' | 'spotlight';
 
 export type EraserMode = 'stroke' | 'area';
 
@@ -51,6 +51,7 @@ export interface FreehandStroke extends BaseWhiteboardObject {
   width: number;
   opacity: number;
   smooth?: boolean;
+  maxAge?: number;
 }
 
 export interface ShapeObject extends BaseWhiteboardObject {

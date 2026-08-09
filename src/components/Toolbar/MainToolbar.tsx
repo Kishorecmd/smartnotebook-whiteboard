@@ -13,6 +13,7 @@ import {
   Redo2,
   Trash2,
   Presentation,
+  Sparkles,
 } from 'lucide-react';
 import { ToolButton } from './ToolButton';
 import { ColorPalette } from './ColorPalette';
@@ -156,12 +157,19 @@ export const MainToolbar: React.FC = () => {
           onClick={() => handleSelectTool('select')}
         />
 
-        {/* Pen Tool */}
         <ToolButton
           icon={<Pen className="w-5 h-5" />}
           label="Pen (P)"
           isActive={toolSettings.tool === 'pen'}
           onClick={() => handleSelectTool('pen')}
+        />
+
+        {/* Magic Pen Tool */}
+        <ToolButton
+          icon={<Sparkles className="w-5 h-5" />}
+          label="Magic Pen (Vanishes after writing)"
+          isActive={toolSettings.tool === 'magic_pen'}
+          onClick={() => handleSelectTool('magic_pen')}
         />
 
         {/* Marker / Highlighter Tool */}

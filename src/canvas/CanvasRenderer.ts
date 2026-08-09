@@ -297,7 +297,7 @@ export class CanvasRenderer {
     for (let i = this.transientStrokes.length - 1; i >= 0; i--) {
       const stroke = this.transientStrokes[i];
       const age = now - stroke.createdAt;
-      const MAX_AGE = 1500; // laser lasts 1.5 seconds
+      const MAX_AGE = (stroke as any).maxAge || 1500; // use custom maxAge or default to 1.5 seconds
       
       if (age > MAX_AGE) {
         this.transientStrokes.splice(i, 1);
