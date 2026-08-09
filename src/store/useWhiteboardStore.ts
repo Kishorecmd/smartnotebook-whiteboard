@@ -34,6 +34,7 @@ interface WhiteboardStoreState {
 
   // Selection State
   selectedIds: string[];
+  interactiveVideoId: string | null;
 
   // In-place Text Editing State
   editingText: TextEditRequest | null;
@@ -57,6 +58,7 @@ interface WhiteboardStoreState {
   isSavedDocsModalOpen: boolean;
   isKeyboardShortcutsOpen: boolean;
   isClearDialogOpen: boolean;
+  isYouTubeDialogOpen: boolean;
   isDocTitleEditing: boolean;
   isPresenterMode: boolean;
   isTeachingPanelOpen: boolean;
@@ -114,6 +116,7 @@ interface WhiteboardStoreState {
 
   // Actions - Selection
   setSelectedIds: (ids: string[]) => void;
+  setInteractiveVideoId: (id: string | null) => void;
   deleteSelected: () => void;
   duplicateSelected: () => void;
   reorderSelected: (action: ReorderAction) => void;
@@ -148,6 +151,7 @@ interface WhiteboardStoreState {
   setSavedDocsModalOpen: (open: boolean) => void;
   setKeyboardShortcutsOpen: (open: boolean) => void;
   setClearDialogOpen: (open: boolean) => void;
+  setYouTubeDialogOpen: (open: boolean) => void;
   setDocTitleEditing: (editing: boolean) => void;
   setPresenterMode: (enabled: boolean) => void;
   setTeachingPanelOpen: (open: boolean) => void;
@@ -219,6 +223,7 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
   isSavedDocsModalOpen: false,
   isKeyboardShortcutsOpen: false,
   isClearDialogOpen: false,
+  isYouTubeDialogOpen: false,
   isDocTitleEditing: false,
   isPresenterMode: false,
   isTeachingPanelOpen: false,
@@ -411,8 +416,16 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
     });
   },
 
-  setSelectedIds: (selectedIds) => set({ selectedIds }),
-
+  // Selection
+  setSelectedIds: (ids) => {
+    set({ selectedIds: ids });
+    // Clear interactive video if not selected
+    const { interactiveVideoId } = get();
+    if (interactiveVideoId && !ids.includes(interactiveVideoId)) {
+      set({ interactiveVideoId: null });
+    }
+  },
+  setInteractiveVideoId: (id) => set({ interactiveVideoId: id }),
   deleteSelected: () => {
     const { engine } = get();
     if (engine) engine.deleteSelected();
@@ -763,6 +776,7 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
   setSavedDocsModalOpen: (isSavedDocsModalOpen) => set({ isSavedDocsModalOpen }),
   setKeyboardShortcutsOpen: (open) => set({ isKeyboardShortcutsOpen: open }),
   setClearDialogOpen: (open) => set({ isClearDialogOpen: open }),
+  setYouTubeDialogOpen: (open) => set({ isYouTubeDialogOpen: open }),
   setDocTitleEditing: (editing) => set({ isDocTitleEditing: editing }),
   setPresenterMode: (active) => set({ isPresenterMode: active }),
   setTeachingPanelOpen: (open) => set({ isTeachingPanelOpen: open }),

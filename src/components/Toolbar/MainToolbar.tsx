@@ -14,6 +14,7 @@ import {
   Trash2,
   Presentation,
   Sparkles,
+  Youtube,
 } from 'lucide-react';
 import { ToolButton } from './ToolButton';
 import { ColorPalette } from './ColorPalette';
@@ -33,6 +34,7 @@ export const MainToolbar: React.FC = () => {
     redo,
     setClearDialogOpen,
     setTeachingPanelOpen,
+    setYouTubeDialogOpen,
   } = useWhiteboardStore();
 
   const [activePopover, setActivePopover] = useState<'none' | 'color' | 'width' | 'shape' | 'text'>('none');
@@ -213,6 +215,16 @@ export const MainToolbar: React.FC = () => {
           onClick={() => {
             setActivePopover('none');
             setTeachingPanelOpen(true);
+          }}
+        />
+
+        <ToolButton
+          icon={<Youtube className="text-red-500" />}
+          label="Insert YouTube Video"
+          isActive={false}
+          onClick={() => {
+            setActivePopover('none');
+            setYouTubeDialogOpen(true);
           }}
         />
 

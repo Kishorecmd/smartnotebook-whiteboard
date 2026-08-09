@@ -5,7 +5,8 @@ import { SelectionActionBar } from '../Toolbar/SelectionActionBar';
 import { CanvasTextEditor } from './CanvasTextEditor';
 import { MultitouchDebugOverlay } from '../MultitouchDebugOverlay';
 import { FileImportService } from '../../services';
-import { Point } from '../../types';
+import { Point, YouTubeVideoObject } from '../../types';
+import { YouTubeVideo } from '../../media/youtube/YouTubeVideo';
 
 export const WhiteboardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -199,13 +200,24 @@ export const WhiteboardCanvas: React.FC = () => {
       engine.dispose();
       setEngine(null);
     };
-  }, []); // Run once on mount
+    // We no longer draw the solid background on the canvas itself if we have media behind it.
+    // However, to keep it simple, we just set the backgroundColor of the container.
+    // The CanvasRenderer will still clearRect for YouTube videos to punch holes.
+  }, [activePage.background]);
+
+  // Extract youtube videos to render them in the DOM layer
+  const youtubeVideos = (doc.pages[activePageIndex] || doc.pages[0]).objects.filter(obj => obj.type === 'youtubeVideo') as YouTubeVideoObject[];
+  const activePage = doc.pages[activePageIndex] || doc.pages[0];
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden select-none bg-slate-900 touch-none"
-      id="whiteboard-viewport"
+      className="relative w-full h-full overflow-hidden touch-none"
+      style={{
+        cursor: toolSettings.activeTool === 'pan' ? (useWhiteboardStore.getState().isSpacePressed ? 'grabbing' : 'grab') : 'crosshair',
+        backgroundColor: activePage.background,
+      }}
+      tabIndex={0}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
@@ -256,10 +268,18 @@ export const WhiteboardCanvas: React.FC = () => {
       {/* Multitouch Debugger */}
       {useWhiteboardStore.getState().engine && <MultitouchDebugOverlay engine={useWhiteboardStore.getState().engine!} />}
 
+      {/* DOM Media Layer */}
+      <div className="absolute inset-0 pointer-events-none">
+        {youtubeVideos.map(video => (
+          <YouTubeVideo key={video.id} video={video} />
+        ))}
+      </div>
+
       {/* Primary persistent objects canvas */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 block w-full h-full touch-none"
+        style={{ zIndex: 10 }}
       />
 
       {/* Overlay canvas for active in-progress stroke & cursor previews */}
@@ -274,6 +294,7 @@ export const WhiteboardCanvas: React.FC = () => {
                 ? 'cursor-default'
                 : 'cursor-default' // Always use default mouse pointer for drawing tools as requested
         }`}
+        style={{ zIndex: 20 }}
       />
     </div>
   );

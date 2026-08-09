@@ -15,5 +15,6 @@ export * from './Modals/ExportModal';
 export * from './Modals/SavedDocumentsModal';
 export * from './Modals/KeyboardShortcutsModal';
 export * from './Modals/ClearConfirmModal';
+export * from './Modals/YouTubeDialog';
 export * from './Modals/HandwritingRecognitionModal';
 export * from './Modals/PdfImportModal';

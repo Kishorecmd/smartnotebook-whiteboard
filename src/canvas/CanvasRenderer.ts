@@ -294,6 +294,20 @@ export class CanvasRenderer {
         if (toolDef && toolDef.renderer) {
           toolDef.renderer(ctx, teachingObj, zoom);
         }
+      } else if (obj.type === 'youtubeVideo') {
+        // Hole-punching for YouTube videos to reveal the underlying DOM iframe
+        // This clears the canvas background, grid pattern, and any lower z-index objects
+        ctx.save();
+        ctx.translate(obj.x, obj.y);
+        
+        if (obj.rotation) {
+          ctx.translate(obj.width / 2, obj.height / 2);
+          ctx.rotate(obj.rotation);
+          ctx.translate(-obj.width / 2, -obj.height / 2);
+        }
+        
+        ctx.clearRect(0, 0, obj.width, obj.height);
+        ctx.restore();
       }
     }
 

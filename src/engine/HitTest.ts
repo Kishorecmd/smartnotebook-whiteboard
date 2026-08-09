@@ -252,8 +252,8 @@ export class HitTest {
     if (obj.type === 'text') {
       return this.hitTestText(point, obj, tolerance);
     }
-    if (obj.type === 'image') {
-      return this.hitTestImage(point, obj, tolerance);
+    if (obj.type === 'image' || obj.type === 'youtubeVideo') {
+      return this.hitTestImage(point, obj as ImageObject, tolerance);
     }
     if (obj.type === 'teaching-tool') {
       const teachingObj = obj as TeachingToolObject;

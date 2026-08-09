@@ -10,6 +10,7 @@ import {
   SavedDocumentsModal,
   KeyboardShortcutsModal,
   ClearConfirmModal,
+  YouTubeDialog,
   HandwritingRecognitionModal,
   PdfImportModal,
   PresenterToolbar,
@@ -92,6 +93,7 @@ export const App: React.FC = () => {
         <SavedDocumentsModal />
         <KeyboardShortcutsModal />
         <ClearConfirmModal />
+        <YouTubeDialog />
         <HandwritingRecognitionModal />
         <PdfImportModal />
         <TeachingToolsPanel />

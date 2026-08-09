@@ -95,7 +95,19 @@ export interface TeachingToolObject extends BaseWhiteboardObject {
   toolData: Record<string, any>;
 }
 
-export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject;
+export interface YouTubeVideoObject extends BaseWhiteboardObject {
+  type: 'youtubeVideo';
+  videoId: string;
+  originalUrl?: string;
+  title?: string;
+  thumbnail?: string;
+  autoplay: boolean;
+  muted: boolean;
+  controls: boolean;
+  startTime: number;
+}
+
+export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject;
 
 export interface Page {
   id: string;
