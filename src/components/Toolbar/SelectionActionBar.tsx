@@ -112,12 +112,18 @@ export const SelectionActionBar: React.FC = () => {
     if (selectedGuideObj && engine) {
       const newToolData = { ...selectedGuideObj.toolData, ...updates };
       engine.getCommandManager().execute({
+        id: `cmd_${Date.now()}`,
+        name: 'Update Guide Settings',
         execute: () => {
           const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, toolData: newToolData } : o);
           engine.setObjects(objs);
         },
         undo: () => {
           const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, toolData: selectedGuideObj.toolData } : o);
+          engine.setObjects(objs);
+        },
+        redo: () => {
+          const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, toolData: newToolData } : o);
           engine.setObjects(objs);
         }
       });
@@ -128,12 +134,18 @@ export const SelectionActionBar: React.FC = () => {
     if (selectedGuideObj && engine) {
       const newLocked = !selectedGuideObj.locked;
       engine.getCommandManager().execute({
+        id: `cmd_${Date.now()}`,
+        name: 'Toggle Guide Lock',
         execute: () => {
           const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, locked: newLocked } : o);
           engine.setObjects(objs);
         },
         undo: () => {
           const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, locked: !newLocked } : o);
+          engine.setObjects(objs);
+        },
+        redo: () => {
+          const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, locked: newLocked } : o);
           engine.setObjects(objs);
         }
       });
@@ -564,7 +576,7 @@ export const SelectionActionBar: React.FC = () => {
         </button>
 
         {/* Quick Style */}
-        {!isSingleRulerSelected && (
+        {!isSingleGuideSelected && (
           <button
             type="button"
             onClick={() => setActiveMenu((prev) => (prev === 'style' ? 'none' : 'style'))}
@@ -582,7 +594,7 @@ export const SelectionActionBar: React.FC = () => {
         )}
 
         {/* Ruler Settings Button (Only if ruler is selected) */}
-        {isSingleRulerSelected && (
+        {isSingleGuideSelected && (
           <button
             type="button"
             onClick={() => setActiveMenu((prev) => (prev === 'ruler' ? 'none' : 'ruler'))}

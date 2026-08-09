@@ -103,7 +103,6 @@ export class MarkerTool implements ITool {
           strokeWidth: settings.markerWidth,
           strokeStyle: 'solid',
           points: [start, end],
-          opacity: settings.markerOpacity,
         });
 
         const cmd = new AddObjectCommand(
