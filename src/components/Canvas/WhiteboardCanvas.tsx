@@ -23,7 +23,6 @@ export const WhiteboardCanvas: React.FC = () => {
     setSelectedIds,
     startTextEditing,
     setPdfImportModalOpen,
-    activeTool,
   } = useWhiteboardStore();
 
   useEffect(() => {
@@ -267,11 +266,11 @@ export const WhiteboardCanvas: React.FC = () => {
       <canvas
         ref={overlayCanvasRef}
         className={`absolute inset-0 block w-full h-full pointer-events-auto touch-none ${
-          activeTool === 'pan' 
+          toolSettings.tool === 'pan' 
             ? 'cursor-grab active:cursor-grabbing' 
-            : activeTool === 'text' 
+            : toolSettings.tool === 'text' 
               ? 'cursor-text' 
-              : activeTool === 'select'
+              : toolSettings.tool === 'select'
                 ? 'cursor-default'
                 : 'cursor-default' // Always use default mouse pointer for drawing tools as requested
         }`}
