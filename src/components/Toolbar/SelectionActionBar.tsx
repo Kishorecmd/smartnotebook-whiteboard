@@ -1,0 +1,490 @@
+import React, { useState } from 'react';
+import {
+  Copy,
+  Trash2,
+  BringToFront,
+  SendToBack,
+  ArrowUp,
+  ArrowDown,
+  Palette,
+  X,
+  Sliders,
+  Ban,
+  Edit3,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Sparkles,
+} from 'lucide-react';
+import { useWhiteboardStore } from '../../store';
+import { StrokeStyle, TextObject, TextAlign } from '../../types';
+
+const COLOR_SWATCHES = [
+  '#0f172a',
+  '#dc2626',
+  '#ea580c',
+  '#d97706',
+  '#16a34a',
+  '#0284c7',
+  '#4f46e5',
+  '#9333ea',
+  '#db2777',
+  '#ffffff',
+];
+
+const FILL_SWATCHES = [
+  { name: 'Transparent', value: 'transparent' },
+  { name: 'White', value: '#ffffff' },
+  { name: 'Slate', value: '#f1f5f9' },
+  { name: 'Blue', value: '#bae6fd' },
+  { name: 'Green', value: '#a7f3d0' },
+  { name: 'Yellow', value: '#fde68a' },
+  { name: 'Pink', value: '#fecdd3' },
+  { name: 'Purple', value: '#e9d5ff' },
+];
+
+export const SelectionActionBar: React.FC = () => {
+  const {
+    document: doc,
+    activePageIndex,
+    selectedIds,
+    toolSettings,
+    duplicateSelected,
+    deleteSelected,
+    reorderSelected,
+    applySelectedStyle,
+    startTextEditing,
+    recognizeHandwritingForSelected,
+    engine,
+  } = useWhiteboardStore();
+
+  const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'style' | 'order'>('none');
+
+  if (selectedIds.length === 0 || toolSettings.tool !== 'select') {
+    return null;
+  }
+
+  const activePage = doc.pages[activePageIndex] || doc.pages[0];
+  const selectedObjects = activePage?.objects.filter((obj) => selectedIds.includes(obj.id)) || [];
+  const isSingleTextSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'text';
+  const selectedTextObj = isSingleTextSelected ? (selectedObjects[0] as TextObject) : null;
+  const selectedStrokes = selectedObjects.filter((obj) => obj.type === 'stroke');
+  const hasStrokesSelected = selectedStrokes.length > 0;
+
+  const handleDeselect = () => {
+    if (engine) {
+      engine.clearSelection();
+    }
+  };
+
+  const handleEditText = () => {
+    if (selectedTextObj && engine) {
+      startTextEditing({
+        id: selectedTextObj.id,
+        worldPoint: {
+          x: selectedTextObj.x,
+          y: selectedTextObj.y,
+        },
+        initialText: selectedTextObj.text,
+        fontSize: selectedTextObj.fontSize,
+        fontFamily: selectedTextObj.fontFamily,
+        fontWeight: selectedTextObj.fontWeight,
+        fontStyle: selectedTextObj.fontStyle,
+        underline: selectedTextObj.underline,
+        textAlign: selectedTextObj.textAlign,
+        color: selectedTextObj.color,
+        width: selectedTextObj.width,
+        height: selectedTextObj.height,
+        rotation: selectedTextObj.rotation,
+      });
+    }
+  };
+
+  return (
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center select-none animate-fade-in">
+      {/* Floating Submenus */}
+      {activeMenu === 'color' && (
+        <div
+          className="mb-3 p-3 bg-slate-900/95 backdrop-blur-2xl border border-slate-700/80 rounded-2xl shadow-2xl ring-1 ring-white/10 w-72 animate-scale-up space-y-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+              {isSingleTextSelected ? 'Text Color' : 'Stroke Color'}
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {COLOR_SWATCHES.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => applySelectedStyle({ strokeColor: color, color })}
+                  className="w-6 h-6 rounded-lg border border-slate-600/80 hover:scale-110 transition-transform shadow-sm"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {!isSingleTextSelected && (
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                Fill Color
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {FILL_SWATCHES.map((fill) => (
+                  <button
+                    key={fill.name}
+                    type="button"
+                    onClick={() => applySelectedStyle({ fillColor: fill.value })}
+                    title={fill.name}
+                    className="w-6 h-6 rounded-lg border border-slate-600/80 hover:scale-110 transition-transform flex items-center justify-center shadow-sm"
+                    style={{ backgroundColor: fill.value !== 'transparent' ? fill.value : '#1e293b' }}
+                  >
+                    {fill.value === 'transparent' && <Ban className="w-3 h-3 text-slate-400" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeMenu === 'style' && (
+        <div
+          className="mb-3 p-3 bg-slate-900/95 backdrop-blur-2xl border border-slate-700/80 rounded-2xl shadow-2xl ring-1 ring-white/10 w-64 animate-scale-up space-y-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isSingleTextSelected && selectedTextObj ? (
+            <>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Font Size
+                </span>
+                <div className="flex items-center justify-between bg-slate-800 rounded-xl p-1">
+                  {[16, 20, 24, 28, 36, 48].map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => applySelectedStyle({ fontSize: sz })}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
+                        selectedTextObj.fontSize === sz
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Alignment
+                </span>
+                <div className="flex items-center gap-1 bg-slate-800 rounded-xl p-1 justify-around">
+                  {(['left', 'center', 'right'] as TextAlign[]).map((align) => (
+                    <button
+                      key={align}
+                      type="button"
+                      onClick={() => applySelectedStyle({ textAlign: align })}
+                      className={`p-1.5 rounded-lg text-xs transition-colors ${
+                        selectedTextObj.textAlign === align
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                      }`}
+                    >
+                      {align === 'left' && <AlignLeft size={14} />}
+                      {align === 'center' && <AlignCenter size={14} />}
+                      {align === 'right' && <AlignRight size={14} />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Line Thickness
+                </span>
+                <div className="flex items-center justify-between bg-slate-800 rounded-xl p-1">
+                  {[2, 3, 5, 8, 12].map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => applySelectedStyle({ strokeWidth: w })}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                    >
+                      {w}px
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Line Style
+                </span>
+                <div className="flex items-center gap-1 bg-slate-800 rounded-xl p-1">
+                  {(['solid', 'dashed', 'dotted'] as StrokeStyle[]).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => applySelectedStyle({ strokeStyle: st })}
+                      className="flex-1 py-1 text-[11px] font-semibold capitalize text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeMenu === 'order' && (
+        <div
+          className="mb-3 p-2 bg-slate-900/95 backdrop-blur-2xl border border-slate-700/80 rounded-2xl shadow-2xl ring-1 ring-white/10 flex items-center gap-1 animate-scale-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => reorderSelected('bringToFront')}
+            title="Bring to Front (Ctrl+])"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl flex items-center gap-1.5 text-xs transition-colors"
+          >
+            <BringToFront className="w-4 h-4 text-primary-400" />
+            <span>Front</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => reorderSelected('bringForward')}
+            title="Bring Forward (])"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl flex items-center gap-1.5 text-xs transition-colors"
+          >
+            <ArrowUp className="w-4 h-4 text-emerald-400" />
+            <span>Forward</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => reorderSelected('sendBackward')}
+            title="Send Backward ([)"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl flex items-center gap-1.5 text-xs transition-colors"
+          >
+            <ArrowDown className="w-4 h-4 text-amber-400" />
+            <span>Backward</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => reorderSelected('sendToBack')}
+            title="Send to Back (Ctrl+[)"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl flex items-center gap-1.5 text-xs transition-colors"
+          >
+            <SendToBack className="w-4 h-4 text-sky-400" />
+            <span>Back</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main Glass Action Bar */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/70 rounded-2xl shadow-2xl ring-1 ring-white/10">
+        {/* Selection Count Pill */}
+        <div className="px-3 py-1 bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5">
+          <span>{selectedIds.length}</span>
+          <span className="text-[11px] font-normal text-primary-300">
+            {selectedIds.length === 1 ? (isSingleTextSelected ? 'text' : 'item') : 'items'}
+          </span>
+        </div>
+
+        {/* Separator */}
+        <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+
+        {/* Edit Text button (if single text selected) */}
+        {isSingleTextSelected && (
+          <>
+            <button
+              type="button"
+              onClick={handleEditText}
+              title="Edit Text (Double click object)"
+              aria-label="Edit text content"
+              className="p-2 text-indigo-300 hover:text-indigo-100 hover:bg-indigo-600/30 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+            >
+              <Edit3 className="w-4 h-4 text-indigo-400" />
+              <span>Edit Text</span>
+            </button>
+
+            {/* Quick Bold toggle */}
+            <button
+              type="button"
+              onClick={() =>
+                applySelectedStyle({
+                  fontWeight: selectedTextObj?.fontWeight === 'bold' ? 'normal' : 'bold',
+                })
+              }
+              title="Toggle Bold"
+              className={`p-2 rounded-xl transition-colors ${
+                selectedTextObj?.fontWeight === 'bold'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <Bold className="w-4 h-4" />
+            </button>
+
+            {/* Quick Italic toggle */}
+            <button
+              type="button"
+              onClick={() =>
+                applySelectedStyle({
+                  fontStyle: selectedTextObj?.fontStyle === 'italic' ? 'normal' : 'italic',
+                })
+              }
+              title="Toggle Italic"
+              className={`p-2 rounded-xl transition-colors ${
+                selectedTextObj?.fontStyle === 'italic'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <Italic className="w-4 h-4" />
+            </button>
+
+            {/* Quick Underline toggle */}
+            <button
+              type="button"
+              onClick={() =>
+                applySelectedStyle({
+                  underline: !selectedTextObj?.underline,
+                })
+              }
+              title="Toggle Underline"
+              className={`p-2 rounded-xl transition-colors ${
+                selectedTextObj?.underline
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <Underline className="w-4 h-4" />
+            </button>
+
+            {/* Separator */}
+            <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+          </>
+        )}
+
+        {/* Handwriting Recognition Button (if stroke(s) selected) */}
+        {hasStrokesSelected && (
+          <>
+            <button
+              type="button"
+              onClick={() => recognizeHandwritingForSelected()}
+              title="Convert Handwriting to Text (Ctrl+Alt+T)"
+              className="px-2.5 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl flex items-center gap-1.5 text-xs font-semibold shadow-sm transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-300 animate-spin" style={{ animationDuration: '4s' }} />
+              <span className="hidden sm:inline">Convert to Text</span>
+              <span className="sm:hidden">To Text</span>
+            </button>
+
+            {/* Separator */}
+            <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+          </>
+        )}
+
+        {/* Duplicate Button */}
+        <button
+          type="button"
+          onClick={duplicateSelected}
+          title="Duplicate (Ctrl+D)"
+          aria-label="Duplicate selected"
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+        >
+          <Copy className="w-4 h-4 text-sky-400" />
+          <span className="hidden sm:inline">Duplicate</span>
+        </button>
+
+        {/* Delete Button */}
+        <button
+          type="button"
+          onClick={deleteSelected}
+          title="Delete (Delete / Backspace)"
+          aria-label="Delete selected"
+          className="p-2 text-red-300 hover:text-red-100 hover:bg-red-500/20 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+        >
+          <Trash2 className="w-4 h-4 text-red-400" />
+          <span className="hidden sm:inline">Delete</span>
+        </button>
+
+        {/* Separator */}
+        <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+
+        {/* Quick Color Swatches */}
+        <button
+          type="button"
+          onClick={() => setActiveMenu((prev) => (prev === 'color' ? 'none' : 'color'))}
+          title="Change Color"
+          aria-label="Change Color"
+          className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+            activeMenu === 'color'
+              ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+          }`}
+        >
+          <Palette className="w-4 h-4" />
+          <span className="hidden md:inline">Color</span>
+        </button>
+
+        {/* Quick Style */}
+        <button
+          type="button"
+          onClick={() => setActiveMenu((prev) => (prev === 'style' ? 'none' : 'style'))}
+          title={isSingleTextSelected ? 'Text Styling' : 'Change Stroke Style / Width'}
+          aria-label="Change Style"
+          className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+            activeMenu === 'style'
+              ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+          }`}
+        >
+          <Sliders className="w-4 h-4" />
+          <span className="hidden md:inline">{isSingleTextSelected ? 'Size' : 'Style'}</span>
+        </button>
+
+        {/* Layers / Reorder */}
+        <button
+          type="button"
+          onClick={() => setActiveMenu((prev) => (prev === 'order' ? 'none' : 'order'))}
+          title="Layer Order"
+          aria-label="Layer Order"
+          className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+            activeMenu === 'order'
+              ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+          }`}
+        >
+          <BringToFront className="w-4 h-4" />
+          <span className="hidden md:inline">Order</span>
+        </button>
+
+        {/* Separator */}
+        <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+
+        {/* Deselect / Close */}
+        <button
+          type="button"
+          onClick={handleDeselect}
+          title="Deselect (Escape)"
+          aria-label="Deselect"
+          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
