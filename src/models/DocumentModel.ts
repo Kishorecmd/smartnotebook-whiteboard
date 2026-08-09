@@ -178,11 +178,31 @@ export function createPageObject(
 
 export function createDefaultDocument(title: string = 'Untitled Lesson'): JHWDocument {
   const now = Date.now();
+  
+  const sampleVideo = {
+    id: generateId('youtube'),
+    type: 'youtubeVideo',
+    videoId: 'jNQXAC9IVRw', // "Me at the zoo" - First YouTube video
+    x: 200,
+    y: 150,
+    width: 640,
+    height: 360,
+    rotation: 0,
+    zIndex: 1,
+    visible: true,
+    locked: false,
+    createdAt: now,
+    updatedAt: now,
+    autoplay: false,
+    controls: true,
+    muted: false,
+  };
+
   return {
     version: 1,
     id: generateId('doc'),
     title,
-    pages: [createDefaultPage('Page 1')],
+    pages: [createDefaultPage({ title: 'Page 1', objects: [sampleVideo as any] })],
     activePageIndex: 0,
     createdAt: now,
     updatedAt: now,
