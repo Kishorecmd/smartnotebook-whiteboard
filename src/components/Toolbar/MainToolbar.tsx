@@ -14,7 +14,7 @@ import {
   Trash2,
   Presentation,
   Sparkles,
-  Youtube,
+  PlaySquare,
 } from 'lucide-react';
 import { ToolButton } from './ToolButton';
 import { ColorPalette } from './ColorPalette';
@@ -219,7 +219,7 @@ export const MainToolbar: React.FC = () => {
         />
 
         <ToolButton
-          icon={<Youtube className="text-red-500" />}
+          icon={<PlaySquare className="text-red-500" />}
           label="Insert YouTube Video"
           isActive={false}
           onClick={() => {

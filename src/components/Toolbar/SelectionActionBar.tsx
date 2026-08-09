@@ -21,7 +21,7 @@ import {
   Ruler,
   Lock,
   Unlock,
-  Youtube,
+  PlaySquare,
   MousePointer2,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
@@ -560,7 +560,7 @@ export const SelectionActionBar: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Youtube className="w-4 h-4" />
+                  <PlaySquare className="w-4 h-4" />
                   <span>Interact with Video</span>
                 </>
               )}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { YouTubeVideoObject } from '../../types';
 import { useWhiteboardStore } from '../../store';
 
@@ -46,8 +46,8 @@ export const YouTubeVideo: React.FC<YouTubeVideoProps> = ({ video }) => {
   const isInteractive = interactiveVideoId === video.id;
 
   // Track if this video is currently the one selected
-  const selectedIds = useWhiteboardStore(state => state.selectedIds);
-  const isSelected = selectedIds.length === 1 && selectedIds[0] === video.id;
+  // (We could use this for showing a border, etc)
+  // const selectedIds = useWhiteboardStore(state => state.selectedIds);
 
   // Whenever selection changes, if we get deselected, exit interactive mode
   // (This is now handled by the store automatically when selection is cleared)
@@ -76,7 +76,7 @@ export const YouTubeVideo: React.FC<YouTubeVideoProps> = ({ video }) => {
           fs: 1
         },
         events: {
-          onReady: (event: any) => {
+          onReady: () => {
             playerRef.current = player;
             (window as any).youtubePlayers.set(video.id, player);
           }

@@ -173,6 +173,7 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
   document: createDefaultDocument('Untitled Whiteboard'),
   activePageIndex: 0,
   isDirty: false,
+  interactiveVideoId: null,
   activeOverlayTools: [],
 
   toolSettings: {

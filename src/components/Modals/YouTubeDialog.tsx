@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Youtube, X, Play } from 'lucide-react';
+import { PlaySquare, X, Play } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { YouTubeUrlParser } from '../../media/youtube/YouTubeUrlParser';
 import { v4 as uuidv4 } from 'uuid';
@@ -41,12 +41,12 @@ export const YouTubeDialog: React.FC = () => {
 
     if (engine) {
       // Calculate center of current viewport
-      const viewport = engine.getViewport();
-      const canvasWidth = engine.getCanvasWidth();
-      const canvasHeight = engine.getCanvasHeight();
+      const viewport = engine.getViewportTransform();
+      const canvasWidth = engine.getCanvas().width / window.devicePixelRatio;
+      const canvasHeight = engine.getCanvas().height / window.devicePixelRatio;
       
-      const centerX = viewport.x + (canvasWidth / 2) / viewport.zoom;
-      const centerY = viewport.y + (canvasHeight / 2) / viewport.zoom;
+      const centerX = viewport.panX + (canvasWidth / 2) / viewport.zoom;
+      const centerY = viewport.panY + (canvasHeight / 2) / viewport.zoom;
 
       // Standard YouTube aspect ratio is 16:9
       const defaultWidth = 480;
@@ -69,9 +69,11 @@ export const YouTubeDialog: React.FC = () => {
         muted: false,
         controls: true,
         startTime: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       };
 
-      engine.addObjects([videoObject], true);
+      engine.addObject(videoObject);
       engine.setTool('select');
       useWhiteboardStore.getState().setSelectedIds([videoObject.id]);
     }
@@ -88,7 +90,7 @@ export const YouTubeDialog: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3 text-red-500">
             <div className="p-2 bg-red-500/20 rounded-xl">
-              <Youtube className="w-6 h-6" />
+              <PlaySquare className="w-6 h-6" />
             </div>
             <h2 className="text-xl font-bold text-white">Add YouTube Video</h2>
           </div>

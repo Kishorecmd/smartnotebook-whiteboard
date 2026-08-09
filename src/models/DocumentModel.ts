@@ -202,7 +202,7 @@ export function createDefaultDocument(title: string = 'Untitled Lesson'): JHWDoc
     version: 1,
     id: generateId('doc'),
     title,
-    pages: [createDefaultPage({ title: 'Page 1', objects: [sampleVideo as any] })],
+    pages: [createPageObject({ title: 'Page 1', objects: [sampleVideo as any] })],
     activePageIndex: 0,
     createdAt: now,
     updatedAt: now,

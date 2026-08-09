@@ -26,10 +26,10 @@ export const WhiteboardCanvas: React.FC = () => {
     setPdfImportModalOpen,
   } = useWhiteboardStore();
 
+  const activePage = doc.pages[activePageIndex] || doc.pages[0];
+
   useEffect(() => {
     if (!canvasRef.current || !overlayCanvasRef.current || !containerRef.current) return;
-
-    const activePage = doc.pages[activePageIndex] || doc.pages[0];
 
     // Instantiate WhiteboardEngine
     const engine = new WhiteboardEngine({
@@ -203,18 +203,17 @@ export const WhiteboardCanvas: React.FC = () => {
     // We no longer draw the solid background on the canvas itself if we have media behind it.
     // However, to keep it simple, we just set the backgroundColor of the container.
     // The CanvasRenderer will still clearRect for YouTube videos to punch holes.
-  }, [activePage.background]);
+  }, [activePage.background, activePageIndex, doc.pages, setEngine]);
 
   // Extract youtube videos to render them in the DOM layer
-  const youtubeVideos = (doc.pages[activePageIndex] || doc.pages[0]).objects.filter(obj => obj.type === 'youtubeVideo') as YouTubeVideoObject[];
-  const activePage = doc.pages[activePageIndex] || doc.pages[0];
+  const youtubeVideos = activePage.objects.filter((obj) => obj.type === 'youtubeVideo') as YouTubeVideoObject[];
 
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden touch-none"
       style={{
-        cursor: toolSettings.activeTool === 'pan' ? (useWhiteboardStore.getState().isSpacePressed ? 'grabbing' : 'grab') : 'crosshair',
+        cursor: toolSettings.tool === 'pan' ? 'grab' : 'crosshair',
         backgroundColor: activePage.background,
       }}
       tabIndex={0}
