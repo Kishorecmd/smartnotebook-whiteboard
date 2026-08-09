@@ -4,6 +4,7 @@ import { PointerManager } from '../input/PointerManager';
 import { InputRouter } from '../input/InputRouter';
 import { GestureEngine } from '../input/GestureEngine';
 import { TouchActionManager } from '../input/TouchActionManager';
+import { RulerSnapper } from './RulerSnapper';
 import { ITool } from './tools/ITool';
 import { PenTool } from './tools/PenTool';
 import { MarkerTool } from './tools/MarkerTool';
@@ -55,6 +56,7 @@ export class WhiteboardEngine {
   private gestureEngine: GestureEngine;
   private touchActionManager: TouchActionManager;
   private commandManager: CommandManager;
+  private rulerSnapper: RulerSnapper;
 
   // Tools registry
   private tools: Map<ToolType, ITool> = new Map();
@@ -135,7 +137,10 @@ export class WhiteboardEngine {
       }
     });
 
-    // 5. Initialize Multitouch Input Engine
+    // 5. Initialize Ruler Snapper
+    this.rulerSnapper = new RulerSnapper(this);
+
+    // 6. Initialize Multitouch Input Engine
     const inputElement = options.overlayCanvas || options.canvas;
     
     this.touchActionManager = new TouchActionManager(inputElement, 'none');
@@ -176,6 +181,10 @@ export class WhiteboardEngine {
 
   public getRenderer(): CanvasRenderer {
     return this.renderer;
+  }
+
+  public getRulerSnapper(): RulerSnapper {
+    return this.rulerSnapper;
   }
 
   public getCanvas(): HTMLCanvasElement {
@@ -724,6 +733,7 @@ export class WhiteboardEngine {
   public render(): void {
     this.renderer.setTransientStrokes(this.transientStrokes);
     this.renderer.setSpotlight(this.spotlightPosition, this.spotlightRadius);
+    this.renderer.setSnapIndicators(this.rulerSnapper.getIndicators());
     this.renderer.requestRender();
   }
 

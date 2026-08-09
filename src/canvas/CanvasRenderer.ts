@@ -84,6 +84,7 @@ export class CanvasRenderer {
   private transientStrokes: FreehandStroke[] = [];
   private spotlightPosition: Point | null = null;
   private spotlightRadius: number = 150;
+  private snapIndicators: Point[] = [];
 
   constructor(options: CanvasRendererOptions) {
     this.canvas = options.canvas;
@@ -150,12 +151,17 @@ export class CanvasRenderer {
     }
   }
 
-  public setSpotlight(position: Point | null, radius?: number): void {
-    this.spotlightPosition = position;
-    if (radius !== undefined) {
-      this.spotlightRadius = radius;
-    }
-    this.requestOverlayRender(); // Spotlight is an overlay
+  public setSpotlight(pos: Point | null, radius: number): void {
+    this.spotlightPosition = pos;
+    this.spotlightRadius = radius;
+    this.isOverlayDirty = true;
+    this.requestRender();
+  }
+
+  public setSnapIndicators(indicators: Point[]): void {
+    this.snapIndicators = indicators;
+    this.isOverlayDirty = true;
+    this.requestRender();
   }
 
   public setActiveStroke(pointerId: number, params: {
@@ -436,6 +442,17 @@ export class CanvasRenderer {
         this.eraserPreview.y,
         this.eraserPreview.radius
       );
+    }
+
+    // 6. Render Ruler Snap Indicators in world coordinates
+    for (const indicator of this.snapIndicators) {
+      ctx.fillStyle = '#3b82f6'; // subtle blue indicator
+      ctx.beginPath();
+      ctx.arc(indicator.x, indicator.y, 5 / zoom, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2 / zoom;
+      ctx.stroke();
     }
 
     ctx.restore();

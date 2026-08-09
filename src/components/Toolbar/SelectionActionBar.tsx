@@ -18,9 +18,12 @@ import {
   AlignCenter,
   AlignRight,
   Sparkles,
+  Ruler,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
-import { StrokeStyle, TextObject, TextAlign } from '../../types';
+import { StrokeStyle, TextObject, TextAlign, TeachingToolObject } from '../../types';
 
 const COLOR_SWATCHES = [
   '#0f172a',
@@ -61,7 +64,7 @@ export const SelectionActionBar: React.FC = () => {
     engine,
   } = useWhiteboardStore();
 
-  const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'style' | 'order'>('none');
+  const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'style' | 'order' | 'ruler'>('none');
 
   if (selectedIds.length === 0 || toolSettings.tool !== 'select') {
     return null;
@@ -73,6 +76,8 @@ export const SelectionActionBar: React.FC = () => {
   const selectedTextObj = isSingleTextSelected ? (selectedObjects[0] as TextObject) : null;
   const selectedStrokes = selectedObjects.filter((obj) => obj.type === 'stroke');
   const hasStrokesSelected = selectedStrokes.length > 0;
+  const isSingleRulerSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'teaching-tool' && (selectedObjects[0] as TeachingToolObject).toolId === 'ruler';
+  const selectedRulerObj = isSingleRulerSelected ? (selectedObjects[0] as TeachingToolObject) : null;
 
   const handleDeselect = () => {
     if (engine) {
@@ -106,6 +111,65 @@ export const SelectionActionBar: React.FC = () => {
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center select-none animate-fade-in">
       {/* Floating Submenus */}
+      {activeMenu === 'ruler' && selectedRulerObj && (
+        <div
+          className="mb-3 p-4 bg-slate-900/95 backdrop-blur-2xl border border-slate-700/80 rounded-2xl shadow-2xl ring-1 ring-white/10 w-64 animate-scale-up space-y-4 text-slate-200 text-sm font-medium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-700/60 mb-2">
+            <Ruler className="w-5 h-5 text-indigo-400" />
+            <span className="font-semibold">Ruler Settings</span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span>Snap to Edge</span>
+            <button 
+              onClick={() => updateRulerSettings({ snapEnabled: selectedRulerObj.toolData?.snapEnabled === false ? true : false })}
+              className={`w-10 h-5 rounded-full relative transition-colors ${selectedRulerObj.toolData?.snapEnabled !== false ? 'bg-indigo-500' : 'bg-slate-600'}`}
+            >
+              <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-transform ${selectedRulerObj.toolData?.snapEnabled !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+            </button>
+          </div>
+          
+          {selectedRulerObj.toolData?.snapEnabled !== false && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Snap Distance</span>
+                <span>{selectedRulerObj.toolData?.snapDistance ?? 20} px</span>
+              </div>
+              <input 
+                type="range" 
+                min="5" 
+                max="50" 
+                step="5"
+                value={selectedRulerObj.toolData?.snapDistance ?? 20}
+                onChange={(e) => updateRulerSettings({ snapDistance: parseInt(e.target.value) })}
+                className="w-full accent-indigo-500"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-700/60">
+            <span>Angle</span>
+            <span className="font-mono text-slate-200">
+              {Math.round((selectedRulerObj.rotation * 180) / Math.PI)}°
+            </span>
+          </div>
+
+          <button
+            onClick={toggleRulerLock}
+            className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 transition-colors ${
+              selectedRulerObj.locked
+                ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+            }`}
+          >
+            {selectedRulerObj.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+            <span>{selectedRulerObj.locked ? 'Unlock Ruler' : 'Lock Ruler'}</span>
+          </button>
+        </div>
+      )}
+
       {activeMenu === 'color' && (
         <div
           className="mb-3 p-3 bg-slate-900/95 backdrop-blur-2xl border border-slate-700/80 rounded-2xl shadow-2xl ring-1 ring-white/10 w-72 animate-scale-up space-y-3"
@@ -440,20 +504,40 @@ export const SelectionActionBar: React.FC = () => {
         </button>
 
         {/* Quick Style */}
-        <button
-          type="button"
-          onClick={() => setActiveMenu((prev) => (prev === 'style' ? 'none' : 'style'))}
-          title={isSingleTextSelected ? 'Text Styling' : 'Change Stroke Style / Width'}
-          aria-label="Change Style"
-          className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
-            activeMenu === 'style'
-              ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-          }`}
-        >
-          <Sliders className="w-4 h-4" />
-          <span className="hidden md:inline">{isSingleTextSelected ? 'Size' : 'Style'}</span>
-        </button>
+        {!isSingleRulerSelected && (
+          <button
+            type="button"
+            onClick={() => setActiveMenu((prev) => (prev === 'style' ? 'none' : 'style'))}
+            title={isSingleTextSelected ? 'Text Styling' : 'Change Stroke Style / Width'}
+            aria-label="Change Style"
+            className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+              activeMenu === 'style'
+                ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span className="hidden md:inline">{isSingleTextSelected ? 'Size' : 'Style'}</span>
+          </button>
+        )}
+
+        {/* Ruler Settings Button (Only if ruler is selected) */}
+        {isSingleRulerSelected && (
+          <button
+            type="button"
+            onClick={() => setActiveMenu((prev) => (prev === 'ruler' ? 'none' : 'ruler'))}
+            title="Ruler Settings"
+            aria-label="Ruler Settings"
+            className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+              activeMenu === 'ruler'
+                ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+            }`}
+          >
+            <Ruler className="w-4 h-4" />
+            <span className="hidden md:inline">Ruler Settings</span>
+          </button>
+        )}
 
         {/* Layers / Reorder */}
         <button

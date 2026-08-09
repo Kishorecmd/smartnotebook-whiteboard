@@ -42,6 +42,12 @@ export class SelectTool implements ITool {
       if (box) {
         const handle = HitTest.hitTestHandle(worldPoint, box, zoom);
         if (handle) {
+          const anyLocked = selectedObjects.some(obj => obj.locked);
+          if (anyLocked) {
+            this.dragMode = 'idle';
+            return;
+          }
+
           this.activeHandle = handle;
           this.initialBoundingBox = box;
           this.initialObjectSnapshots = JSON.parse(JSON.stringify(selectedObjects));
@@ -107,10 +113,17 @@ export class SelectTool implements ITool {
 
       // Prepare for potential move immediately
       const activeSelection = engine.getSelectedObjects();
-      this.dragMode = 'moving';
-      this.activeHandle = 'body';
-      this.initialBoundingBox = getCombinedBoundingBox(activeSelection, 4 / zoom);
-      this.initialObjectSnapshots = JSON.parse(JSON.stringify(activeSelection));
+      const anyLocked = activeSelection.some(obj => obj.locked);
+      if (anyLocked) {
+        this.dragMode = 'idle';
+        this.activeHandle = null;
+        this.initialObjectSnapshots = [];
+      } else {
+        this.dragMode = 'moving';
+        this.activeHandle = 'body';
+        this.initialBoundingBox = getCombinedBoundingBox(activeSelection, 4 / zoom);
+        this.initialObjectSnapshots = JSON.parse(JSON.stringify(activeSelection));
+      }
     } else {
       // 3. Clicked empty canvas -> Start Marquee selection or deselect
       if (!e.shiftKey && !e.ctrlKey) {

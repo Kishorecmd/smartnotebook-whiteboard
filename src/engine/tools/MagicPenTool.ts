@@ -13,7 +13,8 @@ export class MagicPenTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
-    const points = [worldPoint];
+    const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
+    const points = [snappedPoint];
     this.activeStrokes.set(_e.pointerId, points);
 
     const settings = engine.getToolSettings();
@@ -35,7 +36,8 @@ export class MagicPenTool implements ITool {
     const points = this.activeStrokes.get(_e.pointerId);
     if (!points) return;
 
-    points.push(worldPoint);
+    const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
+    points.push(snappedPoint);
     const settings = engine.getToolSettings();
 
     engine.getRenderer().setActiveStroke(_e.pointerId, {
@@ -57,9 +59,11 @@ export class MagicPenTool implements ITool {
     if (!points) return;
 
     this.activeStrokes.delete(_e.pointerId);
+    engine.getRulerSnapper().clearSnap(_e.pointerId);
 
     if (points.length > 0) {
-      points.push(worldPoint);
+      const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
+      points.push(snappedPoint);
 
       const settings = engine.getToolSettings();
       const stroke = createStrokeObject({
@@ -91,11 +95,13 @@ export class MagicPenTool implements ITool {
     engine: WhiteboardEngine
   ): void {
     this.activeStrokes.delete(_e.pointerId);
+    engine.getRulerSnapper().clearSnap(_e.pointerId);
     engine.getRenderer().setActiveStroke(_e.pointerId, null);
   }
 
   public onDeactivate(engine: WhiteboardEngine): void {
     this.activeStrokes.clear();
+    engine.getRulerSnapper().clearAll();
     engine.getRenderer().clearActiveStrokes();
   }
 }

@@ -66,7 +66,17 @@ export const registerRulerTool = () => {
     },
 
     renderer: (ctx: CanvasRenderingContext2D, obj: TeachingToolObject, _zoom: number) => {
-      const { x, y, width, height } = obj;
+      const { x, y, width, height, rotation } = obj;
+
+      ctx.save();
+      
+      if (rotation) {
+        const cx = x + width / 2;
+        const cy = y + height / 2;
+        ctx.translate(cx, cy);
+        ctx.rotate(rotation);
+        ctx.translate(-cx, -cy);
+      }
 
       // Draw Ruler Body
       ctx.fillStyle = 'rgba(255, 235, 150, 0.9)'; // Yellowish wood color
@@ -117,6 +127,8 @@ export const registerRulerTool = () => {
           }
         }
       }
+
+      ctx.restore();
     }
   });
 };
