@@ -1,7 +1,8 @@
 import { ITool } from './ITool';
 import { Point } from '../../types';
-import { createStrokeObject } from '../../models';
+import { createStrokeObject, createShapeObject } from '../../models';
 import { AddStrokeCommand } from '../commands/AddStrokeCommand';
+import { AddObjectCommand } from '../commands/AddObjectCommand';
 import type { WhiteboardEngine } from '../WhiteboardEngine';
 
 export class MarkerTool implements ITool {
@@ -14,6 +15,10 @@ export class MarkerTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
+    if (engine.getRulerSnapper().handlePointerDown(worldPoint, _e.pointerId)) {
+      return;
+    }
+
     const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
     const points = [snappedPoint];
     this.activeStrokes.set(_e.pointerId, points);
@@ -34,6 +39,10 @@ export class MarkerTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
+    if (engine.getRulerSnapper().handlePointerMove(worldPoint, _e.pointerId)) {
+      return;
+    }
+
     const points = this.activeStrokes.get(_e.pointerId);
     if (!points) return;
 
@@ -56,6 +65,10 @@ export class MarkerTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
+    if (engine.getRulerSnapper().handlePointerUp(_e.pointerId)) {
+      return;
+    }
+
     const points = this.activeStrokes.get(_e.pointerId);
     if (!points) return;
 
@@ -70,24 +83,53 @@ export class MarkerTool implements ITool {
       points.push(snappedPoint);
 
       const settings = engine.getToolSettings();
-      const stroke = createStrokeObject({
-        tool: 'marker',
-        points: points,
-        color: settings.color,
-        width: settings.markerWidth,
-        opacity: settings.markerOpacity,
-      });
 
       // Clear active preview layer
       engine.getRenderer().setActiveStroke(_e.pointerId, null);
 
-      // Execute AddStrokeCommand via CommandManager
-      const command = new AddStrokeCommand(
-        stroke,
-        () => engine.getObjects(),
-        (objects) => engine.setObjects(objects)
-      );
-      engine.getCommandManager().execute(command);
+      if (snappedPoint.isProtractor && snappedPoint.isSnapped) {
+        // MODE A / MODE B: convert to mathematically straight line
+        const start = points[0];
+        const end = points[points.length - 1];
+        
+        const shape = createShapeObject({
+          shapeType: 'line',
+          x: Math.min(start.x, end.x),
+          y: Math.min(start.y, end.y),
+          width: Math.abs(end.x - start.x),
+          height: Math.abs(end.y - start.y),
+          strokeColor: settings.color,
+          fillColor: 'transparent',
+          strokeWidth: settings.markerWidth,
+          strokeStyle: 'solid',
+          points: [start, end],
+          opacity: settings.markerOpacity,
+        });
+
+        const cmd = new AddObjectCommand(
+          shape,
+          () => engine.getObjects(),
+          (objects) => engine.setObjects(objects),
+          'Draw Protractor Line'
+        );
+        engine.getCommandManager().execute(cmd);
+      } else {
+        const stroke = createStrokeObject({
+          tool: 'marker',
+          points: points,
+          color: settings.color,
+          width: settings.markerWidth,
+          opacity: settings.markerOpacity,
+        });
+
+        // Execute AddStrokeCommand via CommandManager
+        const command = new AddStrokeCommand(
+          stroke,
+          () => engine.getObjects(),
+          (objects) => engine.setObjects(objects)
+        );
+        engine.getCommandManager().execute(command);
+      }
     } else {
       engine.getRenderer().setActiveStroke(_e.pointerId, null);
     }

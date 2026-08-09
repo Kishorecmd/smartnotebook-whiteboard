@@ -76,8 +76,8 @@ export const SelectionActionBar: React.FC = () => {
   const selectedTextObj = isSingleTextSelected ? (selectedObjects[0] as TextObject) : null;
   const selectedStrokes = selectedObjects.filter((obj) => obj.type === 'stroke');
   const hasStrokesSelected = selectedStrokes.length > 0;
-  const isSingleRulerSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'teaching-tool' && (selectedObjects[0] as TeachingToolObject).toolId === 'ruler';
-  const selectedRulerObj = isSingleRulerSelected ? (selectedObjects[0] as TeachingToolObject) : null;
+  const isSingleGuideSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'teaching-tool' && ((selectedObjects[0] as TeachingToolObject).toolId === 'ruler' || (selectedObjects[0] as TeachingToolObject).toolId === 'protractor');
+  const selectedGuideObj = isSingleGuideSelected ? (selectedObjects[0] as TeachingToolObject) : null;
 
   const handleDeselect = () => {
     if (engine) {
@@ -108,64 +108,124 @@ export const SelectionActionBar: React.FC = () => {
     }
   };
 
+  const updateGuideSettings = (updates: any) => {
+    if (selectedGuideObj && engine) {
+      const newToolData = { ...selectedGuideObj.toolData, ...updates };
+      engine.getCommandManager().execute({
+        execute: () => {
+          const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, toolData: newToolData } : o);
+          engine.setObjects(objs);
+        },
+        undo: () => {
+          const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, toolData: selectedGuideObj.toolData } : o);
+          engine.setObjects(objs);
+        }
+      });
+    }
+  };
+
+  const toggleGuideLock = () => {
+    if (selectedGuideObj && engine) {
+      const newLocked = !selectedGuideObj.locked;
+      engine.getCommandManager().execute({
+        execute: () => {
+          const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, locked: newLocked } : o);
+          engine.setObjects(objs);
+        },
+        undo: () => {
+          const objs = engine.getObjects().map(o => o.id === selectedGuideObj.id ? { ...o, locked: !newLocked } : o);
+          engine.setObjects(objs);
+        }
+      });
+    }
+  };
+
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center select-none animate-fade-in">
       {/* Floating Submenus */}
-      {activeMenu === 'ruler' && selectedRulerObj && (
+      {activeMenu === 'ruler' && selectedGuideObj && (
         <div
           className="mb-3 p-4 bg-slate-900/95 backdrop-blur-2xl border border-slate-700/80 rounded-2xl shadow-2xl ring-1 ring-white/10 w-64 animate-scale-up space-y-4 text-slate-200 text-sm font-medium"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-2 pb-3 border-b border-slate-700/60 mb-2">
             <Ruler className="w-5 h-5 text-indigo-400" />
-            <span className="font-semibold">Ruler Settings</span>
+            <span className="font-semibold">{selectedGuideObj.toolId === 'protractor' ? 'Protractor Settings' : 'Ruler Settings'}</span>
           </div>
           
           <div className="flex items-center justify-between">
-            <span>Snap to Edge</span>
+            <span>Snap to Guide</span>
             <button 
-              onClick={() => updateRulerSettings({ snapEnabled: selectedRulerObj.toolData?.snapEnabled === false ? true : false })}
-              className={`w-10 h-5 rounded-full relative transition-colors ${selectedRulerObj.toolData?.snapEnabled !== false ? 'bg-indigo-500' : 'bg-slate-600'}`}
+              onClick={() => updateGuideSettings({ snapEnabled: selectedGuideObj.toolData?.snapEnabled === false ? true : false })}
+              className={`w-10 h-5 rounded-full relative transition-colors ${selectedGuideObj.toolData?.snapEnabled !== false ? 'bg-indigo-500' : 'bg-slate-600'}`}
             >
-              <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-transform ${selectedRulerObj.toolData?.snapEnabled !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+              <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-transform ${selectedGuideObj.toolData?.snapEnabled !== false ? 'translate-x-5' : 'translate-x-1'}`} />
             </button>
           </div>
           
-          {selectedRulerObj.toolData?.snapEnabled !== false && (
+          {selectedGuideObj.toolData?.snapEnabled !== false && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span>Snap Distance</span>
-                <span>{selectedRulerObj.toolData?.snapDistance ?? 20} px</span>
+                <span>{selectedGuideObj.toolData?.snapDistance ?? 20} px</span>
               </div>
               <input 
                 type="range" 
                 min="5" 
                 max="50" 
                 step="5"
-                value={selectedRulerObj.toolData?.snapDistance ?? 20}
-                onChange={(e) => updateRulerSettings({ snapDistance: parseInt(e.target.value) })}
+                value={selectedGuideObj.toolData?.snapDistance ?? 20}
+                onChange={(e) => updateGuideSettings({ snapDistance: parseInt(e.target.value) })}
                 className="w-full accent-indigo-500"
               />
             </div>
           )}
 
+          {selectedGuideObj.toolId === 'protractor' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Angle Snap</span>
+              </div>
+              <div className="flex items-center justify-between bg-slate-800 rounded-xl p-1">
+                {['OFF', 1, 5, 10].map((snapVal) => {
+                  const currentSnap = selectedGuideObj.toolData?.angleSnap ?? 1;
+                  const isSelected = snapVal === 'OFF' ? currentSnap === 0 : currentSnap === snapVal;
+                  return (
+                    <button
+                      key={snapVal}
+                      type="button"
+                      onClick={() => updateGuideSettings({ angleSnap: snapVal === 'OFF' ? 0 : snapVal })}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                      }`}
+                    >
+                      {snapVal}{snapVal !== 'OFF' && '°'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-700/60">
-            <span>Angle</span>
+            <span>Orientation</span>
             <span className="font-mono text-slate-200">
-              {Math.round((selectedRulerObj.rotation * 180) / Math.PI)}°
+              {Math.round((selectedGuideObj.rotation * 180) / Math.PI)}°
             </span>
           </div>
 
           <button
-            onClick={toggleRulerLock}
+            onClick={toggleGuideLock}
             className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 transition-colors ${
-              selectedRulerObj.locked
+              selectedGuideObj.locked
                 ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
             }`}
           >
-            {selectedRulerObj.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-            <span>{selectedRulerObj.locked ? 'Unlock Ruler' : 'Lock Ruler'}</span>
+            {selectedGuideObj.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+            <span>{selectedGuideObj.locked ? 'Unlock Tool' : 'Lock Tool'}</span>
           </button>
         </div>
       )}

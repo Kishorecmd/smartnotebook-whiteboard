@@ -13,6 +13,10 @@ export class MagicPenTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
+    if (engine.getRulerSnapper().handlePointerDown(worldPoint, _e.pointerId)) {
+      return;
+    }
+
     const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
     const points = [snappedPoint];
     this.activeStrokes.set(_e.pointerId, points);
@@ -33,6 +37,10 @@ export class MagicPenTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
+    if (engine.getRulerSnapper().handlePointerMove(worldPoint, _e.pointerId)) {
+      return;
+    }
+
     const points = this.activeStrokes.get(_e.pointerId);
     if (!points) return;
 
@@ -55,6 +63,10 @@ export class MagicPenTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
+    if (engine.getRulerSnapper().handlePointerUp(_e.pointerId)) {
+      return;
+    }
+
     const points = this.activeStrokes.get(_e.pointerId);
     if (!points) return;
 
@@ -65,10 +77,15 @@ export class MagicPenTool implements ITool {
       const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
       points.push(snappedPoint);
 
+      let finalPoints = points;
+      if (snappedPoint.isProtractor && snappedPoint.isSnapped) {
+        finalPoints = [points[0], points[points.length - 1]];
+      }
+
       const settings = engine.getToolSettings();
       const stroke = createStrokeObject({
         tool: 'pen',
-        points: points,
+        points: finalPoints,
         color: settings.color,
         width: settings.penWidth,
         opacity: 1.0,

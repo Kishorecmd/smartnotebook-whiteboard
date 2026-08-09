@@ -4,14 +4,23 @@ import type { WhiteboardEngine } from './WhiteboardEngine';
 
 interface SnapState {
   rulerId: string;
+  isProtractor?: boolean;
 }
+
+export type SnappedPoint = Point & { 
+  isSnapped?: boolean;
+  snapToolId?: string;
+  isProtractor?: boolean;
+};
 
 export class RulerSnapper {
   private activeSnaps: Map<number, SnapState> = new Map();
   private indicators: Map<number, Point> = new Map();
+  private angleSelectors: Map<number, SnapState> = new Map();
 
   private SNAP_ACTIVATION_DISTANCE = 20;
   private SNAP_RELEASE_DISTANCE = 30;
+  private PROTRACTOR_RADIUS = 200;
 
   constructor(private engine: WhiteboardEngine) {}
 
@@ -20,15 +29,86 @@ export class RulerSnapper {
     this.SNAP_RELEASE_DISTANCE = release;
   }
 
+  private getProtractorCenter(p: TeachingToolObject) {
+    return {
+      x: p.x + p.width / 2,
+      y: p.y + p.height - 30, // crosshair center
+    };
+  }
+
+  private updateProtractorData(id: string, data: any) {
+    const obj = this.engine.getObjects().find(o => o.id === id);
+    if (obj && obj.type === 'teaching-tool') {
+      const updated = { ...obj, toolData: { ...obj.toolData, ...data } };
+      this.engine.setObjects(this.engine.getObjects().map(o => o.id === id ? updated : o));
+    }
+  }
+
+  private snapAngle(angleRad: number, snapDegree: number): number {
+    if (snapDegree === 0 || !snapDegree) return angleRad;
+    let angleDeg = (angleRad * 180) / Math.PI;
+    angleDeg = Math.round(angleDeg / snapDegree) * snapDegree;
+    return (angleDeg * Math.PI) / 180;
+  }
+
+  // Handle angle selection drag
+  public handlePointerDown(worldPoint: Point, pointerId: number): boolean {
+    const objects = this.engine.getObjects();
+    const protractors = objects.filter(
+      (o): o is TeachingToolObject => o.type === 'teaching-tool' && o.toolId === 'protractor' && o.toolData?.snapEnabled !== false
+    );
+
+    for (const p of protractors) {
+      const center = this.getProtractorCenter(p);
+      const localPoint = rotatePoint(worldPoint, center, -(p.rotation || 0));
+      const distFromCenter = Math.sqrt(localPoint.x * localPoint.x + localPoint.y * localPoint.y);
+
+      // Hit center or arc (Angle Selection Mode)
+      if (distFromCenter < 40 || (Math.abs(distFromCenter - this.PROTRACTOR_RADIUS) < this.SNAP_ACTIVATION_DISTANCE && localPoint.y <= 20)) {
+        let angle = Math.atan2(localPoint.y, localPoint.x);
+        angle = this.snapAngle(angle, p.toolData?.angleSnap ?? 1);
+
+        this.angleSelectors.set(pointerId, { rulerId: p.id, isProtractor: true });
+        this.updateProtractorData(p.id, { selectedAngle: angle });
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public handlePointerMove(worldPoint: Point, pointerId: number): boolean {
+    const selector = this.angleSelectors.get(pointerId);
+    if (selector && selector.isProtractor) {
+      const p = this.engine.getObjects().find(o => o.id === selector.rulerId) as TeachingToolObject;
+      if (p) {
+        const center = this.getProtractorCenter(p);
+        const localPoint = rotatePoint(worldPoint, center, -(p.rotation || 0));
+        let angle = Math.atan2(localPoint.y, localPoint.x);
+        angle = this.snapAngle(angle, p.toolData?.angleSnap ?? 1);
+        this.updateProtractorData(p.id, { selectedAngle: angle });
+      }
+      return true;
+    }
+    return false;
+  }
+
+  public handlePointerUp(pointerId: number): boolean {
+    if (this.angleSelectors.has(pointerId)) {
+      this.angleSelectors.delete(pointerId);
+      return true;
+    }
+    return false;
+  }
+
   public snapPoint(
     worldPoint: Point,
     pointerId: number,
     isShiftPressed: boolean
-  ): Point {
+  ): SnappedPoint {
     const objects = this.engine.getObjects();
     const rulersAndProtractors = objects.filter(
       (o): o is TeachingToolObject =>
-        o.type === 'teaching-tool' && (o.toolId === 'ruler' || o.toolId === 'protractor')
+        o.type === 'teaching-tool' && (o.toolId === 'ruler' || o.toolId === 'protractor') && o.toolData?.snapEnabled !== false
     );
 
     if (rulersAndProtractors.length === 0) {
@@ -41,13 +121,18 @@ export class RulerSnapper {
     // If currently snapped, check if we should release
     if (snapState) {
       const toolObj = rulersAndProtractors.find((r) => r.id === snapState.rulerId);
-      if (!toolObj || toolObj.toolData?.snapEnabled === false) {
+      if (!toolObj) {
         this.clearSnap(pointerId);
         return worldPoint;
       }
 
       const releaseDistance = toolObj.toolData?.snapDistance ? toolObj.toolData.snapDistance + 10 : this.SNAP_RELEASE_DISTANCE;
       const projected = this.projectToTool(worldPoint, toolObj);
+      if (!projected) {
+        this.clearSnap(pointerId);
+        return worldPoint;
+      }
+
       if (projected.distance > releaseDistance && !isShiftPressed) {
         this.clearSnap(pointerId);
         return worldPoint; // Released
@@ -60,20 +145,21 @@ export class RulerSnapper {
           y: projected.worldProjected.y,
           pressure: worldPoint.pressure,
           time: worldPoint.time,
+          isSnapped: true,
+          snapToolId: toolObj.id,
+          isProtractor: toolObj.toolId === 'protractor'
         };
       }
     }
 
     // If not snapped, find closest tool
     for (const toolObj of rulersAndProtractors) {
-      if (toolObj.toolData?.snapEnabled === false) continue;
-      
       const activationDistance = toolObj.toolData?.snapDistance ?? this.SNAP_ACTIVATION_DISTANCE;
       const projected = this.projectToTool(worldPoint, toolObj);
       
-      if (projected.distance <= activationDistance || isShiftPressed) {
+      if (projected && (projected.distance <= activationDistance || isShiftPressed)) {
         // Snap activated!
-        this.activeSnaps.set(pointerId, { rulerId: toolObj.id });
+        this.activeSnaps.set(pointerId, { rulerId: toolObj.id, isProtractor: toolObj.toolId === 'protractor' });
         this.indicators.set(pointerId, projected.worldProjected);
         this.updateRenderer();
         return {
@@ -81,6 +167,9 @@ export class RulerSnapper {
           y: projected.worldProjected.y,
           pressure: worldPoint.pressure,
           time: worldPoint.time,
+          isSnapped: true,
+          snapToolId: toolObj.id,
+          isProtractor: toolObj.toolId === 'protractor'
         };
       }
     }
@@ -99,6 +188,7 @@ export class RulerSnapper {
   public clearAll() {
     this.activeSnaps.clear();
     this.indicators.clear();
+    this.angleSelectors.clear();
     this.updateRenderer();
   }
 
@@ -118,56 +208,49 @@ export class RulerSnapper {
   }
 
   private projectToProtractor(p: Point, protractor: TeachingToolObject) {
-    const PROTRACTOR_RADIUS = 200;
-    const center = {
-      x: protractor.x + protractor.width / 2,
-      y: protractor.y + protractor.height - 30, // crosshair center
-    };
-
+    const center = this.getProtractorCenter(protractor);
     const localPoint = rotatePoint(p, center, -(protractor.rotation || 0));
 
-    // Calculate distance from center
-    const distFromCenter = Math.sqrt(localPoint.x * localPoint.x + localPoint.y * localPoint.y);
-
-    // Distances to the two edges
-    // 1. Curved edge: arc of radius PROTRACTOR_RADIUS where local.y <= 0
-    let curvedDistance = Infinity;
-    if (localPoint.y <= 20) { // give some leeway below the axis
-      curvedDistance = Math.abs(distFromCenter - PROTRACTOR_RADIUS);
-    }
-
-    // 2. Straight edge: line at local.y = 30 (the flat bottom)
-    const straightDistance = Math.abs(localPoint.y - 30);
-
-    // Decide which edge is closer
-    if (curvedDistance < straightDistance && localPoint.y <= 20) {
-      // Snap to curved edge
-      // Normalize vector from center to localPoint, then multiply by RADIUS
-      let angle = Math.atan2(localPoint.y, localPoint.x);
-      // Clamp angle to top half (Math.PI to 0) which is y <= 0
-      if (angle > 0) {
-         if (angle > Math.PI / 2) angle = Math.PI; // Snap to left corner
-         else angle = 0; // Snap to right corner
-      }
+    const selectedAngle = protractor.toolData?.selectedAngle;
+    
+    // Straight line projection based on selected angle ray
+    if (selectedAngle !== undefined) {
+      // The ray goes outwards from center (0,0) at selectedAngle.
+      // We want to project localPoint onto this ray.
+      const dx = Math.cos(selectedAngle);
+      const dy = Math.sin(selectedAngle);
       
+      // Dot product to find distance along ray
+      let t = localPoint.x * dx + localPoint.y * dy;
+      
+      // If we are strictly projecting to a ray (not a full line), t should be >= 0
+      if (t < 0) t = 0; // Constrain strictly to the ray starting from center!
+
       const projectedLocal = {
-        x: PROTRACTOR_RADIUS * Math.cos(angle),
-        y: PROTRACTOR_RADIUS * Math.sin(angle),
+        x: t * dx,
+        y: t * dy
       };
-      
+
+      const distance = Math.sqrt(
+        (localPoint.x - projectedLocal.x) ** 2 +
+        (localPoint.y - projectedLocal.y) ** 2
+      );
+
       return {
         localPoint,
         projectedLocal,
         worldProjected: rotatePoint(projectedLocal, center, protractor.rotation || 0),
-        distance: curvedDistance,
+        distance,
       };
-    } else {
-      // Snap to straight edge
+    }
+
+    // Default snap to baseline if no angle selected yet
+    const straightDistance = Math.abs(localPoint.y - 30);
+    if (localPoint.y >= 0 && straightDistance < 50) {
       const projectedLocal = {
         x: localPoint.x,
         y: 30
       };
-      
       return {
         localPoint,
         projectedLocal,
@@ -175,6 +258,8 @@ export class RulerSnapper {
         distance: straightDistance,
       };
     }
+
+    return null; // Don't snap to arc anymore!
   }
 
   private projectToRuler(p: Point, ruler: TeachingToolObject) {

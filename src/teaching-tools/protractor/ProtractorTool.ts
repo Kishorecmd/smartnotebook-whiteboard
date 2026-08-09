@@ -136,6 +136,31 @@ export const registerProtractorTool = () => {
           ctx.fillText((180 - angle).toString(), innerTextX, innerTextY);
         }
       }
+
+      // Draw the selected angle ray if one exists
+      if (obj.toolData?.selectedAngle !== undefined) {
+        const selectedAngleRad = obj.toolData.selectedAngle;
+        const rayLen = PROTRACTOR_RADIUS + 40;
+        const rayX = centerX + rayLen * Math.cos(selectedAngleRad);
+        const rayY = centerY + rayLen * Math.sin(selectedAngleRad);
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(rayX, rayY);
+        ctx.strokeStyle = '#2563eb'; // blue-600
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw degree label
+        const deg = Math.round(Math.abs(selectedAngleRad * 180 / Math.PI));
+        ctx.fillStyle = '#2563eb';
+        ctx.font = 'bold 14px sans-serif';
+        const textX = centerX + (rayLen + 20) * Math.cos(selectedAngleRad);
+        const textY = centerY + (rayLen + 20) * Math.sin(selectedAngleRad);
+        ctx.fillText(`${deg}°`, textX, textY);
+      }
     }
   });
 };
