@@ -14,6 +14,7 @@ import {
 import { useWhiteboardStore } from '../../store';
 import { FileImportService, FileService } from '../../services';
 import { Point } from '../../types';
+import Logo from '../../assets/logo.png';
 
 export const HeaderBar: React.FC = () => {
   const {
@@ -98,10 +99,9 @@ export const HeaderBar: React.FC = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-2.5 bg-slate-900/85 backdrop-blur-xl border-b border-slate-800/80 select-none shadow-md">
       {/* Left: Brand & Document Name */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 shadow-md shadow-primary-500/20 text-white font-bold text-sm tracking-wide">
-          <Sparkles className="w-4 h-4" />
-          <span className="hidden sm:inline font-sans">JAIHIND</span>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center">
+          <img src={Logo} alt="Jaihind International School" className="h-9 object-contain drop-shadow-md" />
         </div>
 
         {/* Document Title (Editable) */}
