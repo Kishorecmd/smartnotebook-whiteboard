@@ -101,15 +101,16 @@ export const YouTubeVideo: React.FC<YouTubeVideoProps> = ({ video }) => {
   // If the canvas is above this, how do we ever interact with the video?
   // We need to punch a hole for pointer events? No, we can't punch a hole for pointer events in canvas easily without clip-path or pointer-events: none on canvas.
   // Actually, if the Canvas has pointer-events: auto, it will ALWAYS swallow touches!
-  
+  const viewport = useWhiteboardStore(state => state.viewport);
+
   return (
     <div 
       style={{
         position: 'absolute',
-        left: `${video.x}px`,
-        top: `${video.y}px`,
-        width: `${video.width}px`,
-        height: `${video.height}px`,
+        left: `${video.x * viewport.zoom + viewport.panX}px`,
+        top: `${video.y * viewport.zoom + viewport.panY}px`,
+        width: `${video.width * viewport.zoom}px`,
+        height: `${video.height * viewport.zoom}px`,
         transformOrigin: 'center',
         transform: `rotate(${video.rotation}rad)`,
         zIndex: isInteractive ? 100 : (video.zIndex || 0),
