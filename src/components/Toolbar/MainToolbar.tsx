@@ -155,7 +155,7 @@ export const MainToolbar: React.FC = () => {
       </div>
 
       {/* Main Glass Floating Bar */}
-      <div className="flex items-center gap-1.5 p-2 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/60 rounded-3xl shadow-2xl ring-1 ring-white/10">
+      <div className="flex flex-wrap justify-center items-center gap-1.5 p-2 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/60 rounded-3xl shadow-2xl ring-1 ring-white/10 max-w-[calc(100vw-24rem)]">
         {/* Select & Transform Tool */}
         <ToolButton
           icon={<MousePointer className="w-5 h-5" />}
