@@ -100,9 +100,9 @@ export const HeaderBar: React.FC = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-2.5 bg-slate-900/85 backdrop-blur-xl border-b border-slate-800/80 select-none shadow-md">
-      {/* Left: Brand & Document Name */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center">
+      {/* Left: Branding & Document Title */}
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2">
           <img src={Logo} alt="Jaihind International School" className="h-9 object-contain drop-shadow-md" />
         </div>
 
@@ -154,7 +154,7 @@ export const HeaderBar: React.FC = () => {
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pr-2 py-1 flex-1 justify-end mask-fade-right">
         {/* Load JHW */}
         <button
           type="button"

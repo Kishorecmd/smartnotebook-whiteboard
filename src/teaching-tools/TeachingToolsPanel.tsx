@@ -92,11 +92,11 @@ export const TeachingToolsPanel: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-      <div className="w-[90vw] h-[85vh] max-w-7xl bg-slate-900 border border-slate-700 shadow-2xl rounded-3xl flex flex-col overflow-hidden">
+      <div className="w-[95vw] h-[90vh] md:w-[90vw] md:h-[85vh] max-w-7xl bg-slate-900 border border-slate-700 shadow-2xl rounded-3xl flex flex-col overflow-hidden">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-900/90">
-          <h2 className="text-3xl font-bold text-white tracking-tight">Teaching Tools</h2>
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-slate-800 bg-slate-900/90">
+          <h2 className="text-xl md:text-3xl font-bold text-white tracking-tight">Teaching Tools</h2>
           <button
             type="button"
             className="p-3 rounded-full bg-slate-800 text-slate-300 hover:bg-rose-500 hover:text-white transition-colors"
@@ -107,16 +107,16 @@ export const TeachingToolsPanel: React.FC = () => {
         </div>
 
         {/* Two-Column Body */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           
           {/* Left Column: Categories */}
-          <div className="w-64 flex-shrink-0 border-r border-slate-800 bg-slate-900/50 p-4 overflow-y-auto custom-scrollbar">
-            <div className="space-y-1">
+          <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900/50 p-4 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto custom-scrollbar">
+            <div className="flex md:flex-col gap-2 md:gap-0 md:space-y-1 w-max md:w-auto">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                  className={`flex md:w-full items-center gap-2 md:gap-3 px-3 py-2 md:px-4 md:py-3 rounded-xl transition-colors shrink-0 ${
                     activeCategory === cat.id 
                       ? 'bg-indigo-500/20 text-indigo-400' 
                       : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
@@ -130,9 +130,9 @@ export const TeachingToolsPanel: React.FC = () => {
           </div>
 
           {/* Right Column: Search & Grid */}
-          <div className="flex-1 flex flex-col bg-slate-950/50">
+          <div className="flex-1 flex flex-col bg-slate-950/50 min-h-0">
             {/* Search Bar */}
-            <div className="p-6 pb-2">
+            <div className="p-4 md:p-6 pb-2">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-500" />
                 <input
@@ -140,21 +140,21 @@ export const TeachingToolsPanel: React.FC = () => {
                   placeholder="Search teaching tools..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-4 pl-14 pr-6 text-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-3 pl-12 pr-4 md:py-4 md:pl-14 md:pr-6 text-base md:text-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                 />
               </div>
             </div>
 
             {/* Grid */}
-            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-4">
                 {filteredTools.map(tool => {
                   const Icon = tool.icon;
                   const isFav = favoriteTools.includes(tool.id);
                   return (
                     <div
                       key={tool.id}
-                      className="group relative flex flex-col items-center justify-between p-6 bg-slate-800 border border-slate-700/50 rounded-2xl hover:bg-indigo-900/20 hover:border-indigo-500/50 transition-all duration-200"
+                      className="group relative flex flex-col items-center justify-between p-4 md:p-6 bg-slate-800 border border-slate-700/50 rounded-2xl hover:bg-indigo-900/20 hover:border-indigo-500/50 transition-all duration-200"
                     >
                       {/* Favorite Button */}
                       <button

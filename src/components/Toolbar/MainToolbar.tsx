@@ -76,7 +76,7 @@ export const MainToolbar: React.FC = () => {
   return (
     <div
       ref={toolbarRef}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center select-none w-full max-w-[98vw] sm:max-w-max"
+      className="fixed bottom-0 left-0 w-full md:bottom-6 md:left-1/2 md:-translate-x-1/2 md:w-auto z-30 flex flex-col items-center select-none"
     >
       {/* Popovers */}
       <div className="mb-3 relative w-full flex justify-center">
@@ -177,7 +177,7 @@ export const MainToolbar: React.FC = () => {
       </div>
 
       {/* Main Toolbar */}
-      <div className="flex flex-row items-center gap-1 sm:gap-2 bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl sm:rounded-full p-2 shadow-2xl overflow-x-auto custom-scrollbar w-full sm:w-auto h-20 sm:h-[72px]">
+      <div className="flex flex-row items-center gap-1 md:gap-2 bg-slate-900/95 backdrop-blur-xl border-t md:border border-slate-700/60 rounded-none md:rounded-full p-2 shadow-2xl overflow-x-auto custom-scrollbar w-full md:w-auto h-16 md:h-[72px]">
         
         {/* Navigation & Selection */}
         <div className="flex items-center gap-1">
