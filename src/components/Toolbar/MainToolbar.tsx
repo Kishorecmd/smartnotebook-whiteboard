@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   MousePointer, Hand, Pen, Highlighter, Eraser, Shapes, Type, Image as ImageIcon,
-  Palette, Sliders, Undo2, Redo2, Trash2, GraduationCap, ChevronRight, Settings2, Video, FileText, Music
+  Sliders, Undo2, Redo2, Trash2, GraduationCap, ChevronRight, Video, FileText, Music
 } from 'lucide-react';
 import { ToolButton } from './ToolButton';
 import { ColorPalette } from './ColorPalette';
