@@ -15,6 +15,11 @@ import {
   Presentation,
   Sparkles,
   PlaySquare,
+  Pencil,
+  Brush,
+  PaintBucket,
+  Pipette,
+  Eraser as MagicEraserIcon,
 } from 'lucide-react';
 import { ToolButton } from './ToolButton';
 import { ColorPalette } from './ColorPalette';
@@ -174,12 +179,52 @@ export const MainToolbar: React.FC = () => {
           onClick={() => handleSelectTool('magic_pen')}
         />
 
-        {/* Marker / Highlighter Tool */}
+        {/* Pencil Tool */}
+        <ToolButton
+          icon={<Pencil className="w-5 h-5" />}
+          label="Pencil"
+          isActive={toolSettings.tool === 'pencil'}
+          onClick={() => handleSelectTool('pencil')}
+        />
+
+        {/* Brush Tool */}
+        <ToolButton
+          icon={<Brush className="w-5 h-5" />}
+          label="Brush"
+          isActive={toolSettings.tool === 'brush'}
+          onClick={() => handleSelectTool('brush')}
+        />
+
+        {/* Crayon Tool (Using Pencil icon as placeholder if Crayon doesn't exist) */}
+        <ToolButton
+          icon={<Pen className="w-5 h-5 text-orange-400" />}
+          label="Crayon"
+          isActive={toolSettings.tool === 'crayon'}
+          onClick={() => handleSelectTool('crayon')}
+        />
+
+        {/* Highlighter / Marker Tool */}
         <ToolButton
           icon={<Highlighter className="w-5 h-5" />}
           label="Highlighter (M)"
-          isActive={toolSettings.tool === 'marker'}
-          onClick={() => handleSelectTool('marker')}
+          isActive={toolSettings.tool === 'highlighter' || toolSettings.tool === 'marker'}
+          onClick={() => handleSelectTool('highlighter')}
+        />
+
+        {/* Fill / PaintBucket Tool */}
+        <ToolButton
+          icon={<PaintBucket className="w-5 h-5" />}
+          label="Fill"
+          isActive={toolSettings.tool === 'fill'}
+          onClick={() => handleSelectTool('fill')}
+        />
+
+        {/* Eyedropper Tool */}
+        <ToolButton
+          icon={<Pipette className="w-5 h-5" />}
+          label="Eyedropper"
+          isActive={toolSettings.tool === 'eyedropper'}
+          onClick={() => handleSelectTool('eyedropper')}
         />
 
         {/* Text Tool */}
@@ -204,6 +249,14 @@ export const MainToolbar: React.FC = () => {
           label="Eraser (E)"
           isActive={toolSettings.tool === 'eraser'}
           onClick={() => handleSelectTool('eraser')}
+        />
+        
+        {/* Magic Eraser Tool */}
+        <ToolButton
+          icon={<MagicEraserIcon className="w-5 h-5 text-red-400" />}
+          label="Magic Eraser (Object Delete)"
+          isActive={toolSettings.tool === 'magic_eraser'}
+          onClick={() => handleSelectTool('magic_eraser')}
         />
 
         <div className="w-px h-8 bg-slate-700/50 mx-1" />

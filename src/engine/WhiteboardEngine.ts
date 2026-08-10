@@ -16,6 +16,13 @@ import { TextTool } from './tools/TextTool';
 import { LaserTool } from './tools/LaserTool';
 import { SpotlightTool } from './tools/SpotlightTool';
 import { MagicPenTool } from './tools/MagicPenTool';
+import { PencilTool } from './tools/PencilTool';
+import { BrushTool } from './tools/BrushTool';
+import { CrayonTool } from './tools/CrayonTool';
+import { HighlighterTool } from './tools/HighlighterTool';
+import { MagicEraserTool } from './tools/MagicEraserTool';
+import { EyedropperTool } from './tools/EyedropperTool';
+import { FillTool } from './tools/FillTool';
 import { ClearPageCommand } from './commands/ClearPageCommand';
 import { DeleteObjectsCommand } from './commands/DeleteObjectsCommand';
 import { AddObjectCommand } from './commands/AddObjectCommand';
@@ -67,9 +74,15 @@ export class WhiteboardEngine {
     tool: 'pen',
     color: '#1e293b',
     penWidth: 4,
+    pencilWidth: 3,
+    brushWidth: 12,
+    crayonWidth: 16,
+    highlighterWidth: 24,
     markerWidth: 24,
     eraserWidth: 28,
     markerOpacity: 0.4,
+    opacity: 1.0,
+    smoothingLevel: 'medium',
     eraserMode: 'stroke',
     shapeType: 'rectangle',
     shapeFillColor: 'transparent',
@@ -171,6 +184,13 @@ export class WhiteboardEngine {
     this.tools.set('laser', new LaserTool());
     this.tools.set('spotlight', new SpotlightTool());
     this.tools.set('magic_pen', new MagicPenTool());
+    this.tools.set('pencil', new PencilTool());
+    this.tools.set('brush', new BrushTool());
+    this.tools.set('crayon', new CrayonTool());
+    this.tools.set('highlighter', new HighlighterTool());
+    this.tools.set('magic_eraser', new MagicEraserTool());
+    this.tools.set('eyedropper', new EyedropperTool());
+    this.tools.set('fill', new FillTool());
   }
 
   // --- Getters & Accessors ---

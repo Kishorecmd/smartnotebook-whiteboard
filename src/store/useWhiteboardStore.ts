@@ -63,6 +63,7 @@ interface WhiteboardStoreState {
   isPresenterMode: boolean;
   isTeachingPanelOpen: boolean;
   isPdfImportModalOpen: boolean;
+  isChildFriendlyMode: boolean;
   pendingPdfImages: ImageObject[];
 
   // Active Teaching Overlay Tools (e.g. Timer, Calculator)
@@ -147,6 +148,18 @@ interface WhiteboardStoreState {
 
   // Actions - Modals
   togglePageDrawer: () => void;
+  
+  // Coloring Mode State
+  coloringMode: boolean;
+  childFriendlyMode: boolean;
+  recentColors: string[];
+  favoriteColors: string[];
+  setColoringMode: (enabled: boolean) => void;
+  setChildFriendlyMode: (enabled: boolean) => void;
+  addRecentColor: (color: string) => void;
+  addFavoriteColor: (color: string) => void;
+  removeFavoriteColor: (color: string) => void;
+
   setExportModalOpen: (open: boolean) => void;
   setSavedDocsModalOpen: (open: boolean) => void;
   setKeyboardShortcutsOpen: (open: boolean) => void;
@@ -180,9 +193,15 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
     tool: 'pen',
     color: '#0f172a',
     penWidth: 4,
+    pencilWidth: 2,
+    brushWidth: 16,
+    crayonWidth: 12,
+    highlighterWidth: 24,
     markerWidth: 24,
     eraserWidth: 28,
     markerOpacity: 0.4,
+    opacity: 1.0,
+    smoothingLevel: 'medium',
     eraserMode: 'stroke',
     shapeType: 'rectangle' as ShapeType,
     shapeFillColor: 'transparent',
@@ -196,6 +215,11 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
     textAlign: 'left',
     textColor: '#0f172a',
   },
+
+  coloringMode: false,
+  childFriendlyMode: false,
+  recentColors: [],
+  favoriteColors: [],
 
   selectedIds: [],
   editingText: null,
@@ -229,11 +253,45 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
   isPresenterMode: false,
   isTeachingPanelOpen: false,
   isPdfImportModalOpen: false,
+  isChildFriendlyMode: false,
   pendingPdfImages: [],
 
   engine: null,
 
   setEngine: (engine) => set({ engine }),
+
+  setColoringMode: (enabled) => set({ coloringMode: enabled }),
+  setChildFriendlyMode: (enabled) => set({ childFriendlyMode: enabled }),
+  
+  addRecentColor: (color) => {
+    set((state) => {
+      const recent = state.recentColors.filter((c) => c !== color);
+      recent.unshift(color);
+      if (recent.length > 12) recent.pop();
+      return { recentColors: recent };
+    });
+  },
+
+  addFavoriteColor: (color) => {
+    set((state) => {
+      if (state.favoriteColors.includes(color)) return state;
+      const newFavs = [...state.favoriteColors, color];
+      try {
+        localStorage.setItem('jhw_favorite_colors', JSON.stringify(newFavs));
+      } catch (e) {}
+      return { favoriteColors: newFavs };
+    });
+  },
+
+  removeFavoriteColor: (color) => {
+    set((state) => {
+      const newFavs = state.favoriteColors.filter((c) => c !== color);
+      try {
+        localStorage.setItem('jhw_favorite_colors', JSON.stringify(newFavs));
+      } catch (e) {}
+      return { favoriteColors: newFavs };
+    });
+  },
 
   setTool: (tool) => {
     const { engine, toolSettings } = get();

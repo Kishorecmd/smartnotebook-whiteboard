@@ -207,6 +207,7 @@ export const WhiteboardCanvas: React.FC = () => {
 
   // Extract youtube videos to render them in the DOM layer
   const youtubeVideos = activePage.objects.filter((obj) => obj.type === 'youtubeVideo') as YouTubeVideoObject[];
+  const viewport = useWhiteboardStore((state) => state.viewport);
 
   return (
     <div
@@ -268,7 +269,13 @@ export const WhiteboardCanvas: React.FC = () => {
       {useWhiteboardStore.getState().engine && <MultitouchDebugOverlay engine={useWhiteboardStore.getState().engine!} />}
 
       {/* DOM Media Layer */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          transformOrigin: '0 0',
+          transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`
+        }}
+      >
         {youtubeVideos.map(video => (
           <YouTubeVideo key={video.id} video={video} />
         ))}

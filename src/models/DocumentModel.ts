@@ -213,7 +213,7 @@ export function createDefaultDocument(title: string = 'Untitled Lesson'): JHWDoc
 }
 
 export function createStrokeObject(params: {
-  tool: 'pen' | 'marker';
+  tool: 'pen' | 'marker' | 'pencil' | 'brush' | 'crayon' | 'highlighter';
   points: Point[];
   color: string;
   width: number;

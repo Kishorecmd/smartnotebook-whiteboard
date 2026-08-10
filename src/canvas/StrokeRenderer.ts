@@ -9,23 +9,41 @@ export class StrokeRenderer {
     if (!stroke.visible || stroke.points.length === 0) return;
 
     ctx.save();
+    
+    // Default styling
+    ctx.globalAlpha = stroke.opacity;
+    ctx.strokeStyle = stroke.color;
+    ctx.fillStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    if (stroke.tool === 'marker') {
-      // Marker / Highlighter styling: translucent overlay with smooth linecaps
-      ctx.globalAlpha = stroke.opacity;
-      ctx.strokeStyle = stroke.color;
-      ctx.fillStyle = stroke.color;
-      ctx.lineWidth = stroke.width;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-    } else {
-      // Standard Pen styling
-      ctx.globalAlpha = stroke.opacity;
-      ctx.strokeStyle = stroke.color;
-      ctx.fillStyle = stroke.color;
-      ctx.lineWidth = stroke.width;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+    switch (stroke.tool) {
+      case 'marker':
+        ctx.globalCompositeOperation = 'multiply';
+        break;
+      case 'highlighter':
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.lineCap = 'butt'; // Gives that square highlighter look
+        break;
+      case 'pencil':
+        // Pencil is often slightly opaque/darker and thinner, maybe some texture
+        ctx.globalAlpha = Math.min(stroke.opacity, 0.8);
+        break;
+      case 'brush':
+        // Brush could have a specific tapering or shadow effect
+        ctx.shadowColor = stroke.color;
+        ctx.shadowBlur = stroke.width * 0.2;
+        break;
+      case 'crayon':
+        // Crayon might have some texture. We can simulate a rough edge by slightly altering the path or drawing multiple passes.
+        // For performance, we'll keep it simple: semi-opaque, no shadow, round caps.
+        ctx.globalAlpha = Math.min(stroke.opacity, 0.9);
+        break;
+      case 'pen':
+      default:
+        // Pen is standard
+        break;
     }
 
     const points = stroke.points;
@@ -47,6 +65,13 @@ export class StrokeRenderer {
       ctx.moveTo(points[0].x, points[0].y);
       ctx.lineTo(points[1].x, points[1].y);
       ctx.stroke();
+      
+      if (stroke.tool === 'crayon') {
+        // Draw a second rough pass for crayon
+        ctx.globalAlpha = stroke.opacity * 0.5;
+        ctx.lineWidth = stroke.width * 0.8;
+        ctx.stroke();
+      }
       ctx.restore();
       return;
     }
@@ -64,6 +89,13 @@ export class StrokeRenderer {
     const last = points[points.length - 1];
     ctx.lineTo(last.x, last.y);
     ctx.stroke();
+    
+    if (stroke.tool === 'crayon') {
+      // Draw a second rough pass for crayon
+      ctx.globalAlpha = stroke.opacity * 0.5;
+      ctx.lineWidth = stroke.width * 0.8;
+      ctx.stroke();
+    }
 
     ctx.restore();
   }
@@ -73,7 +105,7 @@ export class StrokeRenderer {
    */
   public static renderActiveStroke(
     ctx: CanvasRenderingContext2D,
-    _tool: 'pen' | 'marker',
+    tool: string,
     points: Point[],
     color: string,
     width: number,
@@ -88,6 +120,26 @@ export class StrokeRenderer {
     ctx.lineWidth = width;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+
+    switch (tool) {
+      case 'marker':
+        ctx.globalCompositeOperation = 'multiply';
+        break;
+      case 'highlighter':
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.lineCap = 'butt';
+        break;
+      case 'pencil':
+        ctx.globalAlpha = Math.min(opacity, 0.8);
+        break;
+      case 'brush':
+        ctx.shadowColor = color;
+        ctx.shadowBlur = width * 0.2;
+        break;
+      case 'crayon':
+        ctx.globalAlpha = Math.min(opacity, 0.9);
+        break;
+    }
 
     if (points.length === 1) {
       const pt = points[0];
@@ -104,6 +156,11 @@ export class StrokeRenderer {
       ctx.moveTo(points[0].x, points[0].y);
       ctx.lineTo(points[1].x, points[1].y);
       ctx.stroke();
+      if (tool === 'crayon') {
+        ctx.globalAlpha = opacity * 0.5;
+        ctx.lineWidth = width * 0.8;
+        ctx.stroke();
+      }
       ctx.restore();
       return;
     }
@@ -119,6 +176,12 @@ export class StrokeRenderer {
     const last = points[points.length - 1];
     ctx.lineTo(last.x, last.y);
     ctx.stroke();
+    
+    if (tool === 'crayon') {
+      ctx.globalAlpha = opacity * 0.5;
+      ctx.lineWidth = width * 0.8;
+      ctx.stroke();
+    }
 
     ctx.restore();
   }

@@ -53,7 +53,7 @@ export class CanvasRenderer {
 
   // Active in-progress freehand stroke state
   private activeStrokes: Map<number, {
-    tool: 'pen' | 'marker';
+    tool: string;
     points: Point[];
     color: string;
     width: number;
@@ -165,7 +165,7 @@ export class CanvasRenderer {
   }
 
   public setActiveStroke(pointerId: number, params: {
-    tool: 'pen' | 'marker';
+    tool: string;
     points: Point[];
     color: string;
     width: number;
@@ -213,6 +213,11 @@ export class CanvasRenderer {
     this.activeStrokes.clear();
     this.eraserPreview = null;
     this.isOverlayDirty = true;
+  }
+
+  public dispatchFloodFill(worldPoint: Point, color: string, opacity: number): void {
+    // Stub for FloodFillWorker dispatch
+    console.warn('dispatchFloodFill not implemented yet.', worldPoint, color, opacity);
   }
 
   public requestRender(): void {
@@ -288,6 +293,21 @@ export class CanvasRenderer {
         TextRenderer.renderText(ctx, obj as any);
       } else if (obj.type === 'image') {
         this.renderImage(ctx, obj as ImageObject);
+      } else if (obj.type === 'coloringRegion') {
+        const region = obj as any; // Cast to access points/fillColor safely if types aren't fully resolved
+        if (region.points && region.points.length > 0) {
+          ctx.save();
+          ctx.globalAlpha = region.opacity ?? 1;
+          ctx.fillStyle = region.fillColor;
+          ctx.beginPath();
+          ctx.moveTo(region.points[0].x, region.points[0].y);
+          for (let p = 1; p < region.points.length; p++) {
+            ctx.lineTo(region.points[p].x, region.points[p].y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
       } else if (obj.type === 'teaching-tool') {
         const teachingObj = obj as TeachingToolObject;
         const toolDef = TeachingToolRegistry.getTool(teachingObj.toolId);

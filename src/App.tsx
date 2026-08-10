@@ -3,6 +3,7 @@ import {
   WhiteboardCanvas,
   HeaderBar,
   MainToolbar,
+  ChildFriendlyToolbar,
   PageNavigationFooter,
   ZoomControls,
   PageDrawer,
@@ -20,7 +21,7 @@ import { useWhiteboardStore } from './store';
 import { StorageService } from './services';
 
 export const App: React.FC = () => {
-  const { setDocument, isDirty, isPresenterMode, setPresenterMode } = useWhiteboardStore();
+  const { setDocument, isDirty, isPresenterMode, setPresenterMode, isChildFriendlyMode } = useWhiteboardStore();
 
   useEffect(() => {
     initializeTeachingTools();
@@ -79,7 +80,13 @@ export const App: React.FC = () => {
         {/* Floating Controls Layer */}
         {!isPresenterMode ? (
           <>
-            <MainToolbar />
+            {isChildFriendlyMode ? (
+              <div className="absolute top-1/2 left-4 -translate-y-1/2 z-40">
+                <ChildFriendlyToolbar />
+              </div>
+            ) : (
+              <MainToolbar />
+            )}
             <PageNavigationFooter />
             <ZoomControls />
             <PageDrawer />

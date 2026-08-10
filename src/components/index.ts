@@ -1,5 +1,6 @@
 export * from './Canvas/WhiteboardCanvas';
 export * from './Toolbar/MainToolbar';
+export * from './Toolbar/ChildFriendlyToolbar';
 export * from './Toolbar/ToolButton';
 export * from './Toolbar/ColorPalette';
 export * from './Toolbar/StrokeWidthPicker';

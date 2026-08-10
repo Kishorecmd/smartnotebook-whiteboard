@@ -1,4 +1,6 @@
-export type ToolType = 'pen' | 'magic_pen' | 'marker' | 'eraser' | 'shape' | 'text' | 'select' | 'pan' | 'laser' | 'spotlight';
+export type ToolType = 'pen' | 'magic_pen' | 'marker' | 'eraser' | 'shape' | 'text' | 'select' | 'pan' | 'laser' | 'spotlight' | 'pencil' | 'brush' | 'fill' | 'crayon' | 'highlighter' | 'magic_eraser' | 'eyedropper';
+
+export type SmoothingLevel = 'off' | 'low' | 'medium' | 'high';
 
 export type EraserMode = 'stroke' | 'area';
 
@@ -45,7 +47,7 @@ export interface BaseWhiteboardObject {
 
 export interface FreehandStroke extends BaseWhiteboardObject {
   type: 'stroke';
-  tool: 'pen' | 'marker';
+  tool: 'pen' | 'marker' | 'pencil' | 'brush' | 'crayon' | 'highlighter';
   points: Point[];
   color: string;
   width: number;
@@ -107,7 +109,15 @@ export interface YouTubeVideoObject extends BaseWhiteboardObject {
   startTime: number;
 }
 
-export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject;
+export interface ColoringRegion extends BaseWhiteboardObject {
+  type: 'coloringRegion';
+  fillColor: string;
+  tolerance: number;
+  opacity: number;
+  points: Point[]; // Represents the boundary path or flood fill mask simplified points
+}
+
+export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | ColoringRegion;
 
 export interface Page {
   id: string;
@@ -132,9 +142,15 @@ export interface ToolSettings {
   tool: ToolType;
   color: string;
   penWidth: number;
+  pencilWidth: number;
+  brushWidth: number;
+  crayonWidth: number;
+  highlighterWidth: number;
   markerWidth: number;
   eraserWidth: number;
   markerOpacity: number;
+  opacity: number;
+  smoothingLevel: SmoothingLevel;
   eraserMode: EraserMode;
   shapeType: ShapeType;
   shapeFillColor: string;

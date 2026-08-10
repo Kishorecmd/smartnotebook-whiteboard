@@ -8,7 +8,8 @@ import {
   Check,
   Edit2,
   Image as ImageIcon,
-  Play
+  Play,
+  Smile
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService, FileService } from '../../services';
@@ -29,6 +30,8 @@ export const HeaderBar: React.FC = () => {
     setPresenterMode,
     setPdfImportModalOpen,
     engine,
+    isChildFriendlyMode,
+    setChildFriendlyMode,
   } = useWhiteboardStore();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -235,6 +238,21 @@ export const HeaderBar: React.FC = () => {
             className="hidden"
           />
         </label>
+
+        {/* Child Friendly Mode Toggle */}
+        <button
+          type="button"
+          onClick={() => setChildFriendlyMode(!isChildFriendlyMode)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all ${
+            isChildFriendlyMode
+              ? 'bg-pink-600/30 text-pink-400 border border-pink-500/50'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
+          }`}
+          title="Toggle Child-Friendly UI"
+        >
+          <Smile className="w-4 h-4" />
+          <span className="hidden xl:inline">Kids Mode</span>
+        </button>
 
         <div className="w-[1px] h-6 bg-slate-800 mx-1" />
 

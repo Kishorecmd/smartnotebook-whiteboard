@@ -21,6 +21,7 @@ export class InputRouter {
 
   public onPointerAdd(pointer: PointerState, e: PointerEvent, activePointers: PointerState[]): void {
     const activeCount = activePointers.length;
+    const currentTool = this.engine.getToolSettings().tool;
 
     // Fast path: Middle mouse or space+click for pan
     if (e.button === 1 || this.engine.isSpacePressed()) {
@@ -34,8 +35,10 @@ export class InputRouter {
       return;
     }
 
-    if (activeCount === 1) {
-      // 1 Finger/Stylus -> Normal Drawing / Interaction
+    const isDrawingTool = ['pen', 'pencil', 'brush', 'crayon', 'highlighter', 'marker', 'eraser', 'fill'].includes(currentTool);
+
+    if (isDrawingTool) {
+      // Allow multi-touch independent drawing
       this.currentState = GestureState.DRAWING;
       this.engine.getActiveTool()?.onPointerDown(
         this.engine.getTransformer().screenToWorld({x: pointer.x, y: pointer.y}),
@@ -43,27 +46,34 @@ export class InputRouter {
         e,
         this.engine
       );
-    } else if (activeCount === 2) {
-      // 2 Fingers -> Pan/Zoom
-      if (this.engine.getToolSettings().tool === 'spotlight') {
-         // Spotlight uses a second pointer differently
-         this.currentState = GestureState.TEACHING_TOOL_INTERACTION;
-         this.engine.getActiveTool()?.onPointerDown(
-           this.engine.getTransformer().screenToWorld({x: pointer.x, y: pointer.y}),
-           { x: pointer.x, y: pointer.y },
-           e,
-           this.engine
-         );
-         return;
-      }
-      
-      this.currentState = GestureState.CANVAS_ZOOMING;
-      // Tell any drawing tool to cancel its current stroke since we're now zooming
-        this.engine.getActiveTool()?.onPointerCancel(this.engine.getTransformer().screenToWorld({x: pointer.x, y: pointer.y}), { x: pointer.x, y: pointer.y }, e, this.engine);
-      
-      this.gestureEngine.beginPanZoom(activePointers[0], activePointers[1]);
     } else {
-      // 3+ fingers -> Ignore or custom gestures
+      if (activeCount === 1) {
+        // 1 Finger -> Normal Interaction
+        this.currentState = GestureState.DRAWING;
+        this.engine.getActiveTool()?.onPointerDown(
+          this.engine.getTransformer().screenToWorld({x: pointer.x, y: pointer.y}),
+          { x: pointer.x, y: pointer.y },
+          e,
+          this.engine
+        );
+      } else if (activeCount === 2) {
+        // 2 Fingers -> Pan/Zoom
+        if (currentTool === 'spotlight') {
+           this.currentState = GestureState.TEACHING_TOOL_INTERACTION;
+           this.engine.getActiveTool()?.onPointerDown(
+             this.engine.getTransformer().screenToWorld({x: pointer.x, y: pointer.y}),
+             { x: pointer.x, y: pointer.y },
+             e,
+             this.engine
+           );
+           return;
+        }
+        
+        this.currentState = GestureState.CANVAS_ZOOMING;
+        this.engine.getActiveTool()?.onPointerCancel(this.engine.getTransformer().screenToWorld({x: pointer.x, y: pointer.y}), { x: pointer.x, y: pointer.y }, e, this.engine);
+        
+        this.gestureEngine.beginPanZoom(activePointers[0], activePointers[1]);
+      }
     }
   }
 
