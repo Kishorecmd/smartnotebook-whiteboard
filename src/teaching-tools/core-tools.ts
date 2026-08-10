@@ -27,4 +27,16 @@ export const registerCoreTeachingTools = () => {
       useWhiteboardStore.getState().setTool('spotlight');
     }
   });
+
+  TeachingToolRegistry.register({
+    id: 'magnifying-glass',
+    name: 'Magnifying Glass',
+    icon: Focus, // Placeholder icon
+    category: 'UTILITIES',
+    type: 'pointer-tool',
+    description: 'Magnify parts of the canvas (Coming Soon).',
+    onActivate: () => {
+      alert('Magnifying Glass is under construction.');
+    }
+  });
 };

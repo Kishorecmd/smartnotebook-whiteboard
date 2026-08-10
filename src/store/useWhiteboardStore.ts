@@ -159,6 +159,12 @@ interface WhiteboardStoreState {
   addRecentColor: (color: string) => void;
   addFavoriteColor: (color: string) => void;
   removeFavoriteColor: (color: string) => void;
+  
+  // Tools Preferences
+  favoriteTools: string[];
+  recentTools: string[];
+  toggleFavoriteTool: (toolId: string) => void;
+  addRecentTool: (toolId: string) => void;
 
   setExportModalOpen: (open: boolean) => void;
   setSavedDocsModalOpen: (open: boolean) => void;
@@ -218,8 +224,39 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
 
   coloringMode: false,
   childFriendlyMode: false,
-  recentColors: [],
-  favoriteColors: [],
+  recentColors: (() => {
+    try {
+      const saved = localStorage.getItem('jhw_recent_colors');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  })(),
+  favoriteColors: (() => {
+    try {
+      const saved = localStorage.getItem('jhw_favorite_colors');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  })(),
+  
+  favoriteTools: (() => {
+    try {
+      const saved = localStorage.getItem('jhw_favorite_tools');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  })(),
+  recentTools: (() => {
+    try {
+      const saved = localStorage.getItem('jhw_recent_tools');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  })(),
 
   selectedIds: [],
   editingText: null,
@@ -268,6 +305,9 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
       const recent = state.recentColors.filter((c) => c !== color);
       recent.unshift(color);
       if (recent.length > 12) recent.pop();
+      try {
+        localStorage.setItem('jhw_recent_colors', JSON.stringify(recent));
+      } catch (e) {}
       return { recentColors: recent };
     });
   },
@@ -290,6 +330,32 @@ export const useWhiteboardStore = create<WhiteboardStoreState>((set, get) => ({
         localStorage.setItem('jhw_favorite_colors', JSON.stringify(newFavs));
       } catch (e) {}
       return { favoriteColors: newFavs };
+    });
+  },
+
+  toggleFavoriteTool: (toolId) => {
+    set((state) => {
+      let newFavs;
+      if (state.favoriteTools.includes(toolId)) {
+        newFavs = state.favoriteTools.filter((id) => id !== toolId);
+      } else {
+        newFavs = [...state.favoriteTools, toolId];
+      }
+      try {
+        localStorage.setItem('jhw_favorite_tools', JSON.stringify(newFavs));
+      } catch (e) {}
+      return { favoriteTools: newFavs };
+    });
+  },
+
+  addRecentTool: (toolId) => {
+    set((state) => {
+      const filtered = state.recentTools.filter((id) => id !== toolId);
+      const newRecents = [toolId, ...filtered].slice(0, 8); // Keep top 8
+      try {
+        localStorage.setItem('jhw_recent_tools', JSON.stringify(newRecents));
+      } catch (e) {}
+      return { recentTools: newRecents };
     });
   },
 

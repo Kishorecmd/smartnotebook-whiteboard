@@ -1,7 +1,7 @@
 import React from 'react';
 import { TeachingToolObject, Point, BoundingBox } from '../types';
 
-export type ToolCategory = 'MATHEMATICS' | 'SCIENCE' | 'CLASSROOM' | 'PRESENTATION';
+export type ToolCategory = 'FAVORITES' | 'RECENT' | 'MATHEMATICS' | 'SCIENCE' | 'DRAWING' | 'CLASSROOM' | 'PRESENTATION' | 'GAMES' | 'UTILITIES';
 export type ToolType = 'canvas-object' | 'overlay-ui' | 'pointer-tool' | 'background';
 
 export interface ITeachingToolDef {

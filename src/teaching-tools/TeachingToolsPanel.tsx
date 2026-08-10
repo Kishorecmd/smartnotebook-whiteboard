@@ -1,20 +1,56 @@
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Search, Star, Clock, Target, Beaker, Brush, Users, Presentation, Gamepad2, Wrench } from 'lucide-react';
 import { useWhiteboardStore } from '../store';
 import { TeachingToolRegistry } from './TeachingToolRegistry';
 import { ToolCategory } from './types';
 
 export const TeachingToolsPanel: React.FC = () => {
-  const { isTeachingPanelOpen, setTeachingPanelOpen, toggleOverlayTool } = useWhiteboardStore();
+  const { 
+    isTeachingPanelOpen, 
+    setTeachingPanelOpen, 
+    toggleOverlayTool,
+    favoriteTools,
+    recentTools,
+    toggleFavoriteTool,
+    addRecentTool
+  } = useWhiteboardStore();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<ToolCategory | 'FAVORITES' | 'RECENT' | 'ALL'>('ALL');
 
   if (!isTeachingPanelOpen) return null;
 
-  const categories: ToolCategory[] = ['MATHEMATICS', 'SCIENCE', 'CLASSROOM', 'PRESENTATION'];
   const allTools = TeachingToolRegistry.getAllTools();
+
+  const filteredTools = useMemo(() => {
+    let tools = allTools;
+
+    if (activeCategory === 'FAVORITES') {
+      tools = tools.filter(t => favoriteTools.includes(t.id));
+    } else if (activeCategory === 'RECENT') {
+      tools = tools.filter(t => recentTools.includes(t.id));
+      // Sort by recency
+      tools.sort((a, b) => recentTools.indexOf(a.id) - recentTools.indexOf(b.id));
+    } else if (activeCategory !== 'ALL') {
+      tools = tools.filter(t => t.category === activeCategory);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      tools = tools.filter(t => 
+        t.name.toLowerCase().includes(q) || 
+        t.description.toLowerCase().includes(q)
+      );
+    }
+
+    return tools;
+  }, [allTools, activeCategory, searchQuery, favoriteTools, recentTools]);
 
   const handleToolClick = (toolId: string) => {
     const toolDef = TeachingToolRegistry.getTool(toolId);
     if (!toolDef) return;
+
+    addRecentTool(toolId);
 
     if (toolDef.type === 'pointer-tool') {
       if (toolDef.onActivate) {
@@ -25,10 +61,8 @@ export const TeachingToolsPanel: React.FC = () => {
       toggleOverlayTool(toolId);
       setTeachingPanelOpen(false);
     } else if (toolDef.type === 'canvas-object') {
-      // Need a way to drop this object into the center of the viewport
       const engine = useWhiteboardStore.getState().engine;
       if (engine && toolDef.objectFactory) {
-        // Spawn at center of visible bounds
         const screenCenter = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
         const viewportCenter = engine.getTransformer().screenToWorld(screenCenter);
         const obj = toolDef.objectFactory(viewportCenter);
@@ -43,61 +77,127 @@ export const TeachingToolsPanel: React.FC = () => {
     }
   };
 
+  const categories: { id: ToolCategory | 'FAVORITES' | 'RECENT' | 'ALL', label: string, icon: React.FC<any> }[] = [
+    { id: 'ALL', label: 'All Tools', icon: Target },
+    { id: 'FAVORITES', label: 'Favorites', icon: Star },
+    { id: 'RECENT', label: 'Recent', icon: Clock },
+    { id: 'MATHEMATICS', label: 'Mathematics', icon: Target },
+    { id: 'SCIENCE', label: 'Science', icon: Beaker },
+    { id: 'DRAWING', label: 'Drawing', icon: Brush },
+    { id: 'CLASSROOM', label: 'Classroom', icon: Users },
+    { id: 'PRESENTATION', label: 'Presentation', icon: Presentation },
+    { id: 'GAMES', label: 'Games', icon: Gamepad2 },
+    { id: 'UTILITIES', label: 'Utilities', icon: Wrench },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md">
-      <div className="w-11/12 max-w-6xl h-5/6 bg-slate-900 border border-slate-700/50 shadow-2xl rounded-3xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+      <div className="w-[90vw] h-[85vh] max-w-7xl bg-slate-900 border border-slate-700 shadow-2xl rounded-3xl flex flex-col overflow-hidden">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-800">
+        <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-slate-900/90">
           <h2 className="text-3xl font-bold text-white tracking-tight">Teaching Tools</h2>
           <button
             type="button"
-            className="p-4 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors min-w-[64px] min-h-[64px] flex items-center justify-center"
+            className="p-3 rounded-full bg-slate-800 text-slate-300 hover:bg-rose-500 hover:text-white transition-colors"
             onClick={() => setTeachingPanelOpen(false)}
           >
             <X className="w-8 h-8" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          {categories.map(category => {
-            const categoryTools = allTools.filter(t => t.category === category);
-            if (categoryTools.length === 0) return null;
+        {/* Two-Column Body */}
+        <div className="flex flex-1 overflow-hidden">
+          
+          {/* Left Column: Categories */}
+          <div className="w-64 flex-shrink-0 border-r border-slate-800 bg-slate-900/50 p-4 overflow-y-auto custom-scrollbar">
+            <div className="space-y-1">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                    activeCategory === cat.id 
+                      ? 'bg-indigo-500/20 text-indigo-400' 
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                  }`}
+                >
+                  <cat.icon className="w-5 h-5" />
+                  <span className="font-medium">{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-            return (
-              <div key={category} className="mb-12">
-                <h3 className="text-xl font-semibold text-slate-400 mb-6 tracking-widest">{category}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                  {categoryTools.map(tool => {
-                    const Icon = tool.icon;
-                    return (
+          {/* Right Column: Search & Grid */}
+          <div className="flex-1 flex flex-col bg-slate-950/50">
+            {/* Search Bar */}
+            <div className="p-6 pb-2">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search teaching tools..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-4 pl-14 pr-6 text-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Grid */}
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                {filteredTools.map(tool => {
+                  const Icon = tool.icon;
+                  const isFav = favoriteTools.includes(tool.id);
+                  return (
+                    <div
+                      key={tool.id}
+                      className="group relative flex flex-col items-center justify-between p-6 bg-slate-800 border border-slate-700/50 rounded-2xl hover:bg-indigo-900/20 hover:border-indigo-500/50 transition-all duration-200"
+                    >
+                      {/* Favorite Button */}
                       <button
-                        key={tool.id}
-                        onClick={() => handleToolClick(tool.id)}
-                        className="group flex flex-col items-center p-6 bg-slate-800/50 hover:bg-indigo-500/20 hover:border-indigo-500/50 border border-slate-700/50 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 active:scale-95"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavoriteTool(tool.id);
+                        }}
+                        className={`absolute top-3 right-3 p-2 rounded-full transition-colors ${
+                          isFav ? 'text-amber-400' : 'text-slate-600 hover:text-amber-400 hover:bg-slate-700'
+                        }`}
                       >
-                        <div className="w-20 h-20 mb-4 rounded-full bg-slate-800 group-hover:bg-indigo-500/20 flex items-center justify-center text-slate-300 group-hover:text-indigo-400 transition-colors">
-                          <Icon className="w-10 h-10" />
+                        <Star className={`w-5 h-5 ${isFav ? 'fill-current' : ''}`} />
+                      </button>
+
+                      {/* Tool Content */}
+                      <button
+                        className="flex flex-col items-center flex-1 w-full"
+                        onClick={() => handleToolClick(tool.id)}
+                      >
+                        <div className="w-16 h-16 mb-4 rounded-full bg-slate-900 group-hover:bg-indigo-500/20 flex items-center justify-center text-slate-300 group-hover:text-indigo-400 transition-colors">
+                          <Icon className="w-8 h-8" />
                         </div>
-                        <span className="text-lg font-medium text-slate-200 text-center">{tool.name}</span>
-                        <span className="text-xs text-slate-500 mt-2 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          {tool.type === 'canvas-object' ? 'Drops on Canvas' : tool.type === 'overlay-ui' ? 'Opens Window' : tool.type === 'background' ? 'Sets Background' : 'Overlay Effect'}
+                        <span className="text-base font-semibold text-slate-200 text-center leading-tight mb-2">
+                          {tool.name}
+                        </span>
+                        <span className="text-xs text-slate-500 text-center line-clamp-2">
+                          {tool.description}
                         </span>
                       </button>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-          
-          {allTools.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500">
-              <p className="text-2xl mb-2">No tools registered yet.</p>
-              <p>They are currently being built!</p>
+              
+              {filteredTools.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                  <Target className="w-16 h-16 mb-4 opacity-50" />
+                  <p className="text-xl">No tools found matching your criteria.</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
         </div>
       </div>
     </div>
