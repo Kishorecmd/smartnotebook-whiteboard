@@ -10,7 +10,6 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
   isDocTitleEditing: false,
   isPresenterMode: false,
   isTeachingPanelOpen: false,
-  isChildFriendlyMode: false,
 
   activeOverlayTools: [],
 

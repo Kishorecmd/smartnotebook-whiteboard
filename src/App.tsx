@@ -21,7 +21,7 @@ import { useWhiteboardStore } from './store';
 import { StorageService } from './services';
 
 export const App: React.FC = () => {
-  const { setDocument, isDirty, isPresenterMode, setPresenterMode, isChildFriendlyMode } = useWhiteboardStore();
+  const { setDocument, isDirty, isPresenterMode, setPresenterMode, childFriendlyMode } = useWhiteboardStore();
 
   useEffect(() => {
     initializeTeachingTools();
@@ -80,7 +80,7 @@ export const App: React.FC = () => {
         {/* Floating Controls Layer */}
         {!isPresenterMode ? (
           <>
-            {isChildFriendlyMode ? (
+            {childFriendlyMode ? (
               <div className="absolute top-1/2 left-4 -translate-y-1/2 z-40">
                 <ChildFriendlyToolbar />
               </div>

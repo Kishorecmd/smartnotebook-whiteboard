@@ -165,7 +165,6 @@ export interface UiSlice {
   isDocTitleEditing: boolean;
   isPresenterMode: boolean;
   isTeachingPanelOpen: boolean;
-  isChildFriendlyMode: boolean;
 
   // Active Teaching Overlay Tools (e.g. Timer, Calculator)
   activeOverlayTools: string[];

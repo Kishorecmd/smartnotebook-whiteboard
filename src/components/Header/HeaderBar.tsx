@@ -30,7 +30,7 @@ export const HeaderBar: React.FC = () => {
     setPresenterMode,
     setPdfImportModalOpen,
     engine,
-    isChildFriendlyMode,
+    childFriendlyMode,
     setChildFriendlyMode,
   } = useWhiteboardStore();
 
@@ -242,9 +242,9 @@ export const HeaderBar: React.FC = () => {
         {/* Child Friendly Mode Toggle */}
         <button
           type="button"
-          onClick={() => setChildFriendlyMode(!isChildFriendlyMode)}
+          onClick={() => setChildFriendlyMode(!childFriendlyMode)}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all ${
-            isChildFriendlyMode
+            childFriendlyMode
               ? 'bg-pink-600/30 text-pink-400 border border-pink-500/50'
               : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
           }`}
