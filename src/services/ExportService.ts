@@ -1,5 +1,56 @@
-import { WhiteboardPage, FreehandStroke } from '../types';
-import { StrokeRenderer } from '../canvas';
+import { WhiteboardPage, FreehandStroke, ShapeObject, TextObject, ImageObject, YouTubeVideoObject } from '../types';
+import { StrokeRenderer, ShapeRenderer, TextRenderer } from '../canvas';
+
+/**
+ * Draws an image-like object (image or YouTube poster) once it has decoded.
+ * Export is synchronous, so anything still loading is simply skipped rather than
+ * blocking the export.
+ */
+function drawLoadedImage(
+  ctx: CanvasRenderingContext2D,
+  src: string,
+  obj: { x: number; y: number; width: number; height: number; rotation?: number },
+  cache: Map<string, HTMLImageElement>
+): void {
+  const img = cache.get(src);
+  if (!img || !img.complete || img.naturalWidth === 0) return;
+  ctx.save();
+  ctx.translate(obj.x, obj.y);
+  if (obj.rotation) {
+    ctx.translate(obj.width / 2, obj.height / 2);
+    ctx.rotate(obj.rotation);
+    ctx.translate(-obj.width / 2, -obj.height / 2);
+  }
+  ctx.drawImage(img, 0, 0, obj.width, obj.height);
+  ctx.restore();
+}
+
+/** Preloads every image the page needs so the synchronous draw pass can use them. */
+async function preloadPageImages(page: WhiteboardPage): Promise<Map<string, HTMLImageElement>> {
+  const sources: string[] = [];
+  for (const obj of page.objects) {
+    if (obj.type === 'image') sources.push((obj as ImageObject).dataUrl);
+    if (obj.type === 'youtubeVideo') {
+      const v = obj as YouTubeVideoObject;
+      sources.push(v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`);
+    }
+  }
+
+  const cache = new Map<string, HTMLImageElement>();
+  await Promise.all(
+    sources.map(
+      (src) =>
+        new Promise<void>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous'; // keeps the export canvas untainted
+          img.onload = () => { cache.set(src, img); resolve(); };
+          img.onerror = () => resolve();
+          img.src = src;
+        })
+    )
+  );
+  return cache;
+}
 
 export interface ExportImageOptions {
   format?: 'png' | 'jpeg';
@@ -45,11 +96,24 @@ export class ExportService {
       ctx.fillRect(0, 0, width, height);
     }
 
-    // 2. Draw all page objects (sorted by zIndex)
+    // 2. Draw all page objects (sorted by zIndex). Previously only strokes were
+    // drawn, so shapes, text, images and videos were silently missing from exports.
+    const imageCache = await preloadPageImages(page);
     const objects = [...page.objects].sort((a, b) => a.zIndex - b.zIndex);
     for (const obj of objects) {
+      if (obj.visible === false) continue;
+
       if (obj.type === 'stroke') {
         StrokeRenderer.renderStroke(ctx, obj as FreehandStroke);
+      } else if (obj.type === 'shape') {
+        ShapeRenderer.renderShape(ctx, obj as ShapeObject);
+      } else if (obj.type === 'text') {
+        TextRenderer.renderText(ctx, obj as TextObject);
+      } else if (obj.type === 'image') {
+        drawLoadedImage(ctx, (obj as ImageObject).dataUrl, obj, imageCache);
+      } else if (obj.type === 'youtubeVideo') {
+        const v = obj as YouTubeVideoObject;
+        drawLoadedImage(ctx, v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`, obj, imageCache);
       }
     }
 

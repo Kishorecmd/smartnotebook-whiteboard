@@ -1,5 +1,6 @@
 import { ICommand, FreehandStroke, WhiteboardObject } from '../../types';
 import { generateId } from '../../utils';
+import { nextZIndex } from './zIndex';
 
 export class AddStrokeCommand implements ICommand {
   public readonly id: string;
@@ -14,9 +15,11 @@ export class AddStrokeCommand implements ICommand {
     setObjectsRef: (objects: WhiteboardObject[]) => void
   ) {
     this.id = generateId('cmd');
-    this.stroke = stroke;
     this.objectsRef = objectsRef;
     this.setObjectsRef = setObjectsRef;
+    // Land above whatever is already on the page, so annotating over an image or
+    // video is actually visible. Resolved once here so redo reuses the same value.
+    this.stroke = stroke.zIndex ? stroke : { ...stroke, zIndex: nextZIndex(objectsRef()) };
   }
 
   public execute(): void {

@@ -1,6 +1,7 @@
 import { ITool } from './ITool';
 import { Point } from '../../types';
 import { HitTest } from '../HitTest';
+import { useWhiteboardStore } from '../../store';
 import type { WhiteboardEngine } from '../WhiteboardEngine';
 
 export class EyedropperTool implements ITool {
@@ -39,10 +40,13 @@ export class EyedropperTool implements ITool {
       }
 
       if (sampledColor) {
-        engine.updateToolSettings({ color: sampledColor });
-        
+        // Go through the store so the toolbar reflects the picked colour and the
+        // tool switch; the store forwards both to the engine.
+        const { updateToolSettings, setTool } = useWhiteboardStore.getState();
+        updateToolSettings({ color: sampledColor });
+
         // Fallback tool
-        engine.updateToolSettings({ tool: 'pen' });
+        setTool('pen');
       }
     }
   }

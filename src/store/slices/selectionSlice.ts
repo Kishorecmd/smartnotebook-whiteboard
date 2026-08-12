@@ -2,19 +2,20 @@ import type { SelectionSlice, SliceCreator } from '../types';
 
 export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => ({
   selectedIds: [],
-  interactiveVideoId: null,
   editingText: null,
 
   setSelectedIds: (ids) => {
     set({ selectedIds: ids });
-    // Clear interactive video if not selected
-    const { interactiveVideoId } = get();
-    if (interactiveVideoId && !ids.includes(interactiveVideoId)) {
-      set({ interactiveVideoId: null });
-    }
-  },
 
-  setInteractiveVideoId: (id) => set({ interactiveVideoId: id }),
+    // Mirror into the engine, which owns the selection the tools and commands act
+    // on. Guarded by a same-contents check because the engine calls back into here
+    // via onSelectionChange, which would otherwise loop.
+    const { engine } = get();
+    if (!engine) return;
+    const current = engine.getSelectedIds();
+    const same = current.length === ids.length && current.every((id) => ids.includes(id));
+    if (!same) engine.setSelectedIds(ids);
+  },
 
   deleteSelected: () => {
     const { engine } = get();

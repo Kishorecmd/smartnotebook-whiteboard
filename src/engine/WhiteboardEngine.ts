@@ -160,7 +160,12 @@ export class WhiteboardEngine {
     
     this.gestureEngine = new GestureEngine({
       transformer: this.transformer,
-      onPanZoom: () => this.render(),
+      onPanZoom: () => {
+        this.render();
+        // Pinch/two-finger gestures move the transformer directly, so the store
+        // needs telling too or the zoom indicator and any viewport consumers go stale.
+        this.notifyViewportChange();
+      },
     });
     
     this.inputRouter = new InputRouter(this, this.gestureEngine);
@@ -493,17 +498,25 @@ export class WhiteboardEngine {
           createdAt: now,
           updatedAt: now,
         });
-      } else if (orig.type === 'text') {
+      } else {
+        // Everything else (text, image, youtubeVideo, teaching-tool, coloringRegion)
+        // duplicates by offsetting position; previously these silently produced no
+        // clone, which also cleared the selection via setSelectedIds([]) below.
         clonedObjects.push({
           ...orig,
           id: newId,
           x: orig.x + offset,
           y: orig.y + offset,
+          ...(('points' in orig && Array.isArray((orig as any).points))
+            ? { points: (orig as any).points.map((p: any) => ({ ...p, x: p.x + offset, y: p.y + offset })) }
+            : {}),
           createdAt: now,
           updatedAt: now,
         });
       }
     }
+
+    if (clonedObjects.length === 0) return;
 
     // Add each object via command or combined list
     for (const clone of clonedObjects) {

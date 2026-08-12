@@ -18,8 +18,6 @@ export const TeachingToolsPanel: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<ToolCategory | 'FAVORITES' | 'RECENT' | 'ALL'>('ALL');
 
-  if (!isTeachingPanelOpen) return null;
-
   const allTools = TeachingToolRegistry.getAllTools();
 
   const filteredTools = useMemo(() => {
@@ -45,6 +43,10 @@ export const TeachingToolsPanel: React.FC = () => {
 
     return tools;
   }, [allTools, activeCategory, searchQuery, favoriteTools, recentTools]);
+
+  // Must sit below every hook: returning earlier changed the hook count between
+  // renders and crashed with "Rendered more hooks than during the previous render".
+  if (!isTeachingPanelOpen) return null;
 
   const handleToolClick = (toolId: string) => {
     const toolDef = TeachingToolRegistry.getTool(toolId);
