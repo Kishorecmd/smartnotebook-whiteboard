@@ -58,6 +58,35 @@ export class HandwritingRecognitionService {
   }
 
   /**
+   * Groups strokes into lines of writing by vertical overlap, so the rasteriser can
+   * scale a single line rather than the whole block. Two strokes belong to the same
+   * line when their vertical spans overlap at all.
+   */
+  private static estimateLineCount(strokes: FreehandStroke[]): number {
+    const spans = strokes
+      .filter((s) => s.points.length > 0)
+      .map((s) => {
+        const ys = s.points.map((p) => p.y);
+        return { top: Math.min(...ys), bottom: Math.max(...ys) };
+      })
+      .sort((a, b) => a.top - b.top);
+
+    if (spans.length === 0) return 1;
+
+    let lines = 1;
+    let currentBottom = spans[0].bottom;
+    for (let i = 1; i < spans.length; i++) {
+      if (spans[i].top > currentBottom) {
+        lines++;
+        currentBottom = spans[i].bottom;
+      } else {
+        currentBottom = Math.max(currentBottom, spans[i].bottom);
+      }
+    }
+    return lines;
+  }
+
+  /**
    * Rasterizes an array of strokes onto an offscreen canvas with high contrast (solid black on white)
    * optimized for OCR character extraction.
    */
@@ -93,9 +122,16 @@ export class HandwritingRecognitionService {
       height,
     };
 
-    // Determine target scale for optimal OCR character height (target height ~200-400px)
-    const targetHeight = Math.max(200, Math.min(600, height * 2));
-    const scale = targetHeight / height;
+    // Tesseract's LSTM model is tuned for roughly 30-50px of character height and
+    // measurably degrades above that: on a script sample, 40px read "Hil am Kishore"
+    // while the same text at 90px and 200px read "HL | amv Ksrore". Scale so a single
+    // line of writing lands near that band rather than upscaling the whole block.
+    const lineCount = this.estimateLineCount(strokes);
+    const lineHeight = rawBbox.height / Math.max(1, lineCount);
+    const targetLineHeight = 48;
+    const rawScale = lineHeight > 0 ? targetLineHeight / lineHeight : 1;
+    // Never blow small ink up beyond 4x, and never shrink below a legible 0.15x.
+    const scale = Math.max(0.15, Math.min(4, rawScale));
 
     const canvasWidth = Math.round(width * scale);
     const canvasHeight = Math.round(height * scale);
@@ -123,7 +159,10 @@ export class HandwritingRecognitionService {
 
       ctx.fillStyle = '#000000';
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = Math.max(4, stroke.width * 1.1);
+      // Widths are in world units and get multiplied by `scale`; the last term keeps
+      // the drawn line at least ~2.5px so ink does not thin out to nothing when the
+      // sample is scaled down.
+      ctx.lineWidth = Math.max(4, stroke.width * 1.1, 2.5 / scale);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
