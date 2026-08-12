@@ -1,6 +1,17 @@
 import { FreehandStroke } from '../../types';
 import { HandwritingRecognitionService } from '../../services/HandwritingRecognitionService';
-import type { HandwritingSlice, SliceCreator } from '../types';
+import { AzureInkRecognitionService } from '../../services/AzureInkRecognitionService';
+import type { HandwritingSlice, RecognitionEngine, SliceCreator } from '../types';
+
+const ENGINE_KEY = 'jhw_recognition_engine';
+
+const loadEngine = (): RecognitionEngine => {
+  try {
+    return localStorage.getItem(ENGINE_KEY) === 'azure' ? 'azure' : 'tesseract';
+  } catch {
+    return 'tesseract';
+  }
+};
 
 export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get) => ({
   isHandwritingModalOpen: false,
@@ -8,8 +19,25 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
   handwritingProgress: 0,
   handwritingStatus: '',
   handwritingResult: null,
+  recognitionEngine: loadEngine(),
+  azureCredentials: AzureInkRecognitionService.loadCredentials(),
+  recognitionError: null,
 
   setHandwritingModalOpen: (isHandwritingModalOpen) => set({ isHandwritingModalOpen }),
+
+  setRecognitionEngine: (recognitionEngine) => {
+    try {
+      localStorage.setItem(ENGINE_KEY, recognitionEngine);
+    } catch {
+      // best effort
+    }
+    set({ recognitionEngine });
+  },
+
+  setAzureCredentials: (azureCredentials) => {
+    AzureInkRecognitionService.saveCredentials(azureCredentials);
+    set({ azureCredentials });
+  },
 
   recognizeHandwritingForSelected: async () => {
     const { document, activePageIndex, selectedIds, engine } = get();
@@ -30,18 +58,33 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
       handwritingProgress: 10,
       handwritingStatus: 'Initializing handwriting recognition...',
       handwritingResult: null,
+      recognitionError: null,
     });
 
+    const onProgress = (progress: number, status: string) =>
+      set({ handwritingProgress: progress, handwritingStatus: status });
+
+    const runTesseract = () =>
+      HandwritingRecognitionService.recognizeStrokes(selectedStrokes, onProgress);
+
     try {
-      const result = await HandwritingRecognitionService.recognizeStrokes(
-        selectedStrokes,
-        (progress, status) => {
-          set({
-            handwritingProgress: progress,
-            handwritingStatus: status,
-          });
+      let result = null;
+      const useAzure = get().recognitionEngine === 'azure';
+
+      if (useAzure) {
+        try {
+          result = await AzureInkRecognitionService.recognizeStrokes(selectedStrokes, onProgress);
+        } catch (azureErr) {
+          // Cloud recognition is best-effort: fall back to the offline engine so a
+          // bad key or a dropped connection still yields something usable.
+          const message = azureErr instanceof Error ? azureErr.message : String(azureErr);
+          console.warn('Azure recognition failed, falling back to offline engine:', message);
+          set({ recognitionError: `${message} Fell back to offline recognition.` });
+          result = await runTesseract();
         }
-      );
+      } else {
+        result = await runTesseract();
+      }
 
       if (result) {
         set({
@@ -61,6 +104,7 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
       set({
         isRecognizingHandwriting: false,
         handwritingStatus: 'Recognition error. Please try again.',
+        recognitionError: err instanceof Error ? err.message : 'Recognition failed.',
       });
     }
   },

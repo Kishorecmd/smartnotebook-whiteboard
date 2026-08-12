@@ -90,7 +90,11 @@ export class HandwritingRecognitionService {
    * Rasterizes an array of strokes onto an offscreen canvas with high contrast (solid black on white)
    * optimized for OCR character extraction.
    */
-  public static rasterizeStrokes(strokes: FreehandStroke[], padding: number = 36): RasterizedStrokeCanvas {
+  public static rasterizeStrokes(
+    strokes: FreehandStroke[],
+    padding: number = 36,
+    targetLineHeight: number = 48
+  ): RasterizedStrokeCanvas {
     if (strokes.length === 0) {
       const emptyCanvas = document.createElement('canvas');
       emptyCanvas.width = 100;
@@ -128,7 +132,6 @@ export class HandwritingRecognitionService {
     // line of writing lands near that band rather than upscaling the whole block.
     const lineCount = this.estimateLineCount(strokes);
     const lineHeight = rawBbox.height / Math.max(1, lineCount);
-    const targetLineHeight = 48;
     const rawScale = lineHeight > 0 ? targetLineHeight / lineHeight : 1;
     // Never blow small ink up beyond 4x, and never shrink below a legible 0.15x.
     const scale = Math.max(0.15, Math.min(4, rawScale));

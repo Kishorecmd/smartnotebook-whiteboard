@@ -16,6 +16,7 @@ import type { WhiteboardEngine } from '../engine';
 import { StylePatch } from '../engine/commands/ChangeStyleCommand';
 import { ReorderAction } from '../engine/commands/ReorderObjectsCommand';
 import { HandwritingRecognitionResult } from '../services/HandwritingRecognitionService';
+import type { AzureVisionCredentials } from '../services/AzureInkRecognitionService';
 
 export interface CommitTextEditParams {
   id?: string;
@@ -131,14 +132,22 @@ export interface SelectionSlice {
   cancelTextEdit: () => void;
 }
 
+/** Offline Tesseract, or Azure AI Vision 4.0 Read when the user has configured it. */
+export type RecognitionEngine = 'tesseract' | 'azure';
+
 export interface HandwritingSlice {
   isHandwritingModalOpen: boolean;
   isRecognizingHandwriting: boolean;
   handwritingProgress: number;
   handwritingStatus: string;
   handwritingResult: HandwritingRecognitionResult | null;
+  recognitionEngine: RecognitionEngine;
+  azureCredentials: AzureVisionCredentials;
+  recognitionError: string | null;
 
   setHandwritingModalOpen: (open: boolean) => void;
+  setRecognitionEngine: (engine: RecognitionEngine) => void;
+  setAzureCredentials: (creds: AzureVisionCredentials) => void;
   recognizeHandwritingForSelected: () => Promise<void>;
   applyHandwritingRecognition: (params: ApplyHandwritingParams) => void;
 }
