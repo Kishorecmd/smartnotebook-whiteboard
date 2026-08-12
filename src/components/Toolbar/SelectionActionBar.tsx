@@ -21,11 +21,9 @@ import {
   Ruler,
   Lock,
   Unlock,
-  PlaySquare,
-  MousePointer2,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
-import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject } from '../../types';
+import { StrokeStyle, TextObject, TextAlign, TeachingToolObject } from '../../types';
 
 const COLOR_SWATCHES = [
   '#0f172a',
@@ -81,7 +79,6 @@ export const SelectionActionBar: React.FC = () => {
   const isSingleGuideSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'teaching-tool' && ((selectedObjects[0] as TeachingToolObject).toolId === 'ruler' || (selectedObjects[0] as TeachingToolObject).toolId === 'protractor');
   const selectedGuideObj = isSingleGuideSelected ? (selectedObjects[0] as TeachingToolObject) : null;
   const isSingleVideoSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'youtubeVideo';
-  const selectedVideoObj = isSingleVideoSelected ? (selectedObjects[0] as YouTubeVideoObject) : null;
 
   const handleDeselect = () => {
     if (engine) {
@@ -532,39 +529,6 @@ export const SelectionActionBar: React.FC = () => {
             </button>
 
             {/* Separator */}
-            <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
-          </>
-        )}
-
-        {/* YouTube Video Controls */}
-        {isSingleVideoSelected && selectedVideoObj && (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                useWhiteboardStore.getState().setInteractiveVideoId(
-                  useWhiteboardStore.getState().interactiveVideoId === selectedVideoObj.id ? null : selectedVideoObj.id
-                );
-              }}
-              title="Toggle Interactive Mode"
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold ${
-                useWhiteboardStore.getState().interactiveVideoId === selectedVideoObj.id
-                  ? 'bg-red-600 text-white shadow-lg ring-2 ring-red-500/50'
-                  : 'bg-slate-800 text-red-400 border border-red-900/50 hover:bg-red-900/40 hover:text-red-300'
-              }`}
-            >
-              {useWhiteboardStore.getState().interactiveVideoId === selectedVideoObj.id ? (
-                <>
-                  <MousePointer2 className="w-4 h-4" />
-                  <span>Exit Interactive Mode</span>
-                </>
-              ) : (
-                <>
-                  <PlaySquare className="w-4 h-4" />
-                  <span>Interact with Video</span>
-                </>
-              )}
-            </button>
             <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
           </>
         )}

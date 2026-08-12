@@ -22,4 +22,27 @@ export class YouTubeUrlParser {
 
     return null;
   }
+
+  /**
+   * Reads the start offset from a share link's `t` / `start` parameter, so a link
+   * copied at a particular moment opens there. Accepts `90`, `90s`, `1m30s`, `1h2m3s`.
+   * Returns 0 when absent or unparseable.
+   */
+  public static extractStartTime(url: string): number {
+    if (!url || typeof url !== 'string') return 0;
+
+    const match = url.match(/[?&#](?:t|start)=([^&#]+)/);
+    if (!match) return 0;
+
+    const raw = match[1];
+    if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+
+    const parts = raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+    if (!parts || (!parts[1] && !parts[2] && !parts[3])) return 0;
+
+    const hours = parseInt(parts[1] || '0', 10);
+    const minutes = parseInt(parts[2] || '0', 10);
+    const seconds = parseInt(parts[3] || '0', 10);
+    return hours * 3600 + minutes * 60 + seconds;
+  }
 }

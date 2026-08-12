@@ -5,8 +5,7 @@ import { SelectionActionBar } from '../Toolbar/SelectionActionBar';
 import { CanvasTextEditor } from './CanvasTextEditor';
 import { MultitouchDebugOverlay } from '../MultitouchDebugOverlay';
 import { FileImportService } from '../../services';
-import { Point, YouTubeVideoObject } from '../../types';
-import { YouTubeVideo } from '../../media/youtube/YouTubeVideo';
+import { Point } from '../../types';
 
 export const WhiteboardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -200,13 +199,21 @@ export const WhiteboardCanvas: React.FC = () => {
       engine.dispose();
       setEngine(null);
     };
-    // We no longer draw the solid background on the canvas itself if we have media behind it.
-    // However, to keep it simple, we just set the backgroundColor of the container.
-    // The CanvasRenderer will still clearRect for YouTube videos to punch holes.
-  }, [activePage.background, activePageIndex, doc.pages, setEngine]);
+    // Mount-once. `doc.pages` used to be a dependency, but it gets a fresh array
+    // reference on every stroke (onDocumentChange -> setPageObjects), so the engine
+    // was disposed and rebuilt after each edit -- taking the undo history with it.
+    // Page switches and background changes are pushed into the live engine by the
+    // store actions and the effect below instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setEngine]);
 
-  // Extract youtube videos to render them in the DOM layer
-  const youtubeVideos = activePage.objects.filter((obj) => obj.type === 'youtubeVideo') as YouTubeVideoObject[];
+  // Keep the live engine's background in step with the active page.
+  useEffect(() => {
+    const engine = useWhiteboardStore.getState().engine;
+    if (engine) {
+      engine.setBackground(activePage.background, activePage.backgroundType);
+    }
+  }, [activePage.background, activePage.backgroundType]);
 
   return (
     <div
@@ -266,13 +273,6 @@ export const WhiteboardCanvas: React.FC = () => {
 
       {/* Multitouch Debugger */}
       {useWhiteboardStore.getState().engine && <MultitouchDebugOverlay engine={useWhiteboardStore.getState().engine!} />}
-
-      {/* DOM Media Layer */}
-      <div className="absolute inset-0 pointer-events-none">
-        {youtubeVideos.map(video => (
-          <YouTubeVideo key={video.id} video={video} />
-        ))}
-      </div>
 
       {/* Primary persistent objects canvas */}
       <canvas

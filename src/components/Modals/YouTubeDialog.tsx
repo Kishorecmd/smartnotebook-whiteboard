@@ -68,7 +68,7 @@ export const YouTubeDialog: React.FC = () => {
         autoplay: false,
         muted: false,
         controls: true,
-        startTime: 0,
+        startTime: YouTubeUrlParser.extractStartTime(url),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };

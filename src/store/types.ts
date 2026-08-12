@@ -117,11 +117,9 @@ export interface PreferencesSlice {
 
 export interface SelectionSlice {
   selectedIds: string[];
-  interactiveVideoId: string | null;
   editingText: TextEditRequest | null;
 
   setSelectedIds: (ids: string[]) => void;
-  setInteractiveVideoId: (id: string | null) => void;
   deleteSelected: () => void;
   duplicateSelected: () => void;
   reorderSelected: (action: ReorderAction) => void;

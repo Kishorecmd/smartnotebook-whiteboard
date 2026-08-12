@@ -1,12 +1,18 @@
 import { PointerState } from './PointerState';
 import { GestureState } from './GestureState';
 import { GestureEngine } from './GestureEngine';
+import { HitTest } from '../engine/HitTest';
+import { useWhiteboardStore } from '../store';
 import type { WhiteboardEngine } from '../engine/WhiteboardEngine';
+
+// Tools whose whole purpose is navigation or transient presentation. Clicking a
+// video with one of these should keep doing what the tool does.
+const TOOLS_THAT_KEEP_PRIORITY_OVER_VIDEOS = ['select', 'pan', 'laser', 'spotlight'];
 
 export class InputRouter {
   private engine: WhiteboardEngine;
   private gestureEngine: GestureEngine;
-  
+
   // Overall state of the interaction surface
   private currentState: GestureState = GestureState.IDLE;
 
@@ -19,6 +25,24 @@ export class InputRouter {
     return this.currentState;
   }
 
+  /**
+   * Videos are DOM elements sitting *under* the canvas with pointer-events off,
+   * so a click on one is delivered to whichever tool is active and would other-
+   * wise draw over it. Report whether this pointer landed on a video that the
+   * user should be able to grab directly.
+   *
+   * Only the topmost hit counts, so a stroke drawn on top of a video still
+   * belongs to the stroke, and locked videos are skipped so they can be drawn on.
+   */
+  private isPointerOnGrabbableVideo(pointer: PointerState): boolean {
+    const transformer = this.engine.getTransformer();
+    const worldPoint = transformer.screenToWorld({ x: pointer.x, y: pointer.y });
+    const tolerance = 10 / transformer.getTransform().zoom;
+    const hit = HitTest.findObjectAtPoint(worldPoint, this.engine.getObjects(), tolerance);
+
+    return !!hit && hit.type === 'youtubeVideo' && !hit.locked && hit.visible !== false;
+  }
+
   public onPointerAdd(pointer: PointerState, e: PointerEvent, activePointers: PointerState[]): void {
     const activeCount = activePointers.length;
     const currentTool = this.engine.getToolSettings().tool;
@@ -28,6 +52,25 @@ export class InputRouter {
       this.currentState = GestureState.CANVAS_PANNING;
       this.engine.getActiveTool()?.onPointerDown(
         this.engine.getTransformer().screenToWorld({x: pointer.x, y: pointer.y}),
+        { x: pointer.x, y: pointer.y },
+        e,
+        this.engine
+      );
+      return;
+    }
+
+    // Clicking a video grabs it whatever tool is in hand, so it can be moved
+    // without switching to Select first.
+    if (
+      activeCount === 1 &&
+      !TOOLS_THAT_KEEP_PRIORITY_OVER_VIDEOS.includes(currentTool) &&
+      this.isPointerOnGrabbableVideo(pointer)
+    ) {
+      // Go through the store so the toolbar follows the switch.
+      useWhiteboardStore.getState().setTool('select');
+      this.currentState = GestureState.DRAWING;
+      this.engine.getActiveTool()?.onPointerDown(
+        this.engine.getTransformer().screenToWorld({ x: pointer.x, y: pointer.y }),
         { x: pointer.x, y: pointer.y },
         e,
         this.engine

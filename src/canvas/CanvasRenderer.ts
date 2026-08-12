@@ -15,6 +15,7 @@ import {
   ImageObject,
   TeachingToolObject,
   FreehandStroke,
+  YouTubeVideoObject,
 } from '../types';
 import { getObjectBoundingBox, boxesIntersect } from '../utils';
 
@@ -315,19 +316,7 @@ export class CanvasRenderer {
           toolDef.renderer(ctx, teachingObj, zoom);
         }
       } else if (obj.type === 'youtubeVideo') {
-        // Hole-punching for YouTube videos to reveal the underlying DOM iframe
-        // This clears the canvas background, grid pattern, and any lower z-index objects
-        ctx.save();
-        ctx.translate(obj.x, obj.y);
-        
-        if (obj.rotation) {
-          ctx.translate(obj.width / 2, obj.height / 2);
-          ctx.rotate(obj.rotation);
-          ctx.translate(-obj.width / 2, -obj.height / 2);
-        }
-        
-        ctx.clearRect(0, 0, obj.width, obj.height);
-        ctx.restore();
+        this.renderYouTubeThumbnail(ctx, obj as YouTubeVideoObject);
       }
     }
 
@@ -385,6 +374,74 @@ export class CanvasRenderer {
     
     // Draw the image scaled to the object's width/height
     ctx.drawImage(img, 0, 0, obj.width, obj.height);
+    ctx.restore();
+  }
+
+  /**
+   * YouTube videos are drawn straight onto the canvas as their poster image, so
+   * they behave like any other object (drag, select, export) instead of needing a
+   * DOM iframe layered over the board.
+   */
+  private renderYouTubeThumbnail(ctx: CanvasRenderingContext2D, obj: YouTubeVideoObject): void {
+    ctx.save();
+    ctx.translate(obj.x, obj.y);
+    if (obj.rotation) {
+      ctx.translate(obj.width / 2, obj.height / 2);
+      ctx.rotate(obj.rotation);
+      ctx.translate(-obj.width / 2, -obj.height / 2);
+    }
+
+    const img = this.getYouTubeThumbnail(obj);
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, 0, 0, obj.width, obj.height);
+    } else {
+      // Shown while the poster loads, and as the permanent fallback when it can't be fetched.
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, obj.width, obj.height);
+    }
+
+    this.renderPlayBadge(ctx, obj.width, obj.height);
+    ctx.restore();
+  }
+
+  private getYouTubeThumbnail(obj: YouTubeVideoObject): HTMLImageElement | null {
+    const key = `yt_${obj.id}`;
+    const cached = this.imageCache.get(key);
+    if (cached) return cached;
+
+    const img = new Image();
+    // Required: the board is exported via toDataURL, and a non-CORS image would
+    // taint the canvas and make every export fail.
+    img.crossOrigin = 'anonymous';
+    img.onload = () => this.requestRender();
+    img.onerror = () => this.requestRender(); // fall through to the placeholder
+    img.src = obj.thumbnail || `https://img.youtube.com/vi/${obj.videoId}/hqdefault.jpg`;
+    this.imageCache.set(key, img);
+    return null;
+  }
+
+  private renderPlayBadge(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+    const badgeW = Math.max(28, Math.min(width * 0.22, 72));
+    const badgeH = badgeW * 0.7;
+    const x = (width - badgeW) / 2;
+    const y = (height - badgeH) / 2;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.88)';
+    ctx.beginPath();
+    ctx.roundRect(x, y, badgeW, badgeH, badgeH * 0.28);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    const cx = x + badgeW / 2;
+    const cy = y + badgeH / 2;
+    const t = badgeH * 0.26;
+    ctx.beginPath();
+    ctx.moveTo(cx - t * 0.8, cy - t);
+    ctx.lineTo(cx - t * 0.8, cy + t);
+    ctx.lineTo(cx + t, cy);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
   }
 
