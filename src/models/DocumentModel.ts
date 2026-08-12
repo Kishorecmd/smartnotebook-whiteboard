@@ -48,7 +48,7 @@ export const FreehandStrokeSchema = BaseWhiteboardObjectSchema.extend({
 
 export const ShapeObjectSchema = BaseWhiteboardObjectSchema.extend({
   type: z.literal('shape'),
-  shapeType: z.enum(['rectangle', 'ellipse', 'triangle', 'line', 'arrow', 'star', 'diamond']),
+  shapeType: z.enum(['rectangle', 'rounded-rectangle', 'ellipse', 'circle', 'triangle', 'line', 'arrow', 'star', 'diamond']),
   strokeColor: z.string(),
   fillColor: z.string(),
   strokeWidth: z.number().positive(),
@@ -86,12 +86,37 @@ export const TeachingToolObjectSchema = BaseWhiteboardObjectSchema.extend({
   toolData: z.record(z.string(), z.any()),
 });
 
+export const YouTubeVideoObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('youtubeVideo'),
+  videoId: z.string(),
+  originalUrl: z.string().optional(),
+  title: z.string().optional(),
+  thumbnail: z.string().optional(),
+  autoplay: z.boolean().default(false),
+  muted: z.boolean().default(false),
+  controls: z.boolean().default(true),
+  // Documents saved before startTime existed omit it, so default rather than reject.
+  startTime: z.number().default(0),
+});
+
+export const ColoringRegionSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('coloringRegion'),
+  fillColor: z.string(),
+  tolerance: z.number(),
+  opacity: z.number().min(0).max(1),
+  points: z.array(PointSchema),
+});
+
+// Must stay in sync with the WhiteboardObject union in types/whiteboard.types.ts --
+// an object type missing here is silently rejected on load.
 export const WhiteboardObjectSchema = z.union([
   FreehandStrokeSchema,
   ShapeObjectSchema,
   TextObjectSchema,
   ImageObjectSchema,
   TeachingToolObjectSchema,
+  YouTubeVideoObjectSchema,
+  ColoringRegionSchema,
 ]);
 
 export const PageSchema = z.object({
@@ -178,31 +203,14 @@ export function createPageObject(
 
 export function createDefaultDocument(title: string = 'Untitled Lesson'): JHWDocument {
   const now = Date.now();
-  
-  const sampleVideo = {
-    id: generateId('youtube'),
-    type: 'youtubeVideo',
-    videoId: 'jNQXAC9IVRw', // "Me at the zoo" - First YouTube video
-    x: 200,
-    y: 150,
-    width: 640,
-    height: 360,
-    rotation: 0,
-    zIndex: 1,
-    visible: true,
-    locked: false,
-    createdAt: now,
-    updatedAt: now,
-    autoplay: false,
-    controls: true,
-    muted: false,
-  };
 
   return {
     version: 1,
     id: generateId('doc'),
     title,
-    pages: [createPageObject({ title: 'Page 1', objects: [sampleVideo as any] })],
+    // Starts empty: a placeholder video here would load the YouTube iframe API
+    // on every fresh board.
+    pages: [createPageObject({ title: 'Page 1', objects: [] })],
     activePageIndex: 0,
     createdAt: now,
     updatedAt: now,

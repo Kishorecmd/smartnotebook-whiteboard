@@ -64,7 +64,7 @@ export const createPdfSlice: SliceCreator<PdfSlice> = (set, get) => ({
       engine.getCommandManager().clear();
     }
 
-    StorageService.saveDocument(updatedDoc);
+    StorageService.saveAutosave(updatedDoc);
   },
 
   importPdfToCanvas: () => {
