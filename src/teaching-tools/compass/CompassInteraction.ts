@@ -1,5 +1,5 @@
-import { CompassObject, Point, HandleType } from '../../../types';
-import { distance } from '../../../utils';
+import { CompassObject, Point, HandleType } from '../../types';
+import { distance } from '../../utils';
 
 export class CompassInteraction {
   /**

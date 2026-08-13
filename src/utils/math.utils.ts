@@ -251,9 +251,19 @@ export function distanceToPolygonPerimeter(p: Point, vs: Point[]): number {
 }
 
 /**
+ * Handles derived from a bounding box. The compass handles are excluded on
+ * purpose: they come from the compass's own geometry via CompassInteraction,
+ * not from a box, so there is no sensible box position for them.
+ */
+export type BoxHandleType = Exclude<
+  HandleType,
+  'compass-needle' | 'compass-pencil' | 'compass-body'
+>;
+
+/**
  * Computes positions for 8-direction resize handles and the rotation stalk.
  */
-export function getHandlePositions(box: BoundingBox, zoom: number): Record<HandleType, Point> {
+export function getHandlePositions(box: BoundingBox, zoom: number): Record<BoxHandleType, Point> {
   const midX = box.minX + box.width / 2;
   const midY = box.minY + box.height / 2;
   const stalkOffset = 26 / Math.max(0.2, zoom);

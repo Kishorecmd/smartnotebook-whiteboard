@@ -1,5 +1,5 @@
 import { BoundingBox, HandleType } from '../types';
-import { getHandlePositions } from '../utils';
+import { getHandlePositions, BoxHandleType } from '../utils';
 
 export class SelectionRenderer {
   /**
@@ -43,7 +43,7 @@ export class SelectionRenderer {
     ctx.stroke();
 
     // 3. Draw 8 Resize Handles
-    const handleList: HandleType[] = ['nw', 'ne', 'se', 'sw', 'n', 's', 'e', 'w'];
+    const handleList: BoxHandleType[] = ['nw', 'ne', 'se', 'sw', 'n', 's', 'e', 'w'];
 
     for (const h of handleList) {
       const pos = handles[h];

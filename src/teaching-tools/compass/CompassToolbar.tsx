@@ -1,7 +1,6 @@
 import React from 'react';
 import { CompassObject } from '../../types';
 import { useWhiteboardStore } from '../../store';
-import { createId } from '../../utils';
 import { CircleObject, ArcObject } from '../../types';
 
 interface CompassToolbarProps {
@@ -39,7 +38,7 @@ export const CompassToolbar: React.FC<CompassToolbarProps> = ({ compass }) => {
       id: `cmd_${Date.now()}`,
       name: 'Draw Circle',
       execute: () => engine.addObject(circle),
-      undo: () => engine.removeObject(circle.id),
+      undo: () => engine.deleteObject(circle.id),
       redo: () => engine.addObject(circle)
     });
   };
@@ -78,7 +77,7 @@ export const CompassToolbar: React.FC<CompassToolbarProps> = ({ compass }) => {
       id: `cmd_${Date.now()}`,
       name: 'Draw Arc',
       execute: () => engine.addObject(arc),
-      undo: () => engine.removeObject(arc.id),
+      undo: () => engine.deleteObject(arc.id),
       redo: () => engine.addObject(arc)
     });
   };

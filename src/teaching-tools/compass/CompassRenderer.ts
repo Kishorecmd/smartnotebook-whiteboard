@@ -1,4 +1,4 @@
-import { CompassObject } from '../../../types';
+import { CompassObject } from '../../types';
 
 export class CompassRenderer {
   public static render(ctx: CanvasRenderingContext2D, obj: CompassObject, zoom: number = 1) {

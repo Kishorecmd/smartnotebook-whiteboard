@@ -11,6 +11,7 @@ import {
   isPointInEllipse,
   distanceToPolygonPerimeter,
   getHandlePositions,
+  BoxHandleType,
   rotatePoint,
 } from '../utils';
 import { createStrokeObject } from '../models';
@@ -357,7 +358,7 @@ export class HitTest {
     }
 
     // Check corner handles
-    const order: HandleType[] = ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
+    const order: BoxHandleType[] = ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
     for (const h of order) {
       if (distance(point, handles[h]) <= worldRadius) {
         return h;
