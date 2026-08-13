@@ -52,7 +52,7 @@ export interface FreehandStroke extends BaseWhiteboardObject {
    * document stays readable by older builds and by the existing eraser,
    * selection and export paths.
    */
-  tool: 'pen' | 'marker' | 'pencil' | 'brush' | 'crayon' | 'highlighter';
+  tool: 'pen' | 'marker' | 'pencil' | 'brush' | 'crayon' | 'highlighter' | 'magic_pen';
   points: Point[];
   color: string;
   width: number;
