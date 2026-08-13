@@ -9,6 +9,7 @@ import { StrokeWidthPicker } from './StrokeWidthPicker';
 import { ShapePicker } from './ShapePicker';
 import { TextPicker } from './TextPicker';
 import { useWhiteboardStore } from '../../store';
+import { FileImportService } from '../../services/FileImportService';
 import { ToolType } from '../../types';
 
 export const MainToolbar: React.FC = () => {
@@ -23,6 +24,7 @@ export const MainToolbar: React.FC = () => {
     setTeachingPanelOpen,
     setYouTubeDialogOpen,
     setPdfImportModalOpen,
+    engine,
   } = useWhiteboardStore();
 
   const [activePopover, setActivePopover] = useState<'none' | 'color' | 'width' | 'shape' | 'text' | 'media'>('none');
@@ -49,26 +51,52 @@ export const MainToolbar: React.FC = () => {
     else setActivePopover('none');
   };
 
+  /** Drops the picked image into the middle of whatever the teacher is looking at. */
+  const insertImageFile = async (file: File) => {
+    if (!engine) return;
+    const rect = engine.getCanvas().getBoundingClientRect();
+    const centerPoint = engine.getTransformer().screenToWorld({
+      x: rect.width / 2,
+      y: rect.height / 2,
+    });
+
+    try {
+      const imageObject = await FileImportService.importImage(file, centerPoint);
+      engine.addObject(imageObject);
+    } catch (err) {
+      console.error('Failed to import image', err);
+      alert('That image could not be opened. Try a PNG or JPEG.');
+    }
+  };
+
   const handleMediaInsert = (type: 'youtube' | 'image' | 'video' | 'audio' | 'pdf') => {
     setActivePopover('none');
-    if (type === 'youtube') setYouTubeDialogOpen(true);
-    else if (type === 'pdf') setPdfImportModalOpen(true);
-    else {
-      // Create a hidden input for basic file types
-      const input = document.createElement('input');
-      input.type = 'file';
-      if (type === 'image') input.accept = 'image/*';
-      if (type === 'video') input.accept = 'video/*';
-      if (type === 'audio') input.accept = 'audio/*';
-      
-      input.onchange = (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-          alert(`File upload for ${type} is coming soon!`);
-        }
-      };
-      input.click();
+    if (type === 'youtube') {
+      setYouTubeDialogOpen(true);
+      return;
     }
+    if (type === 'pdf') {
+      setPdfImportModalOpen(true);
+      return;
+    }
+    if (type === 'video' || type === 'audio') {
+      // The document format has no object type for local video/audio yet, so don't
+      // open a picker and silently discard whatever the teacher chooses.
+      alert(
+        `${type === 'video' ? 'Video' : 'Audio'} files aren't supported yet. ` +
+          'You can add a video with Media > YouTube.'
+      );
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) void insertImageFile(file);
+    };
+    input.click();
   };
 
   const Divider = () => <div className="w-px h-8 bg-slate-700/50 mx-1 hidden sm:block" />;
