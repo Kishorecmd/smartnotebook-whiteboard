@@ -1,15 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   MousePointer, Hand, Pen, Highlighter, Eraser, Shapes, Type, Image as ImageIcon,
-  Sliders, Undo2, Redo2, Trash2, GraduationCap, ChevronRight, Video, FileText, Music
+  Sliders, Undo2, Redo2, Trash2, GraduationCap, MoreHorizontal
 } from 'lucide-react';
 import { ToolButton } from './ToolButton';
-import { ColorPalette } from './ColorPalette';
-import { StrokeWidthPicker } from './StrokeWidthPicker';
-import { ShapePicker } from './ShapePicker';
-import { TextPicker } from './TextPicker';
-import { PenFamilyPicker } from './PenFamilyPicker';
-import { PenContextBar } from './PenContextBar';
+import { SplitToolButton } from './SplitToolButton';
+import { ContextToolbar, PopoverType } from './ContextToolbar';
+import { MoreToolbarModal } from './MoreToolbarModal';
 import { PenRegistry } from '../../drawing/pens';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService } from '../../services/FileImportService';
@@ -21,7 +18,6 @@ export const MainToolbar: React.FC = () => {
     toolSettings,
     history,
     setTool,
-    updateToolSettings,
     undo,
     redo,
     setClearDialogOpen,
@@ -32,12 +28,12 @@ export const MainToolbar: React.FC = () => {
     activateLastPen,
   } = useWhiteboardStore();
 
-  const [activePopover, setActivePopover] = useState<
-    'none' | 'color' | 'width' | 'shape' | 'text' | 'media' | 'pens'
-  >('none');
+  const [activePopover, setActivePopover] = useState<PopoverType>('none');
+  const [isMoreModalOpen, setIsMoreModalOpen] = useState(false);
   const activePen = PenRegistry.getOrDefault(toolSettings.activePenId);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
 
+  // Close context popover on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
@@ -48,7 +44,7 @@ export const MainToolbar: React.FC = () => {
     return () => window.removeEventListener('pointerdown', handleOutsideClick);
   }, []);
 
-  const togglePopover = (type: typeof activePopover) => {
+  const togglePopover = (type: PopoverType) => {
     setActivePopover((prev) => (prev === type ? 'none' : type));
   };
 
@@ -59,7 +55,6 @@ export const MainToolbar: React.FC = () => {
     else setActivePopover('none');
   };
 
-  /** Drops the picked image into the middle of whatever the teacher is looking at. */
   const insertImageFile = async (file: File) => {
     if (!engine) return;
     const rect = engine.getCanvas().getBoundingClientRect();
@@ -68,7 +63,6 @@ export const MainToolbar: React.FC = () => {
       x: rect.width / 2,
       y: rect.height / 2,
     });
-
     try {
       const imageObject = await FileImportService.importImage(
         file,
@@ -83,24 +77,18 @@ export const MainToolbar: React.FC = () => {
   };
 
   const LARGE_VIDEO_BYTES = 100 * 1024 * 1024;
-
   const insertVideoFile = async (file: File) => {
     if (!engine) return;
-
     if (
       file.size > LARGE_VIDEO_BYTES &&
       !confirm(
-        `That video is ${(file.size / (1024 * 1024)).toFixed(0)} MB. It is stored in this ` +
-          'browser, and large files can exhaust the available space. Add it anyway?'
+        `That video is ${(file.size / (1024 * 1024)).toFixed(0)} MB. It is stored in this browser, and large files can exhaust the available space. Add it anyway?`
       )
-    ) {
-      return;
-    }
-
+    ) return;
+    
     const rect = engine.getCanvas().getBoundingClientRect();
     const transformer = engine.getTransformer();
     const centerPoint = transformer.screenToWorld({ x: rect.width / 2, y: rect.height / 2 });
-
     try {
       const videoObject = await FileImportService.importVideo(
         file,
@@ -125,12 +113,9 @@ export const MainToolbar: React.FC = () => {
       return;
     }
     if (type === 'audio') {
-      // No audio object type in the document format yet, so don't open a picker
-      // that silently discards the file.
       alert("Audio files aren't supported yet.");
       return;
     }
-
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = type === 'video' ? 'video/*' : 'image/*';
@@ -143,124 +128,22 @@ export const MainToolbar: React.FC = () => {
     input.click();
   };
 
-  const Divider = () => <div className="w-px h-8 bg-slate-700/50 mx-1 hidden sm:block" />;
+  const Divider = () => <div className="w-px h-8 bg-slate-500/20 mx-1 flex-shrink-0" />;
 
   return (
     <div
       ref={toolbarRef}
-      className="flex flex-col items-center select-none w-full sm:w-auto relative"
+      className="relative flex flex-col items-center select-none w-fit max-w-[calc(100vw-48px)] mx-auto"
     >
-      {/* Popovers */}
-      <div className="mb-3 relative w-full flex justify-center">
-        {activePopover === 'color' && (
-          <ColorPalette
-            selectedColor={toolSettings.color}
-            onSelectColor={(color) => {
-              updateToolSettings({ color, textColor: color });
-              if (toolSettings.tool === 'eraser' || toolSettings.tool === 'pan') {
-                setTool('pen');
-              }
-            }}
-          />
-        )}
+      <ContextToolbar 
+        activePopover={activePopover} 
+        onClose={() => setActivePopover('none')}
+        onMediaInsert={handleMediaInsert}
+      />
 
-        {activePopover === 'shape' && (
-          <ShapePicker
-            currentShape={toolSettings.shapeType || 'rectangle'}
-            currentColor={toolSettings.color}
-            fillColor={toolSettings.shapeFillColor || 'transparent'}
-            strokeStyle={toolSettings.shapeStrokeStyle || 'solid'}
-            strokeWidth={toolSettings.shapeStrokeWidth || 3}
-            onSelectShape={(shapeType) => {
-              updateToolSettings({ shapeType });
-              if (toolSettings.tool !== 'shape') setTool('shape');
-            }}
-            onSelectStrokeColor={(color) => updateToolSettings({ color })}
-            onSelectFillColor={(shapeFillColor) => updateToolSettings({ shapeFillColor })}
-            onSelectStrokeStyle={(shapeStrokeStyle) => updateToolSettings({ shapeStrokeStyle })}
-            onSelectStrokeWidth={(shapeStrokeWidth) => updateToolSettings({ shapeStrokeWidth })}
-          />
-        )}
-
-        {activePopover === 'text' && (
-          <TextPicker
-            fontSize={toolSettings.textFontSize || 28}
-            fontFamily={toolSettings.textFontFamily || 'Inter, sans-serif'}
-            fontWeight={toolSettings.textFontWeight || 'normal'}
-            fontStyle={toolSettings.textFontStyle || 'normal'}
-            underline={toolSettings.textUnderline || false}
-            textAlign={toolSettings.textAlign || 'left'}
-            textColor={toolSettings.textColor || toolSettings.color || '#0f172a'}
-            onChangeFontSize={(textFontSize) => updateToolSettings({ textFontSize })}
-            onChangeFontFamily={(textFontFamily) => updateToolSettings({ textFontFamily })}
-            onChangeFontWeight={(textFontWeight) => updateToolSettings({ textFontWeight })}
-            onChangeFontStyle={(textFontStyle) => updateToolSettings({ textFontStyle })}
-            onChangeUnderline={(textUnderline) => updateToolSettings({ textUnderline })}
-            onChangeTextAlign={(textAlign) => updateToolSettings({ textAlign })}
-            onChangeTextColor={(textColor) => updateToolSettings({ textColor, color: textColor })}
-          />
-        )}
-
-        {/* Choosing a pen and adjusting it live in one popover, so the contextual
-            controls appear right where the pen was just selected. */}
-        {activePopover === 'pens' && (
-          <div className="flex flex-col items-center gap-2">
-            <PenFamilyPicker />
-            <PenContextBar />
-          </div>
-        )}
-
-        {activePopover === 'width' && (
-          <StrokeWidthPicker
-            tool={toolSettings.tool}
-            penWidth={toolSettings.penWidth}
-            markerWidth={toolSettings.markerWidth}
-            eraserWidth={toolSettings.eraserWidth}
-            eraserMode={toolSettings.eraserMode}
-            currentColor={toolSettings.color}
-            onChangeWidth={(width) => {
-              if (toolSettings.tool === 'pen') updateToolSettings({ penWidth: width });
-              else if (toolSettings.tool === 'marker') updateToolSettings({ markerWidth: width });
-              else if (toolSettings.tool === 'eraser') updateToolSettings({ eraserWidth: width });
-              else if (toolSettings.tool === 'shape') updateToolSettings({ shapeStrokeWidth: width });
-            }}
-            onChangeEraserMode={(eraserMode) => {
-              updateToolSettings({ eraserMode });
-              if (toolSettings.tool !== 'eraser') setTool('eraser');
-            }}
-          />
-        )}
-
-        {activePopover === 'media' && (
-          <div className="flex bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-2 shadow-2xl animate-fade-in gap-2">
-            <button onClick={() => handleMediaInsert('youtube')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300">
-              <Video className="w-6 h-6 mb-1 text-red-500" />
-              <span className="text-[10px] uppercase font-bold">YouTube</span>
-            </button>
-            <button onClick={() => handleMediaInsert('image')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300">
-              <ImageIcon className="w-6 h-6 mb-1 text-indigo-400" />
-              <span className="text-[10px] uppercase font-bold">Image</span>
-            </button>
-            <button onClick={() => handleMediaInsert('video')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300">
-              <Video className="w-6 h-6 mb-1 text-sky-400" />
-              <span className="text-[10px] uppercase font-bold">Video</span>
-            </button>
-            <button onClick={() => handleMediaInsert('audio')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300">
-              <Music className="w-6 h-6 mb-1 text-amber-400" />
-              <span className="text-[10px] uppercase font-bold">Audio</span>
-            </button>
-            <button onClick={() => handleMediaInsert('pdf')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300">
-              <FileText className="w-6 h-6 mb-1 text-rose-400" />
-              <span className="text-[10px] uppercase font-bold">PDF</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Main Toolbar */}
-      <div className="flex flex-row items-center gap-1 md:gap-2 bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl md:rounded-full p-2 shadow-2xl overflow-x-auto custom-scrollbar w-full md:w-auto h-16 md:h-[72px]">
+      <div className="flex flex-row items-center gap-1 bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-[24px] p-2 shadow-2xl overflow-x-auto overflow-y-hidden custom-scrollbar w-full">
         
-        {/* Navigation & Selection */}
+        {/* Navigation */}
         <div className="flex items-center gap-1">
           <ToolButton
             icon={<MousePointer className="w-6 h-6" />}
@@ -273,88 +156,66 @@ export const MainToolbar: React.FC = () => {
             label="Pan"
             isActive={toolSettings.tool === 'pan'}
             onClick={() => handleSelectTool('pan')}
+            className="hidden md:flex" // Hide on very small screens
           />
         </div>
 
         <Divider />
 
-        {/* Drawing Tools */}
+        {/* Drawing */}
         <div className="flex items-center gap-1">
-          {/* Split pen button. Tapping the pen writes immediately with whichever
-              pen was last used; the chevron opens the family. A teacher who always
-              uses one pen never has to open the menu. */}
-          <div className="flex items-center">
-            <ToolButton
-              icon={<Pen className="w-6 h-6" />}
-              label={activePen.name}
-              isActive={toolSettings.tool === 'pen'}
-              onClick={() => {
-                setActivePopover('none');
-                activateLastPen();
-              }}
-            />
-            <button
-              onClick={() => togglePopover('pens')}
-              title={`Choose pen (currently ${activePen.name})`}
-              aria-label="Choose pen"
-              aria-expanded={activePopover === 'pens'}
-              className={`flex items-center justify-center w-7 h-10 -ml-1 rounded-r-lg z-10 transition-colors ${
-                activePopover === 'pens'
-                  ? 'text-white bg-slate-700'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <ChevronRight className="w-4 h-4 rotate-90" />
-            </button>
-          </div>
-          <div className="flex items-center">
-            <ToolButton
-              icon={<Highlighter className="w-6 h-6" />}
-              label="Marker"
-              isActive={toolSettings.tool === 'marker'}
-              onClick={() => handleSelectTool('marker')}
-            />
-            {toolSettings.tool === 'marker' && (
-              <button 
-                onClick={() => togglePopover('width')}
-                className="flex items-center justify-center w-6 h-10 -ml-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-r-lg z-10"
-              >
-                <ChevronRight className="w-4 h-4 rotate-90" />
-              </button>
-            )}
-          </div>
-          <div className="flex items-center">
-            <ToolButton
-              icon={<Eraser className="w-6 h-6" />}
-              label="Eraser"
-              isActive={toolSettings.tool === 'eraser'}
-              onClick={() => handleSelectTool('eraser')}
-            />
-            {toolSettings.tool === 'eraser' && (
-              <button 
-                onClick={() => togglePopover('width')}
-                className="flex items-center justify-center w-6 h-10 -ml-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-r-lg z-10"
-              >
-                <ChevronRight className="w-4 h-4 rotate-90" />
-              </button>
-            )}
-          </div>
+          <SplitToolButton
+            icon={<Pen className="w-6 h-6" />}
+            label={activePen.name}
+            isActive={toolSettings.tool === 'pen'}
+            isDropdownOpen={activePopover === 'pens'}
+            onMainClick={() => {
+              setActivePopover('none');
+              activateLastPen();
+            }}
+            onDropdownClick={() => togglePopover('pens')}
+          />
+          
+          <SplitToolButton
+            icon={<Highlighter className="w-6 h-6" />}
+            label="Marker"
+            isActive={toolSettings.tool === 'marker'}
+            isDropdownOpen={activePopover === 'width'}
+            onMainClick={() => {
+              setActivePopover('none');
+              handleSelectTool('marker');
+            }}
+            onDropdownClick={() => togglePopover('width')}
+            className="hidden sm:flex"
+          />
+
+          <SplitToolButton
+            icon={<Eraser className="w-6 h-6" />}
+            label="Eraser"
+            isActive={toolSettings.tool === 'eraser'}
+            isDropdownOpen={activePopover === 'eraser'}
+            onMainClick={() => {
+              setActivePopover('none');
+              handleSelectTool('eraser');
+            }}
+            onDropdownClick={() => togglePopover('eraser')}
+          />
         </div>
 
         <Divider />
 
-        {/* Objects & Media */}
-        <div className="flex items-center gap-1">
+        {/* Insert / Objects */}
+        <div className="hidden sm:flex items-center gap-1">
           <ToolButton
             icon={<Shapes className="w-6 h-6" />}
             label="Shapes"
-            isActive={toolSettings.tool === 'shape'}
+            isActive={toolSettings.tool === 'shape' || activePopover === 'shape'}
             onClick={() => handleSelectTool('shape')}
           />
           <ToolButton
             icon={<Type className="w-6 h-6" />}
             label="Text"
-            isActive={toolSettings.tool === 'text'}
+            isActive={toolSettings.tool === 'text' || activePopover === 'text'}
             onClick={() => handleSelectTool('text')}
           />
           <ToolButton
@@ -365,30 +226,32 @@ export const MainToolbar: React.FC = () => {
           />
         </div>
 
-        <Divider />
+        <div className="hidden sm:block"><Divider /></div>
 
-        {/* Teaching Tools */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setTeachingPanelOpen(true)}
-            className="group relative flex items-center justify-center min-w-[56px] min-h-[56px] rounded-xl transition-all bg-indigo-500/10 hover:bg-indigo-500/30 text-indigo-400"
-            title="Teaching Tools"
-          >
-            <GraduationCap className="w-7 h-7" />
-          </button>
+        {/* Teaching */}
+        <div className="hidden sm:flex items-center gap-1">
+          <ToolButton
+            icon={<GraduationCap className="w-6 h-6" />}
+            label="Teaching Tools"
+            onClick={() => {
+              setActivePopover('none');
+              setTeachingPanelOpen(true);
+            }}
+          />
         </div>
 
-        <Divider />
+        <div className="hidden lg:block"><Divider /></div>
 
-        {/* Properties */}
-        <div className="flex items-center gap-1">
+        {/* Appearance */}
+        <div className="hidden lg:flex items-center gap-1">
           <button
-            className="flex items-center justify-center min-w-[56px] min-h-[56px] rounded-xl transition-all hover:bg-slate-800"
+            className="flex items-center justify-center min-w-[56px] min-h-[56px] w-[56px] h-[56px] rounded-2xl transition-all hover:bg-slate-800 flex-shrink-0"
             onClick={() => togglePopover('color')}
             title="Colour Palette"
+            aria-label="Colour Palette"
           >
             <div 
-              className="w-8 h-8 rounded-full border-2 border-white/20 shadow-inner"
+              className="w-6 h-6 rounded-full border-2 border-slate-600 shadow-inner"
               style={{ backgroundColor: toolSettings.color }}
             />
           </button>
@@ -400,10 +263,10 @@ export const MainToolbar: React.FC = () => {
           />
         </div>
 
-        <Divider />
+        <div className="hidden lg:block"><Divider /></div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1">
+        {/* History & Actions */}
+        <div className="hidden lg:flex items-center gap-1">
           <ToolButton
             icon={<Undo2 className="w-6 h-6" />}
             label="Undo"
@@ -418,12 +281,31 @@ export const MainToolbar: React.FC = () => {
           />
           <ToolButton
             icon={<Trash2 className="w-6 h-6" />}
-            label="Clear"
+            label="Delete"
             onClick={() => setClearDialogOpen(true)}
-            className="text-rose-400 hover:bg-rose-500/20 hover:text-rose-300"
+            variant="danger"
+          />
+        </div>
+
+        {/* More Menu (Mobile & Tablet) */}
+        <div className="flex lg:hidden items-center ml-1">
+          <ToolButton
+            icon={<MoreHorizontal className="w-6 h-6" />}
+            label="More Tools"
+            onClick={() => setIsMoreModalOpen(true)}
           />
         </div>
       </div>
+
+      <MoreToolbarModal
+        isOpen={isMoreModalOpen}
+        onClose={() => setIsMoreModalOpen(false)}
+        onSelectPopover={(type) => {
+          setActivePopover(type);
+          // If shape/text/media selected, they auto-handle their states in MainToolbar or ContextToolbar, 
+          // but we just set the popover and let it render.
+        }}
+      />
     </div>
   );
 };
