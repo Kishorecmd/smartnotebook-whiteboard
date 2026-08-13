@@ -6,6 +6,7 @@ import { GestureEngine } from '../input/GestureEngine';
 import { TouchActionManager } from '../input/TouchActionManager';
 import { RulerSnapper } from './RulerSnapper';
 import { StorageService } from '../services/StorageService';
+import { MediaManager } from '../media/MediaManager';
 import { ITool } from './tools/ITool';
 import { PenFamilyTool } from './tools/PenFamilyTool';
 import { MarkerTool } from './tools/MarkerTool';
@@ -930,6 +931,98 @@ export class WhiteboardEngine {
     for (const id of Array.from(this.videoObjectUrls.keys())) {
       this.disposeVideoObject(id);
     }
+  }
+
+  // --- Audio playback (audio and image+audio objects) ---
+
+  /**
+   * Starts playback for an audio or image+audio object, creating the backing
+   * <audio> element on demand. Nothing is added to the DOM tree: the element is
+   * detached and the card is painted on the canvas, so playback cannot float
+   * above the board.
+   */
+  public async playAudioObject(objectId: string): Promise<void> {
+    const obj = this.objects.find((o) => o.id === objectId);
+    if (!obj || (obj.type !== 'audio' && obj.type !== 'image-audio')) return;
+
+    const assetId = obj.type === 'audio' ? obj.mediaId : obj.audioMediaId;
+    let element = this.renderer.getMediaElement(objectId) as HTMLAudioElement | undefined;
+
+    if (!element) {
+      const url = await MediaManager.getObjectUrl(assetId);
+      if (!url) {
+        console.warn(`Audio asset ${assetId} is missing from storage.`);
+        return;
+      }
+      element = document.createElement('audio');
+      element.src = url;
+      element.preload = 'auto';
+      element.addEventListener('ended', () => this.renderer.requestRender());
+      this.renderer.setMediaElement(objectId, element);
+      await new Promise<void>((resolve) => {
+        element!.oncanplay = () => resolve();
+        element!.onerror = () => resolve();
+        setTimeout(resolve, 3000);
+      });
+    }
+
+    element.loop = obj.loop;
+    element.muted = obj.muted;
+    element.volume = Math.min(1, Math.max(0, obj.volume));
+    element.playbackRate = obj.playbackRate || 1;
+
+    try {
+      await element.play();
+    } catch (err) {
+      console.warn('Audio playback was blocked:', err);
+    }
+
+    // Autoplay policy can refuse sound-on playback without rejecting the promise,
+    // so confirm it actually started and retry muted rather than doing nothing.
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    if (element.paused) {
+      element.muted = true;
+      try {
+        await element.play();
+      } catch (err) {
+        console.warn('Muted audio playback also failed:', err);
+      }
+    }
+    this.renderer.requestRender();
+  }
+
+  public pauseAudioObject(objectId: string): void {
+    const element = this.renderer.getMediaElement(objectId);
+    if (element) element.pause();
+    this.renderer.requestRender();
+  }
+
+  public isAudioPlaying(objectId: string): boolean {
+    const element = this.renderer.getMediaElement(objectId);
+    return !!element && !element.paused && !element.ended;
+  }
+
+  public toggleAudioObject(objectId: string): void {
+    if (this.isAudioPlaying(objectId)) this.pauseAudioObject(objectId);
+    else void this.playAudioObject(objectId);
+  }
+
+  /** Moves the playhead, as a 0..1 fraction of the track. */
+  public seekAudioObject(objectId: string, progress: number): void {
+    const element = this.renderer.getMediaElement(objectId);
+    if (!element || !Number.isFinite(element.duration)) return;
+    element.currentTime = Math.min(1, Math.max(0, progress)) * element.duration;
+    this.renderer.requestRender();
+  }
+
+  public disposeAudioObject(objectId: string): void {
+    const element = this.renderer.getMediaElement(objectId);
+    if (element) {
+      element.pause();
+      element.removeAttribute('src');
+      element.load();
+    }
+    this.renderer.setMediaElement(objectId, null);
   }
 
   // --- History Actions ---

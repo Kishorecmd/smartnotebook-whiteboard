@@ -2,6 +2,8 @@ import { CoordinateTransformer } from './CoordinateTransformer';
 import { StrokeRenderer } from './StrokeRenderer';
 import { ShapeRenderer } from './ShapeRenderer';
 import { TextRenderer } from './TextRenderer';
+import { GeometryRenderer } from '../drawing/shapes/GeometryRenderer';
+import { CompassRenderer } from '../teaching-tools/compass/CompassRenderer';
 import { SelectionRenderer } from './SelectionRenderer';
 import { TeachingToolRegistry } from '../teaching-tools/TeachingToolRegistry';
 import {
@@ -17,7 +19,11 @@ import {
   FreehandStroke,
   YouTubeVideoObject,
   VideoObject,
+  AudioObject,
+  ImageAudioObject,
 } from '../types';
+import { AudioCardRenderer, AudioCardState } from '../media/audio/AudioCardRenderer';
+import { MediaManager } from '../media/MediaManager';
 import { getObjectBoundingBox, boxesIntersect } from '../utils';
 
 export interface CanvasRendererOptions {
@@ -78,6 +84,8 @@ export class CanvasRenderer {
   private imageCache = new Map<string, HTMLImageElement>();
   // <video> elements backing video objects, owned by the engine.
   private videoElements = new Map<string, HTMLVideoElement>();
+  // <audio>/<video> elements backing audio and image+audio objects.
+  private mediaElements = new Map<string, HTMLMediaElement>();
   // Set during a draw pass when a playing video needs another frame.
   private videoNeedsFrame = false;
 
@@ -305,6 +313,12 @@ export class CanvasRenderer {
         ShapeRenderer.renderShape(ctx, obj);
       } else if (obj.type === 'text') {
         TextRenderer.renderText(ctx, obj as any);
+      } else if (obj.type === 'circle') {
+        GeometryRenderer.renderCircle(ctx, obj as any);
+      } else if (obj.type === 'arc') {
+        GeometryRenderer.renderArc(ctx, obj as any);
+      } else if (obj.type === 'compass') {
+        CompassRenderer.render(ctx, obj as any, zoom);
       } else if (obj.type === 'image') {
         this.renderImage(ctx, obj as ImageObject);
       } else if (obj.type === 'coloringRegion') {
@@ -332,6 +346,10 @@ export class CanvasRenderer {
         this.renderYouTubeThumbnail(ctx, obj as YouTubeVideoObject);
       } else if (obj.type === 'video') {
         this.renderVideoObject(ctx, obj as VideoObject);
+      } else if (obj.type === 'audio') {
+        this.renderAudioObject(ctx, obj as AudioObject);
+      } else if (obj.type === 'image-audio') {
+        this.renderImageAudioObject(ctx, obj as ImageAudioObject);
       }
     }
 
@@ -472,6 +490,102 @@ export class CanvasRenderer {
     }
 
     ctx.restore();
+  }
+
+  /**
+   * Playback state for a media object, read from the live element if the engine
+   * has one. Audio has no visual frame of its own, so the card is drawn from
+   * these numbers rather than from the element.
+   */
+  private mediaState(objectId: string, duration: number): AudioCardState {
+    const el = this.mediaElements.get(objectId);
+    if (!el) return { playing: false, progress: 0, currentTime: 0 };
+    const total = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : duration;
+    const playing = !el.paused && !el.ended;
+    if (playing) this.videoNeedsFrame = true; // keep the loop alive while the bar moves
+    return {
+      playing,
+      progress: total > 0 ? Math.min(1, el.currentTime / total) : 0,
+      currentTime: el.currentTime,
+    };
+  }
+
+  /** Registers the <audio>/<video> element backing a media object. */
+  public setMediaElement(objectId: string, element: HTMLMediaElement | null): void {
+    if (element) this.mediaElements.set(objectId, element);
+    else this.mediaElements.delete(objectId);
+    this.requestRender();
+  }
+
+  public getMediaElement(objectId: string): HTMLMediaElement | undefined {
+    return this.mediaElements.get(objectId);
+  }
+
+  private renderAudioObject(ctx: CanvasRenderingContext2D, obj: AudioObject): void {
+    AudioCardRenderer.renderAudioCard(ctx, obj, this.mediaState(obj.id, obj.durationSeconds));
+  }
+
+  private renderImageAudioObject(ctx: CanvasRenderingContext2D, obj: ImageAudioObject): void {
+    ctx.save();
+    ctx.translate(obj.x, obj.y);
+    if (obj.rotation) {
+      ctx.translate(obj.width / 2, obj.height / 2);
+      ctx.rotate(obj.rotation);
+      ctx.translate(-obj.width / 2, -obj.height / 2);
+    }
+
+    const pictureHeight = Math.max(0, obj.height - obj.playerHeight);
+    const img = this.getImageAudioPicture(obj);
+
+    if (img && img.complete && img.naturalWidth > 0) {
+      // Non-destructive crop: the source rectangle changes, the file never does.
+      const crop = obj.crop;
+      if (crop) {
+        ctx.drawImage(
+          img,
+          crop.x * img.naturalWidth,
+          crop.y * img.naturalHeight,
+          crop.width * img.naturalWidth,
+          crop.height * img.naturalHeight,
+          0,
+          0,
+          obj.width,
+          pictureHeight
+        );
+      } else {
+        ctx.drawImage(img, 0, 0, obj.width, pictureHeight);
+      }
+    } else {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, 0, obj.width, pictureHeight);
+    }
+
+    AudioCardRenderer.renderImageAudioStrip(ctx, obj, this.mediaState(obj.id, obj.durationSeconds));
+    ctx.restore();
+  }
+
+  /**
+   * Picture for an image+audio object. Inline data URLs load directly; asset-
+   * backed ones resolve through the media manager and trigger a redraw.
+   */
+  private getImageAudioPicture(obj: ImageAudioObject): HTMLImageElement | null {
+    const key = `imgaudio_${obj.id}`;
+    const cached = this.imageCache.get(key);
+    if (cached) return cached;
+
+    const img = new Image();
+    img.onload = () => this.requestRender();
+    img.onerror = () => this.requestRender();
+    this.imageCache.set(key, img);
+
+    if (obj.imageDataUrl) {
+      img.src = obj.imageDataUrl;
+    } else if (obj.imageAssetId) {
+      void MediaManager.getObjectUrl(obj.imageAssetId).then((url) => {
+        if (url) img.src = url;
+      });
+    }
+    return null;
   }
 
   private getVideoPoster(obj: VideoObject): HTMLImageElement | null {

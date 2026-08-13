@@ -1,3 +1,5 @@
+import type { FreehandStroke } from '../../types';
+
 /**
  * The pen family model.
  *
@@ -100,7 +102,7 @@ export interface PenPreset {
    * strokes valid against the existing document schema and lets an older build
    * still render something sensible.
    */
-  legacyTool: 'pen' | 'marker' | 'pencil' | 'brush' | 'crayon' | 'highlighter';
+  legacyTool: FreehandStroke['tool'];
 }
 
 /** Multiplier applied to the pressure signal for each sensitivity level. */

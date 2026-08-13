@@ -2,6 +2,7 @@ import { PointerState } from './PointerState';
 import { GestureState } from './GestureState';
 import { GestureEngine } from './GestureEngine';
 import { HitTest } from '../engine/HitTest';
+import { isGrabbableMedia } from '../media/MediaObject';
 import { useWhiteboardStore } from '../store';
 import type { WhiteboardEngine } from '../engine/WhiteboardEngine';
 
@@ -39,8 +40,9 @@ export class InputRouter {
     const tolerance = 10 / transformer.getTransform().zoom;
     const hit = HitTest.findObjectAtPoint(worldPoint, this.engine.getObjects(), tolerance);
 
-    const isVideo = !!hit && (hit.type === 'youtubeVideo' || hit.type === 'video');
-    return isVideo && !hit!.locked && hit!.visible !== false;
+    // Audio cards and image+audio objects grab too: their transport controls are
+    // painted on the canvas, so a tap must reach them rather than draw a mark.
+    return !!hit && isGrabbableMedia(hit) && !hit.locked && hit.visible !== false;
   }
 
   public onPointerAdd(pointer: PointerState, e: PointerEvent, activePointers: PointerState[]): void {

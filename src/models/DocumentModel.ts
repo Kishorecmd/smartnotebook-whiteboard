@@ -130,6 +130,43 @@ export const VideoObjectSchema = BaseWhiteboardObjectSchema.extend({
   loop: z.boolean().default(false),
 });
 
+export const AudioObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('audio'),
+  mediaId: z.string(),
+  mimeType: z.string(),
+  title: z.string().default('Audio'),
+  durationSeconds: z.number().default(0),
+  fileName: z.string().optional(),
+  muted: z.boolean().default(false),
+  loop: z.boolean().default(false),
+  volume: z.number().min(0).max(1).default(1),
+  playbackRate: z.number().positive().default(1),
+  autoplay: z.boolean().default(false),
+  showVisualizer: z.boolean().default(true),
+  waveform: z.array(z.number()).optional(),
+});
+
+export const ImageAudioObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('image-audio'),
+  imageDataUrl: z.string().optional(),
+  imageAssetId: z.string().optional(),
+  imageMimeType: z.string().optional(),
+  audioMediaId: z.string(),
+  audioMimeType: z.string(),
+  title: z.string().default('Image + Audio'),
+  durationSeconds: z.number().default(0),
+  fileName: z.string().optional(),
+  muted: z.boolean().default(false),
+  loop: z.boolean().default(false),
+  volume: z.number().min(0).max(1).default(1),
+  playbackRate: z.number().positive().default(1),
+  autoplayMode: z.enum(['off', 'open', 'click']).default('off'),
+  crop: z
+    .object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() })
+    .optional(),
+  playerHeight: z.number().default(56),
+});
+
 export const ColoringRegionSchema = BaseWhiteboardObjectSchema.extend({
   type: z.literal('coloringRegion'),
   fillColor: z.string(),
@@ -138,9 +175,41 @@ export const ColoringRegionSchema = BaseWhiteboardObjectSchema.extend({
   points: z.array(PointSchema),
 });
 
+export const CircleObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('circle'),
+  centerX: z.number(),
+  centerY: z.number(),
+  radius: z.number(),
+  strokeColor: z.string(),
+  strokeWidth: z.number(),
+  opacity: z.number(),
+});
+
+export const ArcObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('arc'),
+  centerX: z.number(),
+  centerY: z.number(),
+  radius: z.number(),
+  startAngle: z.number(),
+  endAngle: z.number(),
+  strokeColor: z.string(),
+  strokeWidth: z.number(),
+  opacity: z.number(),
+});
+
+export const CompassObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('compass'),
+  centerX: z.number(),
+  centerY: z.number(),
+  radius: z.number(),
+  angle: z.number(),
+  needleAngle: z.number().optional(),
+  pencilAngle: z.number().optional(),
+});
+
 // Must stay in sync with the WhiteboardObject union in types/whiteboard.types.ts --
 // an object type missing here is silently rejected on load.
-export const WhiteboardObjectSchema = z.union([
+export const WhiteboardObjectSchema = z.discriminatedUnion('type', [
   FreehandStrokeSchema,
   ShapeObjectSchema,
   TextObjectSchema,
@@ -148,7 +217,12 @@ export const WhiteboardObjectSchema = z.union([
   TeachingToolObjectSchema,
   YouTubeVideoObjectSchema,
   VideoObjectSchema,
+  AudioObjectSchema,
+  ImageAudioObjectSchema,
   ColoringRegionSchema,
+  CircleObjectSchema,
+  ArcObjectSchema,
+  CompassObjectSchema,
 ]);
 
 export const PageSchema = z.object({
@@ -253,7 +327,9 @@ export function createDefaultDocument(title: string = 'Untitled Lesson'): JHWDoc
 }
 
 export function createStrokeObject(params: {
-  tool: 'pen' | 'marker' | 'pencil' | 'brush' | 'crayon' | 'highlighter';
+  // Derived from the object type rather than repeated, so adding a tool family
+  // (magic_pen was the last one) cannot leave this signature behind.
+  tool: FreehandStroke['tool'];
   points: Point[];
   color: string;
   width: number;

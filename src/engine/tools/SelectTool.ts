@@ -7,8 +7,10 @@ import {
 import { HitTest } from '../HitTest';
 import { TransformObjectsCommand } from '../commands/TransformObjectsCommand';
 import type { WhiteboardEngine } from '../WhiteboardEngine';
+import { CompassInteraction } from '../../teaching-tools/compass/CompassInteraction';
+import { CompassObject } from '../../types';
 
-type DragMode = 'idle' | 'moving' | 'resizing' | 'rotating' | 'marquee';
+type DragMode = 'idle' | 'moving' | 'resizing' | 'rotating' | 'marquee' | 'compass-drag';
 
 export class SelectTool implements ITool {
   public readonly name: string = 'select';
@@ -39,31 +41,43 @@ export class SelectTool implements ITool {
     // 1. Check if clicking on an active selection's bounding box or handles
     if (selectedObjects.length > 0) {
       const box = getCombinedBoundingBox(selectedObjects, 4 / zoom);
-      if (box) {
-        const handle = HitTest.hitTestHandle(worldPoint, box, zoom);
-        if (handle) {
-          const anyLocked = selectedObjects.some(obj => obj.locked);
-          if (anyLocked) {
-            this.dragMode = 'idle';
-            return;
-          }
+      
+      let handle: HandleType | null = null;
+      
+      // Special check for Compass custom handles
+      if (selectedObjects.length === 1 && selectedObjects[0].type === 'compass') {
+         handle = CompassInteraction.hitTestCompass(worldPoint, selectedObjects[0] as CompassObject, zoom);
+      }
+      
+      // Fallback to bounding box handles
+      if (!handle && box) {
+         handle = HitTest.hitTestHandle(worldPoint, box, zoom);
+      }
 
-          this.activeHandle = handle;
-          this.initialBoundingBox = box;
-          this.initialObjectSnapshots = JSON.parse(JSON.stringify(selectedObjects));
-
-          if (handle === 'rotate') {
-            this.dragMode = 'rotating';
-            const cx = box.minX + box.width / 2;
-            const cy = box.minY + box.height / 2;
-            this.initialAngle = Math.atan2(worldPoint.y - cy, worldPoint.x - cx);
-          } else if (handle === 'body') {
-            this.dragMode = 'moving';
-          } else {
-            this.dragMode = 'resizing';
-          }
+      if (handle) {
+        const anyLocked = selectedObjects.some(obj => obj.locked);
+        if (anyLocked) {
+          this.dragMode = 'idle';
           return;
         }
+
+        this.activeHandle = handle;
+        this.initialBoundingBox = box;
+        this.initialObjectSnapshots = JSON.parse(JSON.stringify(selectedObjects));
+
+        if (handle === 'rotate' && box) {
+          this.dragMode = 'rotating';
+          const cx = box.minX + box.width / 2;
+          const cy = box.minY + box.height / 2;
+          this.initialAngle = Math.atan2(worldPoint.y - cy, worldPoint.x - cx);
+        } else if (handle === 'body') {
+          this.dragMode = 'moving';
+        } else if (handle === 'compass-needle' || handle === 'compass-pencil' || handle === 'compass-body') {
+          this.dragMode = 'compass-drag';
+        } else {
+          this.dragMode = 'resizing';
+        }
+        return;
       }
     }
 
@@ -173,15 +187,51 @@ export class SelectTool implements ITool {
       return;
     }
 
+    if (this.dragMode === 'compass-drag' && this.startPoint) {
+       const dx = worldPoint.x - this.startPoint.x;
+       const dy = worldPoint.y - this.startPoint.y;
+       
+       const compassSnapshot = this.initialObjectSnapshots[0] as CompassObject;
+       const newCompass = { ...compassSnapshot };
+       
+       if (this.activeHandle === 'compass-needle') {
+          // Move the entire compass
+          newCompass.centerX = compassSnapshot.centerX + dx;
+          newCompass.centerY = compassSnapshot.centerY + dy;
+          newCompass.x = compassSnapshot.x + dx;
+          newCompass.y = compassSnapshot.y + dy;
+       } else if (this.activeHandle === 'compass-pencil') {
+          // Adjust radius
+          const newRadius = Math.sqrt(Math.pow(worldPoint.x - compassSnapshot.centerX, 2) + Math.pow(worldPoint.y - compassSnapshot.centerY, 2));
+          newCompass.radius = Math.max(20, newRadius); // Minimum radius
+          
+          // Optionally, also update the angle so it follows the pointer exactly
+          newCompass.angle = Math.atan2(worldPoint.y - compassSnapshot.centerY, worldPoint.x - compassSnapshot.centerX);
+       } else if (this.activeHandle === 'compass-body') {
+          // Rotate compass
+          newCompass.angle = Math.atan2(worldPoint.y - compassSnapshot.centerY, worldPoint.x - compassSnapshot.centerX);
+       }
+
+       engine.updateObjectsSilently([newCompass]);
+       
+       // Clear selection box so it doesn't look weird while manipulating handles, or update it
+       engine.getRenderer().setSelectionBox(null, null); 
+       return;
+    }
+
     if (this.dragMode === 'moving') {
       const dx = worldPoint.x - this.startPoint.x;
       const dy = worldPoint.y - this.startPoint.y;
 
       const updatedObjects = this.initialObjectSnapshots.map((obj) => {
-        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'teaching-tool') {
+        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'teaching-tool' || obj.type === 'compass' || obj.type === 'circle' || obj.type === 'arc') {
           const newObj = { ...obj } as any;
           newObj.x = obj.x + dx;
           newObj.y = obj.y + dy;
+          if (newObj.centerX !== undefined && newObj.centerY !== undefined) {
+             newObj.centerX += dx;
+             newObj.centerY += dy;
+          }
           if (newObj.points) {
             newObj.points = newObj.points.map((p: any) => ({ ...p, x: p.x + dx, y: p.y + dy }));
           }
@@ -258,7 +308,7 @@ export class SelectTool implements ITool {
       const originY = handle.includes('n') ? initialBox.maxY : initialBox.minY;
 
       const updatedObjects = this.initialObjectSnapshots.map((obj) => {
-        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video') {
+        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio') {
           const newObj = { ...obj } as any;
           const relX = obj.x - originX;
           const relY = obj.y - originY;
@@ -313,7 +363,7 @@ export class SelectTool implements ITool {
   ): void {
     if (this.dragMode === 'marquee') {
       engine.getRenderer().setMarqueeBox(null);
-    } else if (this.dragMode === 'moving' || this.dragMode === 'resizing' || this.dragMode === 'rotating') {
+    } else if (this.dragMode === 'moving' || this.dragMode === 'resizing' || this.dragMode === 'rotating' || this.dragMode === 'compass-drag') {
       // Commit the transform command for undo/redo
       const currentSelected = engine.getSelectedObjects();
       if (this.initialObjectSnapshots.length > 0 && currentSelected.length > 0) {
@@ -322,7 +372,7 @@ export class SelectTool implements ITool {
           currentSelected,
           () => engine.getObjects(),
           (objects) => engine.setObjects(objects),
-          this.dragMode === 'moving' ? 'Move' : this.dragMode === 'rotating' ? 'Rotate' : 'Resize'
+          this.dragMode === 'moving' || this.dragMode === 'compass-drag' ? 'Move' : this.dragMode === 'rotating' ? 'Rotate' : 'Resize'
         );
         // We push this directly into CommandManager history stack without calling execute again
         // since objects are already transformed in memory
@@ -395,6 +445,13 @@ export class SelectTool implements ITool {
               return;
             case 'rotate':
               canvas.style.cursor = 'crosshair';
+              return;
+            case 'compass-pencil':
+            case 'compass-body':
+              canvas.style.cursor = 'crosshair';
+              return;
+            case 'compass-needle':
+              canvas.style.cursor = 'move';
               return;
             case 'body':
               canvas.style.cursor = 'move';

@@ -1,4 +1,5 @@
 import { Point, FreehandStroke, ShapeObject, TextObject, ImageObject, WhiteboardObject, BoundingBox, HandleType } from '../types';
+import { isRectangularMedia } from '../media/MediaObject';
 import {
   distance,
   distanceToSegment,
@@ -252,7 +253,7 @@ export class HitTest {
     if (obj.type === 'text') {
       return this.hitTestText(point, obj, tolerance);
     }
-    if (obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video') {
+    if (isRectangularMedia(obj)) {
       return this.hitTestImage(point, obj as ImageObject, tolerance);
     }
     if (obj.type === 'teaching-tool') {

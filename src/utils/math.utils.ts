@@ -120,7 +120,17 @@ export function getObjectBoundingBox(obj: WhiteboardObject, padding: number = 0)
       height: Math.max(0, maxY - minY),
     };
   }
-  if (obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video') {
+  if (
+    obj.type === 'text' ||
+    obj.type === 'audio' ||
+    obj.type === 'image-audio' ||
+    obj.type === 'image' ||
+    obj.type === 'youtubeVideo' ||
+    obj.type === 'video' ||
+    obj.type === 'circle' ||
+    obj.type === 'arc' ||
+    obj.type === 'compass'
+  ) {
     const minX = obj.x - padding;
     const minY = obj.y - padding;
     const maxX = obj.x + obj.width + padding;

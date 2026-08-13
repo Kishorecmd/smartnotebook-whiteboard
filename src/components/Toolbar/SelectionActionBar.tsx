@@ -25,7 +25,8 @@ import {
   Pause,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
-import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, VideoObject } from '../../types';
+import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, VideoObject, CompassObject } from '../../types';
+import { CompassToolbar } from '../../teaching-tools/compass/CompassToolbar';
 
 const COLOR_SWATCHES = [
   '#0f172a',
@@ -87,6 +88,8 @@ export const SelectionActionBar: React.FC = () => {
   const selectedVideoObj = isSingleVideoSelected ? (selectedObjects[0] as YouTubeVideoObject) : null;
   const isSingleLocalVideoSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'video';
   const selectedLocalVideo = isSingleLocalVideoSelected ? (selectedObjects[0] as VideoObject) : null;
+  const isSingleCompassSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'compass';
+  const selectedCompassObj = isSingleCompassSelected ? (selectedObjects[0] as CompassObject) : null;
 
   const handleDeselect = () => {
     if (engine) {
@@ -598,6 +601,11 @@ export const SelectionActionBar: React.FC = () => {
             </button>
             <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
           </>
+        )}
+
+        {/* Compass specific toolbar */}
+        {isSingleCompassSelected && selectedCompassObj && (
+          <CompassToolbar compass={selectedCompassObj} />
         )}
 
         {/* Duplicate Button */}

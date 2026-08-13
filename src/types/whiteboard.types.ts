@@ -12,7 +12,7 @@ export type TextAlign = 'left' | 'center' | 'right';
 
 export type CanvasBackgroundType = 'plain' | 'grid' | 'dots' | 'lines' | 'chalkboard';
 
-export type HandleType = 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'rotate' | 'body';
+export type HandleType = 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'rotate' | 'body' | 'compass-needle' | 'compass-pencil' | 'compass-body';
 
 export interface Point {
   x: number;
@@ -161,6 +161,58 @@ export interface VideoObject extends BaseWhiteboardObject {
   loop: boolean;
 }
 
+/**
+ * A local audio file, drawn on the board as a compact player card. The bytes
+ * live in the asset store under `mediaId`; only the waveform preview and the
+ * settings travel in the document.
+ */
+export interface AudioObject extends BaseWhiteboardObject {
+  type: 'audio';
+  mediaId: string;
+  mimeType: string;
+  title: string;
+  durationSeconds: number;
+  fileName?: string;
+  muted: boolean;
+  loop: boolean;
+  volume: number;
+  playbackRate: number;
+  autoplay: boolean;
+  showVisualizer: boolean;
+  /** Normalised 0..1 peaks sampled at import, so the card can draw a waveform
+   *  without decoding the file again on every render. */
+  waveform?: number[];
+}
+
+/**
+ * A picture with a sound attached: the core vocabulary and phonics object.
+ * Image and audio are replaceable independently, so a teacher can keep the
+ * picture and swap the pronunciation.
+ */
+export interface ImageAudioObject extends BaseWhiteboardObject {
+  type: 'image-audio';
+  /** Picture. Small images may be inline; larger ones reference an asset. */
+  imageDataUrl?: string;
+  imageAssetId?: string;
+  imageMimeType?: string;
+  /** Sound. */
+  audioMediaId: string;
+  audioMimeType: string;
+  title: string;
+  durationSeconds: number;
+  fileName?: string;
+  muted: boolean;
+  loop: boolean;
+  volume: number;
+  playbackRate: number;
+  /** 'off' | 'open' (when the page is shown) | 'click' (when tapped). */
+  autoplayMode: 'off' | 'open' | 'click';
+  /** Non-destructive crop of the picture, as fractions of the natural size. */
+  crop?: { x: number; y: number; width: number; height: number };
+  /** Height of the player strip beneath the picture, in world units. */
+  playerHeight: number;
+}
+
 export interface ColoringRegion extends BaseWhiteboardObject {
   type: 'coloringRegion';
   fillColor: string;
@@ -169,7 +221,47 @@ export interface ColoringRegion extends BaseWhiteboardObject {
   points: Point[]; // Represents the boundary path or flood fill mask simplified points
 }
 
-export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | ColoringRegion;
+export interface CircleObject extends BaseWhiteboardObject {
+  type: 'circle';
+  centerX: number;
+  centerY: number;
+  radius: number;
+  strokeColor: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
+export interface ArcObject extends BaseWhiteboardObject {
+  type: 'arc';
+  centerX: number;
+  centerY: number;
+  radius: number;
+  startAngle: number;
+  endAngle: number;
+  strokeColor: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
+export interface CompassObject extends BaseWhiteboardObject {
+  type: 'compass';
+  centerX: number;
+  centerY: number;
+  radius: number;
+  angle: number;
+  needleAngle?: number;
+  pencilAngle?: number;
+}
+
+export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | AudioObject | ImageAudioObject | ColoringRegion | CircleObject | ArcObject | CompassObject;
+
+/** Object types the media system owns. */
+export type MediaWhiteboardObject =
+  | ImageObject
+  | VideoObject
+  | AudioObject
+  | ImageAudioObject
+  | YouTubeVideoObject;
 
 export interface Page {
   id: string;
