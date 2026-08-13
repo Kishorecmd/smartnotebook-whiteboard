@@ -16,6 +16,7 @@ import {
   TeachingToolObject,
   FreehandStroke,
   YouTubeVideoObject,
+  VideoObject,
 } from '../types';
 import { getObjectBoundingBox, boxesIntersect } from '../utils';
 
@@ -78,6 +79,10 @@ export class CanvasRenderer {
   private isDisposed = false;
   
   private imageCache = new Map<string, HTMLImageElement>();
+  // <video> elements backing video objects, owned by the engine.
+  private videoElements = new Map<string, HTMLVideoElement>();
+  // Set during a draw pass when a playing video needs another frame.
+  private videoNeedsFrame = false;
 
   private animationFrameId: number | null = null;
   
@@ -317,6 +322,8 @@ export class CanvasRenderer {
         }
       } else if (obj.type === 'youtubeVideo') {
         this.renderYouTubeThumbnail(ctx, obj as YouTubeVideoObject);
+      } else if (obj.type === 'video') {
+        this.renderVideoObject(ctx, obj as VideoObject);
       }
     }
 
@@ -340,9 +347,10 @@ export class CanvasRenderer {
       ctx.restore();
     }
 
-    if (keepAnimating) {
+    if (keepAnimating || this.videoNeedsFrame) {
       this.requestRender();
     }
+    this.videoNeedsFrame = false;
 
     ctx.restore();
   }
@@ -402,6 +410,74 @@ export class CanvasRenderer {
 
     this.renderPlayBadge(ctx, obj.width, obj.height);
     ctx.restore();
+  }
+
+  /**
+   * Registers the <video> element backing a video object. The element is created
+   * and owned by the engine; the renderer only paints its current frame.
+   */
+  public setVideoElement(objectId: string, element: HTMLVideoElement | null): void {
+    if (element) this.videoElements.set(objectId, element);
+    else this.videoElements.delete(objectId);
+    this.requestRender();
+  }
+
+  public getVideoElement(objectId: string): HTMLVideoElement | undefined {
+    return this.videoElements.get(objectId);
+  }
+
+  /**
+   * Draws the live frame while a video plays, otherwise the poster still with a
+   * play badge -- the same treatment as a YouTube object, so both read alike.
+   */
+  private renderVideoObject(ctx: CanvasRenderingContext2D, obj: VideoObject): void {
+    ctx.save();
+    ctx.translate(obj.x, obj.y);
+    if (obj.rotation) {
+      ctx.translate(obj.width / 2, obj.height / 2);
+      ctx.rotate(obj.rotation);
+      ctx.translate(-obj.width / 2, -obj.height / 2);
+    }
+
+    const videoEl = this.videoElements.get(obj.id);
+    const isPlaying = !!videoEl && !videoEl.paused && !videoEl.ended && videoEl.readyState >= 2;
+
+    if (isPlaying && videoEl) {
+      ctx.drawImage(videoEl, 0, 0, obj.width, obj.height);
+      // Keep the loop alive so the next frame gets painted.
+      this.videoNeedsFrame = true;
+    } else {
+      const poster = this.getVideoPoster(obj);
+      if (poster && poster.complete && poster.naturalWidth > 0) {
+        ctx.drawImage(poster, 0, 0, obj.width, obj.height);
+      } else {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, obj.width, obj.height);
+      }
+      // A paused-but-started video keeps its frame; only badge it when stopped.
+      if (!videoEl || videoEl.currentTime === 0) {
+        this.renderPlayBadge(ctx, obj.width, obj.height);
+      } else if (videoEl.readyState >= 2) {
+        ctx.drawImage(videoEl, 0, 0, obj.width, obj.height);
+        this.renderPlayBadge(ctx, obj.width, obj.height);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  private getVideoPoster(obj: VideoObject): HTMLImageElement | null {
+    const key = `poster_${obj.id}`;
+    const cached = this.imageCache.get(key);
+    if (cached) return cached;
+    if (!obj.posterDataUrl) return null;
+
+    const img = new Image();
+    img.onload = () => this.requestRender();
+    img.onerror = () => this.requestRender();
+    img.src = obj.posterDataUrl;
+    this.imageCache.set(key, img);
+    return null;
   }
 
   private getYouTubeThumbnail(obj: YouTubeVideoObject): HTMLImageElement | null {

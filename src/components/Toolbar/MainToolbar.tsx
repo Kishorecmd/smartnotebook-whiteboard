@@ -75,6 +75,38 @@ export const MainToolbar: React.FC = () => {
     }
   };
 
+  const LARGE_VIDEO_BYTES = 100 * 1024 * 1024;
+
+  const insertVideoFile = async (file: File) => {
+    if (!engine) return;
+
+    if (
+      file.size > LARGE_VIDEO_BYTES &&
+      !confirm(
+        `That video is ${(file.size / (1024 * 1024)).toFixed(0)} MB. It is stored in this ` +
+          'browser, and large files can exhaust the available space. Add it anyway?'
+      )
+    ) {
+      return;
+    }
+
+    const rect = engine.getCanvas().getBoundingClientRect();
+    const transformer = engine.getTransformer();
+    const centerPoint = transformer.screenToWorld({ x: rect.width / 2, y: rect.height / 2 });
+
+    try {
+      const videoObject = await FileImportService.importVideo(
+        file,
+        centerPoint,
+        visibleWorldBox(transformer.getTransform().zoom, rect.width, rect.height)
+      );
+      engine.addObject(videoObject);
+    } catch (err) {
+      console.error('Failed to import video', err);
+      alert(err instanceof Error ? err.message : 'That video could not be added.');
+    }
+  };
+
   const handleMediaInsert = (type: 'youtube' | 'image' | 'video' | 'audio' | 'pdf') => {
     setActivePopover('none');
     if (type === 'youtube') {
@@ -85,22 +117,21 @@ export const MainToolbar: React.FC = () => {
       setPdfImportModalOpen(true);
       return;
     }
-    if (type === 'video' || type === 'audio') {
-      // The document format has no object type for local video/audio yet, so don't
-      // open a picker and silently discard whatever the teacher chooses.
-      alert(
-        `${type === 'video' ? 'Video' : 'Audio'} files aren't supported yet. ` +
-          'You can add a video with Media > YouTube.'
-      );
+    if (type === 'audio') {
+      // No audio object type in the document format yet, so don't open a picker
+      // that silently discards the file.
+      alert("Audio files aren't supported yet.");
       return;
     }
 
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = type === 'video' ? 'video/*' : 'image/*';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) void insertImageFile(file);
+      if (!file) return;
+      if (type === 'video') void insertVideoFile(file);
+      else void insertImageFile(file);
     };
     input.click();
   };

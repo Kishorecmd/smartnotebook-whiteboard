@@ -109,6 +109,23 @@ export interface YouTubeVideoObject extends BaseWhiteboardObject {
   startTime: number;
 }
 
+/**
+ * A local video file placed on the board. The file itself lives in IndexedDB
+ * under `mediaId` -- embedding it in the document as a data URL would make saved
+ * boards enormous. `posterDataUrl` is a still frame captured at import so the
+ * object can render (and export) without decoding the video.
+ */
+export interface VideoObject extends BaseWhiteboardObject {
+  type: 'video';
+  mediaId: string;
+  mimeType: string;
+  posterDataUrl: string;
+  durationSeconds: number;
+  fileName?: string;
+  muted: boolean;
+  loop: boolean;
+}
+
 export interface ColoringRegion extends BaseWhiteboardObject {
   type: 'coloringRegion';
   fillColor: string;
@@ -117,7 +134,7 @@ export interface ColoringRegion extends BaseWhiteboardObject {
   points: Point[]; // Represents the boundary path or flood fill mask simplified points
 }
 
-export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | ColoringRegion;
+export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | ColoringRegion;
 
 export interface Page {
   id: string;

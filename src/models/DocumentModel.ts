@@ -99,6 +99,17 @@ export const YouTubeVideoObjectSchema = BaseWhiteboardObjectSchema.extend({
   startTime: z.number().default(0),
 });
 
+export const VideoObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('video'),
+  mediaId: z.string(),
+  mimeType: z.string(),
+  posterDataUrl: z.string(),
+  durationSeconds: z.number().default(0),
+  fileName: z.string().optional(),
+  muted: z.boolean().default(false),
+  loop: z.boolean().default(false),
+});
+
 export const ColoringRegionSchema = BaseWhiteboardObjectSchema.extend({
   type: z.literal('coloringRegion'),
   fillColor: z.string(),
@@ -116,6 +127,7 @@ export const WhiteboardObjectSchema = z.union([
   ImageObjectSchema,
   TeachingToolObjectSchema,
   YouTubeVideoObjectSchema,
+  VideoObjectSchema,
   ColoringRegionSchema,
 ]);
 

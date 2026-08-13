@@ -1,6 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
-import { ImageObject, Point } from '../types';
+import { ImageObject, Point, VideoObject } from '../types';
 import { generateId } from '../utils';
+import { StorageService } from './StorageService';
 
 // Set worker source for pdfjs-dist
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -74,6 +75,104 @@ export class FileImportService {
       reader.onerror = () => reject(new Error('Failed to read file as DataURL.'));
       reader.readAsDataURL(file);
     });
+  }
+
+  /**
+   * Imports a local video file. The blob is stored in IndexedDB and referenced by
+   * id; a still frame is captured so the board can render and export the video
+   * without decoding it. Rejects with a readable message if the browser can't
+   * decode the file.
+   */
+  public static async importVideo(
+    file: File,
+    centerPoint: Point,
+    maxDisplaySize?: { width: number; height: number }
+  ): Promise<VideoObject> {
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      video.src = objectUrl;
+
+      await new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => resolve();
+        video.onerror = () =>
+          reject(new Error(`This browser can't play ${file.type || 'that video format'}. Try an MP4 (H.264).`));
+      });
+
+      const naturalWidth = video.videoWidth || 640;
+      const naturalHeight = video.videoHeight || 360;
+
+      // Seek a little way in: frame zero of a video is very often black.
+      const posterTime = Math.min(1, (video.duration || 1) / 10);
+      await new Promise<void>((resolve) => {
+        const done = () => resolve();
+        video.onseeked = done;
+        video.onerror = done;
+        try {
+          video.currentTime = posterTime;
+        } catch {
+          resolve();
+        }
+        setTimeout(resolve, 2000); // don't hang on a codec that won't seek
+      });
+
+      const posterCanvas = document.createElement('canvas');
+      posterCanvas.width = naturalWidth;
+      posterCanvas.height = naturalHeight;
+      const posterCtx = posterCanvas.getContext('2d');
+      let posterDataUrl = '';
+      if (posterCtx) {
+        try {
+          posterCtx.drawImage(video, 0, 0, naturalWidth, naturalHeight);
+          posterDataUrl = posterCanvas.toDataURL('image/jpeg', 0.7);
+        } catch {
+          posterDataUrl = '';
+        }
+      }
+
+      let fitScale = 1;
+      if (maxDisplaySize && maxDisplaySize.width > 0 && maxDisplaySize.height > 0) {
+        fitScale = Math.min(
+          1,
+          maxDisplaySize.width / naturalWidth,
+          maxDisplaySize.height / naturalHeight
+        );
+      }
+      const width = Math.max(1, Math.round(naturalWidth * fitScale));
+      const height = Math.max(1, Math.round(naturalHeight * fitScale));
+
+      const mediaId = generateId('media');
+      await StorageService.saveMedia(mediaId, file);
+
+      const now = Date.now();
+      return {
+        id: generateId('video'),
+        type: 'video',
+        mediaId,
+        mimeType: file.type,
+        posterDataUrl,
+        durationSeconds: Number.isFinite(video.duration) ? video.duration : 0,
+        fileName: file.name,
+        muted: false,
+        loop: false,
+        x: centerPoint.x - width / 2,
+        y: centerPoint.y - height / 2,
+        width,
+        height,
+        rotation: 0,
+        zIndex: 0,
+        visible: true,
+        locked: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   }
 
   /**

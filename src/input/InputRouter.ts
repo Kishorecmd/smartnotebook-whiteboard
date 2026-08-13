@@ -26,10 +26,9 @@ export class InputRouter {
   }
 
   /**
-   * Videos are DOM elements sitting *under* the canvas with pointer-events off,
-   * so a click on one is delivered to whichever tool is active and would other-
-   * wise draw over it. Report whether this pointer landed on a video that the
-   * user should be able to grab directly.
+   * A click on a video would otherwise go to whichever drawing tool is active and
+   * scribble over it. Report whether this pointer landed on a video -- YouTube or
+   * a local file -- that the user should be able to grab directly.
    *
    * Only the topmost hit counts, so a stroke drawn on top of a video still
    * belongs to the stroke, and locked videos are skipped so they can be drawn on.
@@ -40,7 +39,8 @@ export class InputRouter {
     const tolerance = 10 / transformer.getTransform().zoom;
     const hit = HitTest.findObjectAtPoint(worldPoint, this.engine.getObjects(), tolerance);
 
-    return !!hit && hit.type === 'youtubeVideo' && !hit.locked && hit.visible !== false;
+    const isVideo = !!hit && (hit.type === 'youtubeVideo' || hit.type === 'video');
+    return isVideo && !hit!.locked && hit!.visible !== false;
   }
 
   public onPointerAdd(pointer: PointerState, e: PointerEvent, activePointers: PointerState[]): void {

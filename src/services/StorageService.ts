@@ -3,9 +3,12 @@ import { WhiteboardDocument } from '../types';
 import { validateDocument } from '../models';
 
 const DB_NAME = 'jaihind_whiteboard_db';
-const DB_VERSION = 1;
+// v2 adds the media store for video blobs. The upgrade is additive: existing
+// documents and autosaves are untouched.
+const DB_VERSION = 2;
 const STORE_DOCUMENTS = 'documents';
 const STORE_AUTOSAVE = 'autosave';
+const STORE_MEDIA = 'media';
 
 export class StorageService {
   private static dbPromise: Promise<IDBPDatabase> | null = null;
@@ -20,10 +23,53 @@ export class StorageService {
           if (!db.objectStoreNames.contains(STORE_AUTOSAVE)) {
             db.createObjectStore(STORE_AUTOSAVE, { keyPath: 'id' });
           }
+          if (!db.objectStoreNames.contains(STORE_MEDIA)) {
+            db.createObjectStore(STORE_MEDIA, { keyPath: 'id' });
+          }
         },
       });
     }
     return this.dbPromise;
+  }
+
+  /**
+   * Stores a media blob (currently video) keyed by id. Kept out of the document
+   * itself so saved boards stay small.
+   */
+  public static async saveMedia(id: string, blob: Blob): Promise<void> {
+    const db = await this.getDB();
+    await db.put(STORE_MEDIA, { id, blob, size: blob.size, type: blob.type, createdAt: Date.now() });
+  }
+
+  public static async loadMedia(id: string): Promise<Blob | null> {
+    try {
+      const db = await this.getDB();
+      const record = await db.get(STORE_MEDIA, id);
+      return record?.blob instanceof Blob ? record.blob : null;
+    } catch (err) {
+      console.warn('Failed to load media blob:', err);
+      return null;
+    }
+  }
+
+  public static async deleteMedia(id: string): Promise<void> {
+    try {
+      const db = await this.getDB();
+      await db.delete(STORE_MEDIA, id);
+    } catch (err) {
+      console.warn('Failed to delete media blob:', err);
+    }
+  }
+
+  /** Total bytes held in the media store, for surfacing storage pressure. */
+  public static async getMediaUsage(): Promise<number> {
+    try {
+      const db = await this.getDB();
+      const records = await db.getAll(STORE_MEDIA);
+      return records.reduce((sum: number, r: any) => sum + (r?.size || 0), 0);
+    } catch {
+      return 0;
+    }
   }
 
   /**

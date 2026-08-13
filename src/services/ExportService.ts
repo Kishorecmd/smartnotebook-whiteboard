@@ -1,4 +1,4 @@
-import { WhiteboardPage, FreehandStroke, ShapeObject, TextObject, ImageObject, YouTubeVideoObject } from '../types';
+import { WhiteboardPage, FreehandStroke, ShapeObject, TextObject, ImageObject, YouTubeVideoObject, VideoObject } from '../types';
 import { StrokeRenderer, ShapeRenderer, TextRenderer } from '../canvas';
 
 /**
@@ -33,6 +33,10 @@ async function preloadPageImages(page: WhiteboardPage): Promise<Map<string, HTML
     if (obj.type === 'youtubeVideo') {
       const v = obj as YouTubeVideoObject;
       sources.push(v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`);
+    }
+    if (obj.type === 'video') {
+      const v = obj as VideoObject;
+      if (v.posterDataUrl) sources.push(v.posterDataUrl);
     }
   }
 
@@ -114,6 +118,9 @@ export class ExportService {
       } else if (obj.type === 'youtubeVideo') {
         const v = obj as YouTubeVideoObject;
         drawLoadedImage(ctx, v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`, obj, imageCache);
+      } else if (obj.type === 'video') {
+        const v = obj as VideoObject;
+        if (v.posterDataUrl) drawLoadedImage(ctx, v.posterDataUrl, obj, imageCache);
       }
     }
 

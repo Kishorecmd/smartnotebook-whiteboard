@@ -5,6 +5,7 @@ import { InputRouter } from '../input/InputRouter';
 import { GestureEngine } from '../input/GestureEngine';
 import { TouchActionManager } from '../input/TouchActionManager';
 import { RulerSnapper } from './RulerSnapper';
+import { StorageService } from '../services/StorageService';
 import { ITool } from './tools/ITool';
 import { PenTool } from './tools/PenTool';
 import { MarkerTool } from './tools/MarkerTool';
@@ -64,6 +65,8 @@ export class WhiteboardEngine {
   private touchActionManager: TouchActionManager;
   private commandManager: CommandManager;
   private rulerSnapper: RulerSnapper;
+  // Object URLs for local video blobs, revoked on dispose.
+  private videoObjectUrls: Map<string, string> = new Map();
 
   // Tools registry
   private tools: Map<ToolType, ITool> = new Map();
@@ -803,6 +806,108 @@ export class WhiteboardEngine {
     }
   }
 
+  // --- Local Video Playback ---
+
+  /**
+   * Video objects reference a blob in IndexedDB rather than embedding it. This
+   * creates the backing <video> element on demand, hands it to the renderer to
+   * paint, and keeps the object URL for disposal.
+   */
+  public async playVideoObject(objectId: string): Promise<void> {
+    const obj = this.objects.find((o) => o.id === objectId);
+    if (!obj || obj.type !== 'video') return;
+
+    let element = this.renderer.getVideoElement(objectId);
+
+    if (!element) {
+      const blob = await StorageService.loadMedia(obj.mediaId);
+      if (!blob) {
+        console.warn(`Video media ${obj.mediaId} is missing from storage.`);
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      this.videoObjectUrls.set(objectId, url);
+
+      element = document.createElement('video');
+      element.src = url;
+      element.muted = obj.muted;
+      element.loop = obj.loop;
+      element.playsInline = true;
+      // Never attached to the DOM: frames are drawn onto the canvas instead, so
+      // the video can't float above the board the way the old iframe did.
+      element.addEventListener('ended', () => this.renderer.requestRender());
+      this.renderer.setVideoElement(objectId, element);
+
+      await new Promise<void>((resolve) => {
+        element!.onloadeddata = () => resolve();
+        element!.onerror = () => resolve();
+        setTimeout(resolve, 3000);
+      });
+    }
+
+    try {
+      await element.play();
+    } catch (err) {
+      console.warn('Video playback was blocked:', err);
+    }
+
+    // Autoplay policy can refuse sound-on playback *without rejecting* -- play()
+    // resolves and the element quietly stays paused. Detect that and retry muted
+    // so the teacher gets picture rather than nothing.
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    if (element.paused) {
+      element.muted = true;
+      try {
+        await element.play();
+      } catch (err) {
+        console.warn('Muted video playback also failed:', err);
+      }
+    }
+
+    this.renderer.requestRender();
+  }
+
+  /** True when playback had to be muted to start, so the UI can say so. */
+  public isVideoForcedMuted(objectId: string): boolean {
+    const obj = this.objects.find((o) => o.id === objectId);
+    const element = this.renderer.getVideoElement(objectId);
+    if (!obj || obj.type !== 'video' || !element) return false;
+    return element.muted && !obj.muted;
+  }
+
+  public pauseVideoObject(objectId: string): void {
+    const element = this.renderer.getVideoElement(objectId);
+    if (element) element.pause();
+    this.renderer.requestRender();
+  }
+
+  public isVideoPlaying(objectId: string): boolean {
+    const element = this.renderer.getVideoElement(objectId);
+    return !!element && !element.paused && !element.ended;
+  }
+
+  /** Releases the element and object URL for a video that's gone or unloaded. */
+  public disposeVideoObject(objectId: string): void {
+    const element = this.renderer.getVideoElement(objectId);
+    if (element) {
+      element.pause();
+      element.removeAttribute('src');
+      element.load();
+    }
+    this.renderer.setVideoElement(objectId, null);
+    const url = this.videoObjectUrls.get(objectId);
+    if (url) {
+      URL.revokeObjectURL(url);
+      this.videoObjectUrls.delete(objectId);
+    }
+  }
+
+  private disposeAllVideos(): void {
+    for (const id of Array.from(this.videoObjectUrls.keys())) {
+      this.disposeVideoObject(id);
+    }
+  }
+
   // --- History Actions ---
 
   public undo(): void {
@@ -829,6 +934,7 @@ export class WhiteboardEngine {
   }
 
   public dispose(): void {
+    this.disposeAllVideos();
     this.pointerManager.destroy();
     this.touchActionManager.reset();
     this.renderer.dispose();

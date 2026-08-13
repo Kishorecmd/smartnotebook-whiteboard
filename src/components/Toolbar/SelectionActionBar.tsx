@@ -22,9 +22,10 @@ import {
   Lock,
   Unlock,
   PlaySquare,
+  Pause,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
-import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject } from '../../types';
+import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, VideoObject } from '../../types';
 
 const COLOR_SWATCHES = [
   '#0f172a',
@@ -66,6 +67,9 @@ export const SelectionActionBar: React.FC = () => {
   } = useWhiteboardStore();
 
   const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'style' | 'order' | 'ruler'>('none');
+  // Playback lives on the <video> element, not in the store, so nudge a re-render
+  // to swap the play/pause label.
+  const [, setVideoTick] = useState(0);
 
   if (selectedIds.length === 0 || toolSettings.tool !== 'select') {
     return null;
@@ -81,6 +85,8 @@ export const SelectionActionBar: React.FC = () => {
   const selectedGuideObj = isSingleGuideSelected ? (selectedObjects[0] as TeachingToolObject) : null;
   const isSingleVideoSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'youtubeVideo';
   const selectedVideoObj = isSingleVideoSelected ? (selectedObjects[0] as YouTubeVideoObject) : null;
+  const isSingleLocalVideoSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'video';
+  const selectedLocalVideo = isSingleLocalVideoSelected ? (selectedObjects[0] as VideoObject) : null;
 
   const handleDeselect = () => {
     if (engine) {
@@ -531,6 +537,41 @@ export const SelectionActionBar: React.FC = () => {
             </button>
 
             {/* Separator */}
+            <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+          </>
+        )}
+
+        {/* Local video playback. Frames are drawn onto the canvas, so the video
+            never floats above the board. */}
+        {isSingleLocalVideoSelected && selectedLocalVideo && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                if (!engine) return;
+                if (engine.isVideoPlaying(selectedLocalVideo.id)) {
+                  engine.pauseVideoObject(selectedLocalVideo.id);
+                } else {
+                  void engine.playVideoObject(selectedLocalVideo.id);
+                }
+                setVideoTick((t) => t + 1);
+              }}
+              title={selectedLocalVideo.fileName || 'Play video'}
+              aria-label="Play or pause video"
+              className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-emerald-400 border border-emerald-900/50 hover:bg-emerald-900/40 hover:text-emerald-300"
+            >
+              {engine && engine.isVideoPlaying(selectedLocalVideo.id) ? (
+                <>
+                  <Pause className="w-4 h-4" />
+                  <span className="hidden sm:inline">Pause</span>
+                </>
+              ) : (
+                <>
+                  <PlaySquare className="w-4 h-4" />
+                  <span className="hidden sm:inline">Play</span>
+                </>
+              )}
+            </button>
             <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
           </>
         )}
