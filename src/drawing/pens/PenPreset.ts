@@ -19,7 +19,8 @@ export type PenType =
   | 'calligraphy'
   | 'glow'
   | 'dotted'
-  | 'dashed';
+  | 'dashed'
+  | 'special-pen';
 
 export type PressureSensitivity = 'off' | 'low' | 'medium' | 'high';
 

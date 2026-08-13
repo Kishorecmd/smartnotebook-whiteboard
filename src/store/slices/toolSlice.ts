@@ -62,6 +62,10 @@ export const createToolSlice: SliceCreator<ToolSlice> = (set, get) => ({
     textAlign: 'left',
     textColor: '#0f172a',
     activePenId: loadActivePen(),
+    magicPenMode: 'ink',
+    magicPenDuration: 3000,
+    magicPenMagnification: 2.0,
+    magicPenPermanent: false,
     ...(() => {
       const remembered = loadPenOverrides()[loadActivePen()];
       return {

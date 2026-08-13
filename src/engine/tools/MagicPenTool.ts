@@ -2,14 +2,13 @@ import { ITool } from './ITool';
 import { Point } from '../../types';
 import { createStrokeObject } from '../../models';
 import type { WhiteboardEngine } from '../WhiteboardEngine';
-import { distanceBetween, getPointsBoundingBox } from '../../utils/math.utils';
+import { distance, calculateBoundingBox } from '../../utils/math.utils';
 
 export class MagicPenTool implements ITool {
   public readonly name: string = 'magic_pen';
   private activeStrokes: Map<number, Point[]> = new Map();
-  private pressTimeout: NodeJS.Timeout | null = null;
+  private pressTimeout: number | null = null;
   private pointerDownTime: number = 0;
-  private isHolding: boolean = false;
   private currentMode: 'ink' | 'spotlight_drag' | 'magnifier_drag' | null = null;
   private startPointer: Point | null = null;
 
@@ -38,12 +37,10 @@ export class MagicPenTool implements ITool {
     const points = [worldPoint];
     this.activeStrokes.set(_e.pointerId, points);
     this.pointerDownTime = Date.now();
-    this.isHolding = false;
 
     // Press and hold detection for Method B
     if (this.pressTimeout) clearTimeout(this.pressTimeout);
-    this.pressTimeout = setTimeout(() => {
-      this.isHolding = true;
+    this.pressTimeout = window.setTimeout(() => {
       this.activeStrokes.delete(_e.pointerId);
       engine.getRenderer().setActiveStroke(_e.pointerId, null);
       
@@ -89,7 +86,7 @@ export class MagicPenTool implements ITool {
     if (!points) return;
 
     // If moved too far, cancel hold
-    if (this.startPointer && distanceBetween(this.startPointer, worldPoint) > 15) {
+    if (this.startPointer && distance(this.startPointer, worldPoint) > 15) {
       if (this.pressTimeout) {
         clearTimeout(this.pressTimeout);
         this.pressTimeout = null;
@@ -145,7 +142,7 @@ export class MagicPenTool implements ITool {
     engine.getRenderer().setActiveStroke(_e.pointerId, null);
 
     if (isCircle && (settings.magicPenMode === 'spotlight' || settings.magicPenMode === 'magnifier' || settings.magicPenMode === 'highlight')) {
-      const box = getPointsBoundingBox(points);
+      const box = calculateBoundingBox(points);
       const center = { x: box.minX + box.width / 2, y: box.minY + box.height / 2 };
       const radius = Math.max(box.width, box.height) / 2;
       
@@ -210,12 +207,12 @@ export class MagicPenTool implements ITool {
     const end = points[points.length - 1];
     
     // 1. Must close the loop (start and end close to each other)
-    const box = getPointsBoundingBox(points);
+    const box = calculateBoundingBox(points);
     const maxDim = Math.max(box.width, box.height);
     if (maxDim < 50) return false; // Too small to be a deliberate circle gesture
     
-    const distance = distanceBetween(start, end);
-    if (distance > maxDim * 0.4) return false; // Loop not closed enough
+    const dist = distance(start, end);
+    if (dist > maxDim * 0.4) return false; // Loop not closed enough
     
     // 2. Aspect ratio should be somewhat square
     const ratio = box.width / box.height;
