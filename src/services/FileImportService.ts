@@ -12,18 +12,40 @@ export class FileImportService {
   /**
    * Imports an image file and returns an ImageObject placed at the specified center point.
    */
-  public static async importImage(file: File, centerPoint: Point): Promise<ImageObject> {
+  /**
+   * @param maxDisplaySize Optional box, in world units, the image should fit inside.
+   * A photo straight off a phone is several thousand pixels across and would other-
+   * wise be placed at that size, dwarfing the board. The intrinsic size is still
+   * recorded in originalWidth/originalHeight.
+   */
+  public static async importImage(
+    file: File,
+    centerPoint: Point,
+    maxDisplaySize?: { width: number; height: number }
+  ): Promise<ImageObject> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const dataUrl = e.target?.result as string;
-        
+
         // Load image to get intrinsic dimensions
         const img = new Image();
         img.onload = () => {
-          const width = img.naturalWidth;
-          const height = img.naturalHeight;
-          
+          const naturalWidth = img.naturalWidth;
+          const naturalHeight = img.naturalHeight;
+
+          // Shrink to fit while preserving aspect ratio; never scale small images up.
+          let fitScale = 1;
+          if (maxDisplaySize && maxDisplaySize.width > 0 && maxDisplaySize.height > 0) {
+            fitScale = Math.min(
+              1,
+              maxDisplaySize.width / naturalWidth,
+              maxDisplaySize.height / naturalHeight
+            );
+          }
+          const width = Math.max(1, Math.round(naturalWidth * fitScale));
+          const height = Math.max(1, Math.round(naturalHeight * fitScale));
+
           const now = Date.now();
           const imageObject: ImageObject = {
             id: generateId('image'),
@@ -38,12 +60,12 @@ export class FileImportService {
             locked: false,
             dataUrl,
             mimeType: file.type,
-            originalWidth: width,
-            originalHeight: height,
+            originalWidth: naturalWidth,
+            originalHeight: naturalHeight,
             createdAt: now,
             updatedAt: now,
           };
-          
+
           resolve(imageObject);
         };
         img.onerror = () => reject(new Error('Failed to load image to calculate dimensions.'));

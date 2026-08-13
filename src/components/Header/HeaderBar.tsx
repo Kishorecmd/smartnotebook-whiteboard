@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService, FileService } from '../../services';
+import { visibleWorldBox } from '../../utils';
 import { Point } from '../../types';
 import Logo from '../../assets/logo.png';
 
@@ -77,7 +78,12 @@ export const HeaderBar: React.FC = () => {
       const file = files[i];
       if (file.type.startsWith('image/')) {
         try {
-          const imgObj = await FileImportService.importImage(file, centerPoint);
+          const rect = engine.getCanvas().getBoundingClientRect();
+          const imgObj = await FileImportService.importImage(
+            file,
+            centerPoint,
+            visibleWorldBox(engine.getTransformer().getTransform().zoom, rect.width, rect.height)
+          );
           engine.addObject(imgObj);
         } catch (err) {
           console.error("Failed to import image", err);

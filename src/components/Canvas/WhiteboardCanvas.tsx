@@ -5,6 +5,7 @@ import { SelectionActionBar } from '../Toolbar/SelectionActionBar';
 import { CanvasTextEditor } from './CanvasTextEditor';
 import { MultitouchDebugOverlay } from '../MultitouchDebugOverlay';
 import { FileImportService } from '../../services';
+import { visibleWorldBox } from '../../utils';
 import { Point } from '../../types';
 
 export const WhiteboardCanvas: React.FC = () => {
@@ -246,7 +247,11 @@ export const WhiteboardCanvas: React.FC = () => {
           for (const file of files) {
             if (file.type.startsWith('image/')) {
               try {
-                const imgObj = await FileImportService.importImage(file, worldPoint);
+                const imgObj = await FileImportService.importImage(
+                  file,
+                  worldPoint,
+                  visibleWorldBox(engine.getTransformer().getTransform().zoom, rect.width, rect.height)
+                );
                 engine.addObject(imgObj);
               } catch (err) {
                 console.error("Failed to import image", err);

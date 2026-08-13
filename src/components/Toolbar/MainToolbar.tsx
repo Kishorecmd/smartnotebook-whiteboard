@@ -10,6 +10,7 @@ import { ShapePicker } from './ShapePicker';
 import { TextPicker } from './TextPicker';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService } from '../../services/FileImportService';
+import { visibleWorldBox } from '../../utils';
 import { ToolType } from '../../types';
 
 export const MainToolbar: React.FC = () => {
@@ -55,13 +56,18 @@ export const MainToolbar: React.FC = () => {
   const insertImageFile = async (file: File) => {
     if (!engine) return;
     const rect = engine.getCanvas().getBoundingClientRect();
-    const centerPoint = engine.getTransformer().screenToWorld({
+    const transformer = engine.getTransformer();
+    const centerPoint = transformer.screenToWorld({
       x: rect.width / 2,
       y: rect.height / 2,
     });
 
     try {
-      const imageObject = await FileImportService.importImage(file, centerPoint);
+      const imageObject = await FileImportService.importImage(
+        file,
+        centerPoint,
+        visibleWorldBox(transformer.getTransform().zoom, rect.width, rect.height)
+      );
       engine.addObject(imageObject);
     } catch (err) {
       console.error('Failed to import image', err);
