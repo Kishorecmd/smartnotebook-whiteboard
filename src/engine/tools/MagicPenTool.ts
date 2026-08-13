@@ -2,10 +2,16 @@ import { ITool } from './ITool';
 import { Point } from '../../types';
 import { createStrokeObject } from '../../models';
 import type { WhiteboardEngine } from '../WhiteboardEngine';
+import { distanceBetween, getPointsBoundingBox } from '../../utils/math.utils';
 
 export class MagicPenTool implements ITool {
   public readonly name: string = 'magic_pen';
   private activeStrokes: Map<number, Point[]> = new Map();
+  private pressTimeout: NodeJS.Timeout | null = null;
+  private pointerDownTime: number = 0;
+  private isHolding: boolean = false;
+  private currentMode: 'ink' | 'spotlight_drag' | 'magnifier_drag' | null = null;
+  private startPointer: Point | null = null;
 
   public onPointerDown(
     worldPoint: Point,
@@ -13,21 +19,53 @@ export class MagicPenTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
-    if (engine.getRulerSnapper().handlePointerDown(worldPoint, _e.pointerId)) {
-      return;
+    const settings = engine.getToolSettings();
+
+    // Check if we are tapping/dragging an existing spotlight or magnifier
+    if (engine.getSpotlightRadius() > 0 || engine.getMagnifierRadius() > 0) {
+      if (engine.getSpotlightRadius() > 0) {
+        this.currentMode = 'spotlight_drag';
+        engine.setSpotlight(worldPoint, engine.getSpotlightRadius());
+      } else if (engine.getMagnifierRadius() > 0) {
+        this.currentMode = 'magnifier_drag';
+        engine.setMagnifier(worldPoint, engine.getMagnifierRadius(), settings.magicPenMagnification);
+      }
+      return; // Skip normal drawing
     }
 
-    const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
-    const points = [snappedPoint];
+    this.currentMode = 'ink';
+    this.startPointer = worldPoint;
+    const points = [worldPoint];
     this.activeStrokes.set(_e.pointerId, points);
+    this.pointerDownTime = Date.now();
+    this.isHolding = false;
 
-    const settings = engine.getToolSettings();
+    // Press and hold detection for Method B
+    if (this.pressTimeout) clearTimeout(this.pressTimeout);
+    this.pressTimeout = setTimeout(() => {
+      this.isHolding = true;
+      this.activeStrokes.delete(_e.pointerId);
+      engine.getRenderer().setActiveStroke(_e.pointerId, null);
+      
+      if (settings.magicPenMode === 'magnifier') {
+        this.currentMode = 'magnifier_drag';
+        engine.setMagnifier(worldPoint, 150, settings.magicPenMagnification);
+      } else {
+        this.currentMode = 'spotlight_drag';
+        engine.setSpotlight(worldPoint, 150);
+      }
+    }, 600); // 600ms hold
+
     engine.getRenderer().setActiveStroke(_e.pointerId, {
       tool: 'pen',
       points: points,
       color: settings.color,
       width: settings.penWidth,
       opacity: 1.0,
+      penId: 'magic',
+      penSettings: {
+        magicEffect: settings.magicPenMode === 'highlight' ? 'highlight' : 'glow'
+      }
     });
   }
 
@@ -37,15 +75,28 @@ export class MagicPenTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
-    if (engine.getRulerSnapper().handlePointerMove(worldPoint, _e.pointerId)) {
+    if (this.currentMode === 'spotlight_drag') {
+      engine.setSpotlight(worldPoint, engine.getSpotlightRadius());
+      return;
+    }
+    if (this.currentMode === 'magnifier_drag') {
+      const settings = engine.getToolSettings();
+      engine.setMagnifier(worldPoint, engine.getMagnifierRadius(), settings.magicPenMagnification);
       return;
     }
 
     const points = this.activeStrokes.get(_e.pointerId);
     if (!points) return;
 
-    const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
-    points.push(snappedPoint);
+    // If moved too far, cancel hold
+    if (this.startPointer && distanceBetween(this.startPointer, worldPoint) > 15) {
+      if (this.pressTimeout) {
+        clearTimeout(this.pressTimeout);
+        this.pressTimeout = null;
+      }
+    }
+
+    points.push(worldPoint);
     const settings = engine.getToolSettings();
 
     engine.getRenderer().setActiveStroke(_e.pointerId, {
@@ -54,6 +105,10 @@ export class MagicPenTool implements ITool {
       color: settings.color,
       width: settings.penWidth,
       opacity: 1.0,
+      penId: 'magic',
+      penSettings: {
+        magicEffect: settings.magicPenMode === 'highlight' ? 'highlight' : 'glow'
+      }
     });
   }
 
@@ -63,7 +118,18 @@ export class MagicPenTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
-    if (engine.getRulerSnapper().handlePointerUp(_e.pointerId)) {
+    if (this.pressTimeout) {
+      clearTimeout(this.pressTimeout);
+      this.pressTimeout = null;
+    }
+
+    if (this.currentMode === 'spotlight_drag' || this.currentMode === 'magnifier_drag') {
+      this.currentMode = null;
+      // Note: On tap, we exit spotlight.
+      if (Date.now() - this.pointerDownTime < 200) {
+        engine.setSpotlight(null, 0);
+        engine.setMagnifier(null, 0);
+      }
       return;
     }
 
@@ -71,38 +137,51 @@ export class MagicPenTool implements ITool {
     if (!points) return;
 
     this.activeStrokes.delete(_e.pointerId);
-    engine.getRulerSnapper().clearSnap(_e.pointerId);
+    points.push(worldPoint);
 
-    if (points.length > 0) {
-      const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
-      points.push(snappedPoint);
+    const settings = engine.getToolSettings();
+    const isCircle = this.recognizeCircle(points);
 
-      let finalPoints = points;
-      if (snappedPoint.isProtractor && snappedPoint.isSnapped) {
-        finalPoints = [points[0], points[points.length - 1]];
+    engine.getRenderer().setActiveStroke(_e.pointerId, null);
+
+    if (isCircle && (settings.magicPenMode === 'spotlight' || settings.magicPenMode === 'magnifier' || settings.magicPenMode === 'highlight')) {
+      const box = getPointsBoundingBox(points);
+      const center = { x: box.minX + box.width / 2, y: box.minY + box.height / 2 };
+      const radius = Math.max(box.width, box.height) / 2;
+      
+      if (settings.magicPenMode === 'magnifier') {
+        engine.setMagnifier(center, radius, settings.magicPenMagnification);
+      } else {
+        engine.setSpotlight(center, radius);
       }
-
-      const settings = engine.getToolSettings();
+    } else {
+      // Normal magic ink or highlight
       const stroke = createStrokeObject({
         tool: 'pen',
-        points: finalPoints,
+        points: points,
         color: settings.color,
         width: settings.penWidth,
         opacity: 1.0,
       });
 
-      // Clear active preview layer for this pointer
-      engine.getRenderer().setActiveStroke(_e.pointerId, null);
+      // Special magic effect flag so the renderer can glow/highlight
+      stroke.penSettings = {
+        magicEffect: settings.magicPenMode === 'highlight' ? 'highlight' : 'glow'
+      };
 
-      // Add as a transient stroke that fades out over 3 seconds
-      engine.addTransientStroke({
-        ...stroke,
-        maxAge: 3000,
-        createdAt: Date.now(),
-      });
-    } else {
-      engine.getRenderer().setActiveStroke(_e.pointerId, null);
+      if (settings.magicPenPermanent) {
+        engine.addObject(stroke);
+      } else {
+        const duration = settings.magicPenDuration > 0 ? settings.magicPenDuration : 9999999;
+        engine.addTransientStroke({
+          ...stroke,
+          maxAge: duration,
+          createdAt: Date.now(),
+        });
+      }
     }
+    
+    this.currentMode = null;
   }
 
   public onPointerCancel(
@@ -111,14 +190,37 @@ export class MagicPenTool implements ITool {
     _e: PointerEvent,
     engine: WhiteboardEngine
   ): void {
+    if (this.pressTimeout) clearTimeout(this.pressTimeout);
     this.activeStrokes.delete(_e.pointerId);
-    engine.getRulerSnapper().clearSnap(_e.pointerId);
     engine.getRenderer().setActiveStroke(_e.pointerId, null);
+    this.currentMode = null;
   }
 
   public onDeactivate(engine: WhiteboardEngine): void {
+    if (this.pressTimeout) clearTimeout(this.pressTimeout);
     this.activeStrokes.clear();
-    engine.getRulerSnapper().clearAll();
     engine.getRenderer().clearActiveStrokes();
+    engine.setSpotlight(null, 0);
+    engine.setMagnifier(null, 0);
+  }
+
+  private recognizeCircle(points: Point[]): boolean {
+    if (points.length < 10) return false;
+    const start = points[0];
+    const end = points[points.length - 1];
+    
+    // 1. Must close the loop (start and end close to each other)
+    const box = getPointsBoundingBox(points);
+    const maxDim = Math.max(box.width, box.height);
+    if (maxDim < 50) return false; // Too small to be a deliberate circle gesture
+    
+    const distance = distanceBetween(start, end);
+    if (distance > maxDim * 0.4) return false; // Loop not closed enough
+    
+    // 2. Aspect ratio should be somewhat square
+    const ratio = box.width / box.height;
+    if (ratio < 0.3 || ratio > 3.0) return false; // Too oval/squashed
+    
+    return true;
   }
 }

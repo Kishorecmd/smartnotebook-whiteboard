@@ -54,14 +54,10 @@ export class CanvasRenderer {
   private backgroundType: CanvasBackgroundType = 'plain';
 
   // Active in-progress freehand stroke state
-  private activeStrokes: Map<number, {
-    tool: string;
-    points: Point[];
-    color: string;
-    width: number;
-    opacity: number;
-    penId?: string;
-  }> = new Map();
+  private activeStrokes: Map<
+    number,
+    { tool: string; points: Point[]; color: string; width: number; opacity: number; penId?: string; penSettings?: any }
+  > = new Map();
 
   // Active in-progress shape state
   private activeShapeParams: ActiveShapeParams | null = null;
@@ -91,6 +87,9 @@ export class CanvasRenderer {
   private transientStrokes: FreehandStroke[] = [];
   private spotlightPosition: Point | null = null;
   private spotlightRadius: number = 150;
+  private magnifierPosition: Point | null = null;
+  private magnifierRadius: number = 150;
+  private magnifierZoom: number = 2.0;
   private snapIndicators: Point[] = [];
 
   constructor(options: CanvasRendererOptions) {
@@ -158,11 +157,17 @@ export class CanvasRenderer {
     }
   }
 
-  public setSpotlight(pos: Point | null, radius: number): void {
-    this.spotlightPosition = pos;
+  public setSpotlight(position: Point | null, radius: number): void {
+    this.spotlightPosition = position;
     this.spotlightRadius = radius;
-    this.isOverlayDirty = true;
-    this.requestRender();
+    this.requestOverlayRender();
+  }
+
+  public setMagnifier(position: Point | null, radius: number, zoom: number = 2.0): void {
+    this.magnifierPosition = position;
+    this.magnifierRadius = radius;
+    this.magnifierZoom = zoom;
+    this.requestOverlayRender();
   }
 
   public setSnapIndicators(indicators: Point[]): void {
@@ -178,6 +183,7 @@ export class CanvasRenderer {
     width: number;
     opacity: number;
     penId?: string;
+    penSettings?: any;
   } | null): void {
     if (!params || params.points.length === 0) {
       this.activeStrokes.delete(pointerId);
@@ -567,6 +573,63 @@ export class CanvasRenderer {
       ctx.fill();
     }
 
+    // Draw magnifier
+    if (this.magnifierPosition && this.canvas) {
+      const screenPos = this.transformer.worldToScreen(this.magnifierPosition);
+      const magRadius = this.magnifierRadius * this.transformer.getZoom() * this.dpr;
+      const mX = screenPos.x * this.dpr;
+      const mY = screenPos.y * this.dpr;
+
+      ctx.save();
+      // Drop shadow for the lens
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = 15 * this.dpr;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 10 * this.dpr;
+      ctx.beginPath();
+      ctx.arc(mX, mY, magRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent'; // reset
+
+      // Clip to lens circle
+      ctx.beginPath();
+      ctx.arc(mX, mY, magRadius, 0, Math.PI * 2);
+      ctx.clip();
+
+      // Clear the background so we aren't blending with anything underneath the overlay
+      ctx.clearRect(mX - magRadius, mY - magRadius, magRadius * 2, magRadius * 2);
+
+      // Draw magnified portion of the main canvas
+      const sx = mX - (magRadius / this.magnifierZoom);
+      const sy = mY - (magRadius / this.magnifierZoom);
+      const sw = (magRadius * 2) / this.magnifierZoom;
+      const sh = (magRadius * 2) / this.magnifierZoom;
+
+      ctx.drawImage(
+        this.canvas,
+        sx, sy, sw, sh,
+        mX - magRadius, mY - magRadius, magRadius * 2, magRadius * 2
+      );
+
+      // Inner shadow/glow to give glass effect
+      const gradient = ctx.createRadialGradient(mX - magRadius * 0.3, mY - magRadius * 0.3, 0, mX, mY, magRadius);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+      gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.0)');
+      gradient.addColorStop(0.8, 'rgba(0, 0, 0, 0.0)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(mX, mY, magRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Border
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4 * this.dpr;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.transformer.applyToContext(ctx, this.dpr);
 
@@ -580,7 +643,8 @@ export class CanvasRenderer {
           stroke.color,
           stroke.width,
           stroke.opacity,
-          stroke.penId
+          stroke.penId,
+          stroke.penSettings
         );
       }
     }

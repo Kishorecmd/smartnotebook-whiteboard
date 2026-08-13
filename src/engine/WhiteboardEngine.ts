@@ -99,6 +99,10 @@ export class WhiteboardEngine {
     textUnderline: false,
     textAlign: 'left',
     textColor: '#1e293b',
+    magicPenMode: 'ink',
+    magicPenDuration: 3000,
+    magicPenMagnification: 2.0,
+    magicPenPermanent: false,
   };
 
   // Document objects in current page
@@ -113,6 +117,8 @@ export class WhiteboardEngine {
   private transientStrokes: FreehandStroke[] = [];
   private spotlightPosition: Point | null = null;
   private spotlightRadius: number = 150;
+  private magnifierPosition: Point | null = null;
+  private magnifierRadius: number = 150;
   
   // Keyboard State
   private spacePressed: boolean = false;
@@ -400,6 +406,7 @@ export class WhiteboardEngine {
     this.renderer.setObjects(this.objects);
     this.renderer.setTransientStrokes(this.transientStrokes);
     this.renderer.setSpotlight(this.spotlightPosition, this.spotlightRadius);
+    this.renderer.setMagnifier(this.magnifierPosition, this.magnifierRadius);
   }
 
   public updateObjectsSilently(objects: WhiteboardObject[]): void {
@@ -434,6 +441,20 @@ export class WhiteboardEngine {
 
   public getSpotlightRadius(): number {
     return this.spotlightRadius;
+  }
+
+  public setMagnifier(position: Point | null, radius?: number, zoom?: number): void {
+    this.magnifierPosition = position;
+    if (radius !== undefined) {
+      this.magnifierRadius = radius;
+    }
+    const finalZoom = zoom ?? 2.0;
+    this.renderer.setMagnifier(this.magnifierPosition, this.magnifierRadius, finalZoom);
+    this.render();
+  }
+
+  public getMagnifierRadius(): number {
+    return this.magnifierRadius;
   }
 
   public setBackground(color: string, type: CanvasBackgroundType = 'plain'): void {

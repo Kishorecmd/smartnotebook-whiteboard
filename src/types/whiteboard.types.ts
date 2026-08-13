@@ -86,6 +86,8 @@ export interface FreehandStroke extends BaseWhiteboardObject {
     textureDensity?: number;
     roughness?: number;
     textureSeed?: number;
+    // Magic Pen specifics
+    magicEffect?: 'glow' | 'highlight';
   };
 }
 
@@ -227,6 +229,12 @@ export interface ToolSettings {
   /** Crayon specific overrides */
   penTextureDensityOverride?: number;
   penRoughnessOverride?: number;
+  
+  /** Magic Pen specific settings */
+  magicPenMode: 'ink' | 'spotlight' | 'magnifier' | 'highlight';
+  magicPenDuration: number; // 0 means 'Never'
+  magicPenMagnification: number; // e.g. 1.5, 2.0
+  magicPenPermanent: boolean;
 }
 
 export interface ObjectTransformState {

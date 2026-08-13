@@ -12,7 +12,15 @@ export class StrokeRenderer {
     if (!stroke.penId) return null;
     const base = PenRegistry.get(stroke.penId);
     if (!base) return null;
-    return stroke.penSettings ? ({ ...base, ...stroke.penSettings } as PenPreset) : base;
+    
+    let result = stroke.penSettings ? ({ ...base, ...stroke.penSettings } as PenPreset) : base;
+    
+    // Magic effect overrides
+    if (stroke.penSettings && stroke.penSettings.magicEffect === 'highlight') {
+      result = { ...result, renderMode: 'solid', compositeMode: 'multiply' };
+    }
+    
+    return result;
   }
 
   /**
@@ -131,15 +139,20 @@ export class StrokeRenderer {
     color: string,
     width: number,
     opacity: number,
-    penId?: string
+    penId?: string,
+    penSettings?: any
   ): void {
     if (points.length === 0) return;
 
     // Preview with the same renderer the committed stroke will use, so the line
     // does not change appearance the moment the pointer lifts.
     if (penId) {
-      const preset = PenRegistry.get(penId);
-      if (preset) {
+      const base = PenRegistry.get(penId);
+      if (base) {
+        let preset = penSettings ? ({ ...base, ...penSettings } as PenPreset) : base;
+        if (penSettings && penSettings.magicEffect === 'highlight') {
+          preset = { ...preset, renderMode: 'solid', compositeMode: 'multiply' };
+        }
         PenRenderer.render(ctx, preset, points, color, width, opacity);
         return;
       }

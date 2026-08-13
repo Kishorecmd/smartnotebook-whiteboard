@@ -160,6 +160,28 @@ export const DASHED_PEN: PenPreset = {
   legacyTool: 'pen',
 };
 
+export const MAGIC_PEN: PenPreset = {
+  id: 'magic',
+  name: 'Magic Pen',
+  type: 'special-pen' as any,
+  icon: '✨',
+  group: 'more',
+  color: null,
+  size: 8,
+  opacity: 1,
+  smoothing: 'high',
+  pressureSensitivity: 'medium',
+  renderMode: 'glow',
+  compositeMode: 'source-over',
+  lineCap: 'round',
+  minWidthRatio: 0.5,
+  maxWidthRatio: 1.5,
+  sizePresets: [4, 8, 12, 16],
+  supportsSnapping: true,
+  availableInChildMode: false,
+  legacyTool: 'magic_pen',
+};
+
 export const MORE_PENS: PenPreset[] = [
   FOUNTAIN_PEN,
   BRUSH_PEN,
@@ -168,4 +190,5 @@ export const MORE_PENS: PenPreset[] = [
   GLOW_PEN,
   DOTTED_PEN,
   DASHED_PEN,
+  MAGIC_PEN,
 ];

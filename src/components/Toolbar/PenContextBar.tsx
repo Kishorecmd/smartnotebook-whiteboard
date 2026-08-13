@@ -155,6 +155,57 @@ export const PenContextBar: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Magic Pen specific presets */}
+      {preset.id === 'magic' && (
+        <div className="mt-2 flex flex-col gap-2 rounded-xl bg-slate-800/50 p-2 border border-slate-700/50">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-400">Mode</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            {['ink', 'spotlight', 'magnifier', 'highlight'].map((mode) => (
+              <button
+                key={mode}
+                onClick={() => updateToolSettings({ magicPenMode: mode as any })}
+                className={`rounded border border-slate-700 py-1.5 text-[10px] font-bold capitalize transition-colors ${
+                  toolSettings.magicPenMode === mode ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-[11px] font-semibold text-slate-400">Duration</span>
+          </div>
+          <div className="grid grid-cols-5 gap-1">
+            {[1000, 2000, 3000, 5000, 0].map((duration) => (
+              <button
+                key={duration}
+                onClick={() => updateToolSettings({ magicPenDuration: duration })}
+                className={`rounded border border-slate-700 py-1.5 text-[10px] font-bold transition-colors ${
+                  toolSettings.magicPenDuration === duration ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {duration === 0 ? 'Never' : `${duration / 1000}s`}
+              </button>
+            ))}
+          </div>
+          
+          <div className="flex items-center justify-between mt-1 pt-2 border-t border-slate-700/50">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={toolSettings.magicPenPermanent || false} 
+                onChange={(e) => updateToolSettings({ magicPenPermanent: e.target.checked })}
+                className="w-3 h-3 accent-indigo-500 rounded bg-slate-800 border-slate-600"
+              />
+              <span className="text-[11px] font-semibold text-slate-300">Keep Ink Permanent</span>
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
