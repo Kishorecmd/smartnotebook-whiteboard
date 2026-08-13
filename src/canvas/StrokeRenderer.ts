@@ -1,12 +1,33 @@
 import { FreehandStroke, Point } from '../types';
 import { getMidPoint } from '../utils';
+import { PenRegistry, PenRenderer, PenPreset } from '../drawing/pens';
 
 export class StrokeRenderer {
+  /**
+   * Builds the preset a stroke was drawn with, overlaid with the settings that
+   * were captured at the time, so editing a preset later never changes existing
+   * work.
+   */
+  private static resolvePreset(stroke: FreehandStroke): PenPreset | null {
+    if (!stroke.penId) return null;
+    const base = PenRegistry.get(stroke.penId);
+    if (!base) return null;
+    return stroke.penSettings ? ({ ...base, ...stroke.penSettings } as PenPreset) : base;
+  }
+
   /**
    * Renders a committed stroke object onto the canvas 2D context.
    */
   public static renderStroke(ctx: CanvasRenderingContext2D, stroke: FreehandStroke): void {
     if (!stroke.visible || stroke.points.length === 0) return;
+
+    // Strokes drawn with the pen family render through it. Anything older has no
+    // penId and falls through to the original code below, unchanged.
+    const preset = this.resolvePreset(stroke);
+    if (preset) {
+      PenRenderer.render(ctx, preset, stroke.points, stroke.color, stroke.width, stroke.opacity);
+      return;
+    }
 
     ctx.save();
     
@@ -109,9 +130,20 @@ export class StrokeRenderer {
     points: Point[],
     color: string,
     width: number,
-    opacity: number
+    opacity: number,
+    penId?: string
   ): void {
     if (points.length === 0) return;
+
+    // Preview with the same renderer the committed stroke will use, so the line
+    // does not change appearance the moment the pointer lifts.
+    if (penId) {
+      const preset = PenRegistry.get(penId);
+      if (preset) {
+        PenRenderer.render(ctx, preset, points, color, width, opacity);
+        return;
+      }
+    }
 
     ctx.save();
     ctx.globalAlpha = opacity;

@@ -8,6 +8,9 @@ import { ColorPalette } from './ColorPalette';
 import { StrokeWidthPicker } from './StrokeWidthPicker';
 import { ShapePicker } from './ShapePicker';
 import { TextPicker } from './TextPicker';
+import { PenFamilyPicker } from './PenFamilyPicker';
+import { PenContextBar } from './PenContextBar';
+import { PenRegistry } from '../../drawing/pens';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService } from '../../services/FileImportService';
 import { visibleWorldBox } from '../../utils';
@@ -28,7 +31,10 @@ export const MainToolbar: React.FC = () => {
     engine,
   } = useWhiteboardStore();
 
-  const [activePopover, setActivePopover] = useState<'none' | 'color' | 'width' | 'shape' | 'text' | 'media'>('none');
+  const [activePopover, setActivePopover] = useState<
+    'none' | 'color' | 'width' | 'shape' | 'text' | 'media' | 'pens' | 'penSettings'
+  >('none');
+  const activePen = PenRegistry.getOrDefault(toolSettings.activePenId);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -194,6 +200,10 @@ export const MainToolbar: React.FC = () => {
           />
         )}
 
+        {activePopover === 'pens' && <PenFamilyPicker />}
+
+        {activePopover === 'penSettings' && <PenContextBar />}
+
         {activePopover === 'width' && (
           <StrokeWidthPicker
             tool={toolSettings.tool}
@@ -264,16 +274,23 @@ export const MainToolbar: React.FC = () => {
 
         {/* Drawing Tools */}
         <div className="flex items-center gap-1">
+          {/* Pen family. The button stays a single pen; the twelve pens live in
+              the selector so the main toolbar stays clean. */}
           <div className="flex items-center">
             <ToolButton
               icon={<Pen className="w-6 h-6" />}
-              label="Pen"
+              label={toolSettings.tool === 'pen' ? activePen.name : 'Pen'}
               isActive={toolSettings.tool === 'pen'}
-              onClick={() => handleSelectTool('pen')}
+              onClick={() => {
+                if (toolSettings.tool !== 'pen') setTool('pen');
+                togglePopover('pens');
+              }}
             />
             {toolSettings.tool === 'pen' && (
-              <button 
-                onClick={() => togglePopover('width')}
+              <button
+                onClick={() => togglePopover('penSettings')}
+                title="Pen settings"
+                aria-label="Pen settings"
                 className="flex items-center justify-center w-6 h-10 -ml-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-r-lg z-10"
               >
                 <ChevronRight className="w-4 h-4 rotate-90" />

@@ -93,9 +93,17 @@ export interface PageSlice {
 
 export interface ToolSlice {
   toolSettings: ToolSettings;
+  /** Set briefly when a pen is chosen, so the UI can flash its name. */
+  lastSelectedPenName: string | null;
 
   setTool: (tool: ToolType) => void;
   updateToolSettings: (settings: Partial<ToolSettings>) => void;
+
+  setActivePen: (penId: string) => void;
+  setPenSize: (size: number) => void;
+  setPenOpacity: (opacity: number) => void;
+  setPenColor: (color: string) => void;
+  clearLastSelectedPenName: () => void;
 }
 
 /** User preferences that persist to localStorage. */

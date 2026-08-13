@@ -212,29 +212,31 @@ export class RulerSnapper {
     const localPoint = rotatePoint(p, center, -(protractor.rotation || 0));
 
     const selectedAngle = protractor.toolData?.selectedAngle;
-    
+
+    // rotatePoint returns a world-space point rotated about the crosshair, so it
+    // has to be made relative to the crosshair before projecting. Without this the
+    // ray was anchored at the world origin and a point sitting exactly on the
+    // chosen angle measured hundreds of units away, so it never snapped.
+    const rel = { x: localPoint.x - center.x, y: localPoint.y - center.y };
+
     // Straight line projection based on selected angle ray
     if (selectedAngle !== undefined) {
-      // The ray goes outwards from center (0,0) at selectedAngle.
-      // We want to project localPoint onto this ray.
       const dx = Math.cos(selectedAngle);
       const dy = Math.sin(selectedAngle);
-      
+
       // Dot product to find distance along ray
-      let t = localPoint.x * dx + localPoint.y * dy;
-      
+      let t = rel.x * dx + rel.y * dy;
+
       // If we are strictly projecting to a ray (not a full line), t should be >= 0
       if (t < 0) t = 0; // Constrain strictly to the ray starting from center!
 
+      const projectedRel = { x: t * dx, y: t * dy };
       const projectedLocal = {
-        x: t * dx,
-        y: t * dy
+        x: projectedRel.x + center.x,
+        y: projectedRel.y + center.y,
       };
 
-      const distance = Math.sqrt(
-        (localPoint.x - projectedLocal.x) ** 2 +
-        (localPoint.y - projectedLocal.y) ** 2
-      );
+      const distance = Math.hypot(rel.x - projectedRel.x, rel.y - projectedRel.y);
 
       return {
         localPoint,
@@ -244,12 +246,12 @@ export class RulerSnapper {
       };
     }
 
-    // Default snap to baseline if no angle selected yet
-    const straightDistance = Math.abs(localPoint.y - 30);
-    if (localPoint.y >= 0 && straightDistance < 50) {
+    // Default snap to the baseline through the crosshair if no angle is chosen yet
+    const straightDistance = Math.abs(rel.y);
+    if (straightDistance < 50) {
       const projectedLocal = {
         x: localPoint.x,
-        y: 30
+        y: center.y,
       };
       return {
         localPoint,

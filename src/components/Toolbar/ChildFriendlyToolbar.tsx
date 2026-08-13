@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pen, Eraser, Pen as Crayon, Undo2, Redo2 } from 'lucide-react';
+import { Eraser, Undo2, Redo2 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
+import { PenRegistry } from '../../drawing/pens';
 import { ToolType } from '../../types';
 
 const COLORS = [
@@ -14,7 +15,12 @@ const COLORS = [
 ];
 
 export const ChildFriendlyToolbar: React.FC = () => {
-  const { toolSettings, setTool, updateToolSettings, undo, redo, history } = useWhiteboardStore();
+  const { toolSettings, setTool, updateToolSettings, undo, redo, history, setActivePen } =
+    useWhiteboardStore();
+
+  // Child mode offers the gentler pens only, chosen through the same registry
+  // the teacher selector uses.
+  const childPens = PenRegistry.getForMode(true);
 
   const handleSelectTool = (type: ToolType) => {
     setTool(type);
@@ -25,27 +31,34 @@ export const ChildFriendlyToolbar: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4 p-4 bg-white/90 backdrop-blur-3xl border-4 border-slate-200 rounded-[2.5rem] shadow-2xl pointer-events-auto">
-      {/* Tools Section */}
-      <div className="flex justify-center gap-3">
-        <button
-          onClick={() => handleSelectTool('pen')}
-          className={`relative p-4 rounded-3xl transition-transform ${activeTool === 'pen' ? 'scale-110 bg-blue-100 border-4 border-blue-400' : 'bg-slate-50 border-2 border-slate-200 hover:scale-105'}`}
-        >
-          <Pen className={`w-8 h-8 ${activeTool === 'pen' ? 'text-blue-500' : 'text-slate-500'}`} />
-        </button>
-
-        <button
-          onClick={() => handleSelectTool('crayon')}
-          className={`relative p-4 rounded-3xl transition-transform ${activeTool === 'crayon' ? 'scale-110 bg-orange-100 border-4 border-orange-400' : 'bg-slate-50 border-2 border-slate-200 hover:scale-105'}`}
-        >
-          <Crayon className={`w-8 h-8 ${activeTool === 'crayon' ? 'text-orange-500' : 'text-slate-500'}`} />
-        </button>
+      {/* Pens — big targets, simple names, gentle pens only */}
+      <div className="flex flex-wrap justify-center gap-3 max-w-[320px]">
+        {childPens.map((pen) => {
+          const isActive = activeTool === 'pen' && toolSettings.activePenId === pen.id;
+          return (
+            <button
+              key={pen.id}
+              onClick={() => setActivePen(pen.id)}
+              title={pen.name}
+              aria-label={pen.name}
+              className={`relative flex min-h-[72px] min-w-[72px] flex-col items-center justify-center gap-1 rounded-3xl transition-transform ${
+                isActive
+                  ? 'scale-110 bg-blue-100 border-4 border-blue-400'
+                  : 'bg-slate-50 border-2 border-slate-200 hover:scale-105'
+              }`}
+            >
+              <span className="text-3xl leading-none">{pen.icon}</span>
+              <span className="text-[10px] font-bold text-slate-600">{pen.name}</span>
+            </button>
+          );
+        })}
 
         <button
           onClick={() => handleSelectTool('eraser')}
-          className={`relative p-4 rounded-3xl transition-transform ${activeTool === 'eraser' ? 'scale-110 bg-pink-100 border-4 border-pink-400' : 'bg-slate-50 border-2 border-slate-200 hover:scale-105'}`}
+          className={`relative flex min-h-[72px] min-w-[72px] flex-col items-center justify-center gap-1 rounded-3xl transition-transform ${activeTool === 'eraser' ? 'scale-110 bg-pink-100 border-4 border-pink-400' : 'bg-slate-50 border-2 border-slate-200 hover:scale-105'}`}
         >
           <Eraser className={`w-8 h-8 ${activeTool === 'eraser' ? 'text-pink-500' : 'text-slate-500'}`} />
+          <span className="text-[10px] font-bold text-slate-600">Eraser</span>
         </button>
       </div>
 

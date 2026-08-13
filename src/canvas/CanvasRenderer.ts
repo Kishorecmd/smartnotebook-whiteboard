@@ -60,6 +60,7 @@ export class CanvasRenderer {
     color: string;
     width: number;
     opacity: number;
+    penId?: string;
   }> = new Map();
 
   // Active in-progress shape state
@@ -176,6 +177,7 @@ export class CanvasRenderer {
     color: string;
     width: number;
     opacity: number;
+    penId?: string;
   } | null): void {
     if (!params || params.points.length === 0) {
       this.activeStrokes.delete(pointerId);
@@ -577,7 +579,8 @@ export class CanvasRenderer {
           stroke.points,
           stroke.color,
           stroke.width,
-          stroke.opacity
+          stroke.opacity,
+          stroke.penId
         );
       }
     }

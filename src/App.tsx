@@ -15,6 +15,7 @@ import {
   HandwritingRecognitionModal,
   PdfImportModal,
   PresenterToolbar,
+  PenNameToast,
 } from './components';
 import { TeachingToolsPanel, TeachingToolsOverlay, initializeTeachingTools } from './teaching-tools';
 import { useWhiteboardStore } from './store';
@@ -87,6 +88,7 @@ export const App: React.FC = () => {
             ) : (
               <MainToolbar />
             )}
+            <PenNameToast />
             <PageNavigationFooter />
             <ZoomControls />
             <PageDrawer />

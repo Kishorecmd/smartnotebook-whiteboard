@@ -7,7 +7,7 @@ import { TouchActionManager } from '../input/TouchActionManager';
 import { RulerSnapper } from './RulerSnapper';
 import { StorageService } from '../services/StorageService';
 import { ITool } from './tools/ITool';
-import { PenTool } from './tools/PenTool';
+import { PenFamilyTool } from './tools/PenFamilyTool';
 import { MarkerTool } from './tools/MarkerTool';
 import { EraserTool } from './tools/EraserTool';
 import { ShapeTool } from './tools/ShapeTool';
@@ -75,6 +75,7 @@ export class WhiteboardEngine {
   // Tool settings
   private settings: ToolSettings = {
     tool: 'pen',
+    activePenId: 'fine',
     color: '#1e293b',
     penWidth: 4,
     pencilWidth: 3,
@@ -182,7 +183,9 @@ export class WhiteboardEngine {
   }
 
   private registerTools(): void {
-    this.tools.set('pen', new PenTool());
+    // The pen slot is now the whole pen family; behaviour comes from the active
+    // PenPreset rather than from this registration.
+    this.tools.set('pen', new PenFamilyTool());
     this.tools.set('marker', new MarkerTool());
     this.tools.set('eraser', new EraserTool());
     this.tools.set('shape', new ShapeTool());

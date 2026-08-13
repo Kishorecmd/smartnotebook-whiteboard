@@ -47,6 +47,11 @@ export interface BaseWhiteboardObject {
 
 export interface FreehandStroke extends BaseWhiteboardObject {
   type: 'stroke';
+  /**
+   * Legacy tool family. Always written, including for the newer pens, so a
+   * document stays readable by older builds and by the existing eraser,
+   * selection and export paths.
+   */
   tool: 'pen' | 'marker' | 'pencil' | 'brush' | 'crayon' | 'highlighter';
   points: Point[];
   color: string;
@@ -54,6 +59,30 @@ export interface FreehandStroke extends BaseWhiteboardObject {
   opacity: number;
   smooth?: boolean;
   maxAge?: number;
+
+  /**
+   * Pen family id, e.g. 'fountain'. Absent on strokes drawn before the pen
+   * system existed, which render through the original code path unchanged.
+   */
+  penId?: string;
+  /**
+   * Resolved appearance captured at draw time. A stroke keeps how it looked even
+   * if the preset is later edited or the active pen is changed.
+   */
+  penSettings?: {
+    smoothing?: 'off' | 'low' | 'medium' | 'high';
+    pressureSensitivity?: 'off' | 'low' | 'medium' | 'high';
+    spacing?: number;
+    dashLength?: number;
+    texture?: number;
+    nibAngle?: number;
+    glowIntensity?: number;
+    minWidthRatio?: number;
+    maxWidthRatio?: number;
+    compositeMode?: string;
+    lineCap?: string;
+    renderMode?: string;
+  };
 }
 
 export interface ShapeObject extends BaseWhiteboardObject {
@@ -180,6 +209,17 @@ export interface ToolSettings {
   textUnderline: boolean;
   textAlign: TextAlign;
   textColor: string;
+
+  /** Active pen family preset id, e.g. 'fine' or 'highlighter'. */
+  activePenId: string;
+  /**
+   * Per-pen overrides. Undefined means "use the preset value", which is what
+   * lets a teacher tweak the marker without disturbing the other pens.
+   */
+  penSizeOverride?: number;
+  penOpacityOverride?: number;
+  /** Set when a colour-pinned pen (highlighter, glow) has its colour changed. */
+  penColorOverride?: string;
 }
 
 export interface ObjectTransformState {

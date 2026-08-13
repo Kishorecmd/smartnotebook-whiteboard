@@ -44,6 +44,26 @@ export const FreehandStrokeSchema = BaseWhiteboardObjectSchema.extend({
   width: z.number().positive(),
   opacity: z.number().min(0).max(1),
   smooth: z.boolean().optional(),
+  // Pen family. Optional so documents written before the pen system still load,
+  // and permissive so a board saved with a future custom pen is not rejected.
+  penId: z.string().optional(),
+  penSettings: z
+    .object({
+      smoothing: z.string().optional(),
+      pressureSensitivity: z.string().optional(),
+      spacing: z.number().optional(),
+      dashLength: z.number().optional(),
+      texture: z.number().optional(),
+      nibAngle: z.number().optional(),
+      glowIntensity: z.number().optional(),
+      minWidthRatio: z.number().optional(),
+      maxWidthRatio: z.number().optional(),
+      compositeMode: z.string().optional(),
+      lineCap: z.string().optional(),
+      renderMode: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
 });
 
 export const ShapeObjectSchema = BaseWhiteboardObjectSchema.extend({
