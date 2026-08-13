@@ -91,15 +91,24 @@ export interface PageSlice {
   setPageObjects: (pageIndex: number, objects: WhiteboardObject[]) => void;
 }
 
+/** Per-pen tweaks, remembered so each pen keeps the size it was last used at. */
+export type PenOverrides = Record<string, { size?: number; opacity?: number; color?: string }>;
+
 export interface ToolSlice {
   toolSettings: ToolSettings;
   /** Set briefly when a pen is chosen, so the UI can flash its name. */
   lastSelectedPenName: string | null;
+  penOverrides: PenOverrides;
 
   setTool: (tool: ToolType) => void;
   updateToolSettings: (settings: Partial<ToolSettings>) => void;
 
   setActivePen: (penId: string) => void;
+  /**
+   * Activates the remembered pen without opening the selector. Deliberately not
+   * named useLastPen: a `use` prefix marks a React Hook and trips rules-of-hooks.
+   */
+  activateLastPen: () => void;
   setPenSize: (size: number) => void;
   setPenOpacity: (opacity: number) => void;
   setPenColor: (color: string) => void;

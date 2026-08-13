@@ -29,10 +29,11 @@ export const MainToolbar: React.FC = () => {
     setYouTubeDialogOpen,
     setPdfImportModalOpen,
     engine,
+    activateLastPen,
   } = useWhiteboardStore();
 
   const [activePopover, setActivePopover] = useState<
-    'none' | 'color' | 'width' | 'shape' | 'text' | 'media' | 'pens' | 'penSettings'
+    'none' | 'color' | 'width' | 'shape' | 'text' | 'media' | 'pens'
   >('none');
   const activePen = PenRegistry.getOrDefault(toolSettings.activePenId);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
@@ -200,9 +201,14 @@ export const MainToolbar: React.FC = () => {
           />
         )}
 
-        {activePopover === 'pens' && <PenFamilyPicker />}
-
-        {activePopover === 'penSettings' && <PenContextBar />}
+        {/* Choosing a pen and adjusting it live in one popover, so the contextual
+            controls appear right where the pen was just selected. */}
+        {activePopover === 'pens' && (
+          <div className="flex flex-col items-center gap-2">
+            <PenFamilyPicker />
+            <PenContextBar />
+          </div>
+        )}
 
         {activePopover === 'width' && (
           <StrokeWidthPicker
@@ -274,28 +280,32 @@ export const MainToolbar: React.FC = () => {
 
         {/* Drawing Tools */}
         <div className="flex items-center gap-1">
-          {/* Pen family. The button stays a single pen; the twelve pens live in
-              the selector so the main toolbar stays clean. */}
+          {/* Split pen button. Tapping the pen writes immediately with whichever
+              pen was last used; the chevron opens the family. A teacher who always
+              uses one pen never has to open the menu. */}
           <div className="flex items-center">
             <ToolButton
               icon={<Pen className="w-6 h-6" />}
-              label={toolSettings.tool === 'pen' ? activePen.name : 'Pen'}
+              label={activePen.name}
               isActive={toolSettings.tool === 'pen'}
               onClick={() => {
-                if (toolSettings.tool !== 'pen') setTool('pen');
-                togglePopover('pens');
+                setActivePopover('none');
+                activateLastPen();
               }}
             />
-            {toolSettings.tool === 'pen' && (
-              <button
-                onClick={() => togglePopover('penSettings')}
-                title="Pen settings"
-                aria-label="Pen settings"
-                className="flex items-center justify-center w-6 h-10 -ml-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-r-lg z-10"
-              >
-                <ChevronRight className="w-4 h-4 rotate-90" />
-              </button>
-            )}
+            <button
+              onClick={() => togglePopover('pens')}
+              title={`Choose pen (currently ${activePen.name})`}
+              aria-label="Choose pen"
+              aria-expanded={activePopover === 'pens'}
+              className={`flex items-center justify-center w-7 h-10 -ml-1 rounded-r-lg z-10 transition-colors ${
+                activePopover === 'pens'
+                  ? 'text-white bg-slate-700'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <ChevronRight className="w-4 h-4 rotate-90" />
+            </button>
           </div>
           <div className="flex items-center">
             <ToolButton
