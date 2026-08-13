@@ -55,16 +55,16 @@ export const CRAYON_PEN: PenPreset = {
   group: 'more',
   color: null,
   size: 12,
-  opacity: 0.75,
+  opacity: 1, // Opacity is handled by the texture and overlap naturally
   smoothing: 'low',
-  pressureSensitivity: 'low',
-  renderMode: 'textured',
+  pressureSensitivity: 'medium', // Enable pressure sensitivity to affect line width
+  renderMode: 'crayon',
   compositeMode: 'source-over',
   lineCap: 'round',
-  // Restrained on purpose: waxy, not noisy.
-  texture: 0.5,
+  textureDensity: 0.65, // Classic crayon
+  roughness: 0.5,       // Classic crayon
   minWidthRatio: 0.85,
-  maxWidthRatio: 1.15,
+  maxWidthRatio: 1.25,
   sizePresets: [8, 12, 20, 30],
   supportsSnapping: true,
   availableInChildMode: true,

@@ -40,6 +40,12 @@ export class PenFamilyTool implements ITool {
     const size = settings.penSizeOverride ?? preset.size;
     const opacity = settings.penOpacityOverride ?? preset.opacity;
 
+    // Apply Crayon specific overrides if the preset is a crayon
+    if (preset.renderMode === 'crayon') {
+      preset.textureDensity = settings.penTextureDensityOverride ?? preset.textureDensity;
+      preset.roughness = settings.penRoughnessOverride ?? preset.roughness;
+    }
+
     return { preset, color, size, opacity };
   }
 
@@ -191,6 +197,9 @@ export class PenFamilyTool implements ITool {
         compositeMode: active.preset.compositeMode,
         lineCap: active.preset.lineCap,
         renderMode: active.preset.renderMode,
+        textureDensity: active.preset.textureDensity,
+        roughness: active.preset.roughness,
+        textureSeed: active.preset.textureSeed,
       },
     };
 

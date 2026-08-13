@@ -82,6 +82,10 @@ export interface FreehandStroke extends BaseWhiteboardObject {
     compositeMode?: string;
     lineCap?: string;
     renderMode?: string;
+    // Crayon specifics
+    textureDensity?: number;
+    roughness?: number;
+    textureSeed?: number;
   };
 }
 
@@ -220,6 +224,9 @@ export interface ToolSettings {
   penOpacityOverride?: number;
   /** Set when a colour-pinned pen (highlighter, glow) has its colour changed. */
   penColorOverride?: string;
+  /** Crayon specific overrides */
+  penTextureDensityOverride?: number;
+  penRoughnessOverride?: number;
 }
 
 export interface ObjectTransformState {

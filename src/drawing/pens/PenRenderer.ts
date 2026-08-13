@@ -8,6 +8,7 @@ import {
   tracePath,
   StrokeVertex,
 } from './PenEngine';
+import { CrayonRenderer } from './crayon/CrayonRenderer';
 
 /**
  * Draws a pen stroke. One entry point, `render`, used for both the committed
@@ -53,6 +54,9 @@ export class PenRenderer {
         break;
       case 'textured':
         this.renderTextured(ctx, preset, smoothed, size, opacity);
+        break;
+      case 'crayon':
+        CrayonRenderer.render(ctx, preset, smoothed, color, size, opacity);
         break;
       case 'glow':
         this.renderGlow(ctx, preset, smoothed, color, size, opacity);

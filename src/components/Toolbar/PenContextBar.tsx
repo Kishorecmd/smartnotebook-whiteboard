@@ -16,11 +16,13 @@ export const PenContextBar: React.FC = () => {
   const setPenColor = useWhiteboardStore((s) => s.setPenColor);
   const recentColors = useWhiteboardStore((s) => s.recentColors);
   const addRecentColor = useWhiteboardStore((s) => s.addRecentColor);
+  const updateToolSettings = useWhiteboardStore((s) => s.updateToolSettings);
 
   const preset = PenRegistry.getOrDefault(toolSettings.activePenId);
   const size = toolSettings.penSizeOverride ?? preset.size;
   const opacity = toolSettings.penOpacityOverride ?? preset.opacity;
   const color = toolSettings.penColorOverride || preset.color || toolSettings.color;
+  const textureDensity = toolSettings.penTextureDensityOverride ?? preset.textureDensity ?? 0.65;
 
   const sizes = preset.sizePresets && preset.sizePresets.length ? preset.sizePresets : SIZE_PRESETS;
   const swatches = preset.colorPresets && preset.colorPresets.length
@@ -116,6 +118,41 @@ export const PenContextBar: React.FC = () => {
             className="w-full accent-indigo-500"
             aria-label="Pen opacity"
           />
+        </div>
+      )}
+
+      {/* Crayon specific presets */}
+      {preset.renderMode === 'crayon' && (
+        <div className="mt-2 flex flex-col gap-2 rounded-xl bg-slate-800/50 p-2 border border-slate-700/50">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-400">Texture Preset</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => updateToolSettings({ penTextureDensityOverride: 0.3, penRoughnessOverride: 0.8 })}
+              className={`rounded border border-slate-700 py-1.5 text-[10px] font-bold transition-colors ${
+                textureDensity <= 0.4 ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              Soft
+            </button>
+            <button
+              onClick={() => updateToolSettings({ penTextureDensityOverride: 0.65, penRoughnessOverride: 0.5 })}
+              className={`rounded border border-slate-700 py-1.5 text-[10px] font-bold transition-colors ${
+                textureDensity > 0.4 && textureDensity < 0.8 ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              Classic
+            </button>
+            <button
+              onClick={() => updateToolSettings({ penTextureDensityOverride: 0.9, penRoughnessOverride: 0.2 })}
+              className={`rounded border border-slate-700 py-1.5 text-[10px] font-bold transition-colors ${
+                textureDensity >= 0.8 ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              Heavy
+            </button>
+          </div>
         </div>
       )}
     </div>

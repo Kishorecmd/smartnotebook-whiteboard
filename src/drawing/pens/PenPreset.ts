@@ -35,7 +35,8 @@ export type PenGroup = 'quick' | 'more';
 export type PenRenderMode =
   | 'solid' // one smooth pass, constant width
   | 'tapered' // width follows pressure, drawn segment by segment
-  | 'textured' // a few deterministic offset passes (pencil, crayon)
+  | 'textured' // a few deterministic offset passes (pencil)
+  | 'crayon' // procedural textured stroke masked by path
   | 'nib' // width follows stroke direction against a fixed nib angle
   | 'glow' // bright core over a blurred halo
   | 'dotted'
@@ -68,6 +69,12 @@ export interface PenPreset {
   dashLength?: number;
   /** Texture strength 0..1 for the textured pens. */
   texture?: number;
+  /** Crayon specific: texture density (wax coverage) 0..1 */
+  textureDensity?: number;
+  /** Crayon specific: edge roughness 0..1 */
+  roughness?: number;
+  /** Crayon specific: stable texture seed */
+  textureSeed?: number;
   /** Nib angle in radians for the calligraphy pen. */
   nibAngle?: number;
   /** Halo size relative to stroke width, for the glow pen. */
