@@ -2,7 +2,7 @@ export * from './WhiteboardEngine';
 export * from './CommandManager';
 export * from './HitTest';
 export * from './tools/ITool';
-export * from './tools/PenTool';
+export * from './tools/PenFamilyTool';
 export * from './tools/MarkerTool';
 export * from './tools/EraserTool';
 export * from './tools/PanTool';

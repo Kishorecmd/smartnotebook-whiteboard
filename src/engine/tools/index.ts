@@ -1,5 +1,5 @@
 export * from './ITool';
-export * from './PenTool';
+export * from './PenFamilyTool';
 export * from './MarkerTool';
 export * from './EraserTool';
 export * from './ShapeTool';
