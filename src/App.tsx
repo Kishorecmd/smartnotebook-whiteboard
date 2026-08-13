@@ -2,10 +2,8 @@ import React, { useEffect } from 'react';
 import {
   WhiteboardCanvas,
   HeaderBar,
-  MainToolbar,
+  BottomDock,
   ChildFriendlyToolbar,
-  PageNavigationFooter,
-  ZoomControls,
   PageDrawer,
   ExportModal,
   SavedDocumentsModal,
@@ -86,11 +84,9 @@ export const App: React.FC = () => {
                 <ChildFriendlyToolbar />
               </div>
             ) : (
-              <MainToolbar />
+              <BottomDock />
             )}
             <PenNameToast />
-            <PageNavigationFooter />
-            <ZoomControls />
             <PageDrawer />
           </>
         ) : (

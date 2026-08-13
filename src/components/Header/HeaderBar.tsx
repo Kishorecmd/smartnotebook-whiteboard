@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   FilePlus,
   FolderOpen,
-  Save,
   Download,
   HelpCircle,
   Check,
   Edit2,
   Image as ImageIcon,
   Play,
-  Smile
+  Smile,
+  MoreVertical,
+  Menu,
+  Cloud,
+  CloudUpload,
+  RefreshCw
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService, FileService } from '../../services';
@@ -37,7 +41,25 @@ export const HeaderBar: React.FC = () => {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(doc.title);
-  const [saveToast, setSaveToast] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isDirty) setSaveStatus('unsaved');
+    else setSaveStatus('saved');
+  }, [isDirty]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSaveTitle = () => {
     if (titleInput.trim()) {
@@ -49,9 +71,9 @@ export const HeaderBar: React.FC = () => {
   };
 
   const handleSave = async () => {
+    setSaveStatus('saving');
     await saveCurrentDocument();
-    setSaveToast(true);
-    setTimeout(() => setSaveToast(false), 2000);
+    setSaveStatus('saved');
   };
 
   const toggleFullscreen = () => {
@@ -67,8 +89,9 @@ export const HeaderBar: React.FC = () => {
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !engine) return;
+    
+    setIsMoreMenuOpen(false);
 
-    // We will place it at the center of the viewport
     const centerPoint: Point = engine.getTransformer().screenToWorld({
       x: engine.getCanvas().width / 2,
       y: engine.getCanvas().height / 2,
@@ -99,21 +122,102 @@ export const HeaderBar: React.FC = () => {
         }
       }
     }
-
-    // Reset input
     e.target.value = '';
   };
 
+  const renderSaveStatus = () => {
+    if (saveStatus === 'saving') {
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-800/50 rounded-md text-xs text-slate-400">
+          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+          <span className="hidden sm:inline">Saving...</span>
+        </div>
+      );
+    }
+    if (saveStatus === 'unsaved') {
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 rounded-md text-xs text-amber-400 cursor-pointer hover:bg-amber-500/20" onClick={handleSave}>
+          <CloudUpload className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Unsaved</span>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 rounded-md text-xs text-emerald-400">
+        <Cloud className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Saved</span>
+      </div>
+    );
+  };
+
+  // Build the actions dropdown menu
+  const MoreMenu = () => (
+    <div className="absolute top-full right-2 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-2 flex flex-col z-50 overflow-hidden">
+      <button onClick={() => { setIsMoreMenuOpen(false); setExportModalOpen(true); }} className="sm:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <Download className="w-4 h-4 text-primary-400" /> Export Options
+      </button>
+      
+      <button onClick={async () => {
+        setIsMoreMenuOpen(false);
+        try {
+          const doc = await FileService.importFromJHW();
+          loadDocumentFromObject(doc);
+        } catch (err) {}
+      }} className="lg:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <FolderOpen className="w-4 h-4 text-purple-400" /> Load .JHW
+      </button>
+
+      <button onClick={() => { setIsMoreMenuOpen(false); newDocument(); }} className="lg:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <FilePlus className="w-4 h-4 text-primary-400" /> New Whiteboard
+      </button>
+      
+      <button onClick={() => { setIsMoreMenuOpen(false); setSavedDocsModalOpen(true); }} className="lg:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <FolderOpen className="w-4 h-4 text-amber-400" /> Saved Boards
+      </button>
+
+      <button onClick={() => { setIsMoreMenuOpen(false); toggleFullscreen(); }} className="sm:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <Play className="w-4 h-4 text-emerald-400" /> Present
+      </button>
+
+      <div className="h-px bg-slate-700/50 my-1 lg:hidden" />
+
+      <label className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left cursor-pointer">
+        <ImageIcon className="w-4 h-4 text-pink-400" /> Import Image/PDF
+        <input type="file" accept="image/*,application/pdf" multiple onChange={handleImportFile} className="hidden" />
+      </label>
+
+      <button onClick={() => { setIsMoreMenuOpen(false); setChildFriendlyMode(!childFriendlyMode); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <Smile className="w-4 h-4 text-yellow-400" /> Kids Mode {childFriendlyMode ? '(On)' : '(Off)'}
+      </button>
+
+      <div className="h-px bg-slate-700/50 my-1" />
+
+      <button onClick={() => { setIsMoreMenuOpen(false); setKeyboardShortcutsOpen(true); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <HelpCircle className="w-4 h-4 text-slate-400" /> Help & Shortcuts
+      </button>
+    </div>
+  );
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-2.5 bg-slate-900/85 backdrop-blur-xl border-b border-slate-800/80 select-none shadow-md">
-      {/* Left: Branding & Document Title */}
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <img src={Logo} alt="Jaihind International School" className="h-9 object-contain drop-shadow-md" />
+    <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2.5 bg-slate-900/85 backdrop-blur-xl border-b border-slate-800/80 select-none shadow-md h-12 sm:h-14">
+      
+      {/* Left Area (Mobile: Menu + Status, Tablet/Desktop: Logo + Name) */}
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0 overflow-hidden">
+        
+        {/* Mobile Hamburger */}
+        <button className="sm:hidden p-2 text-slate-400 hover:text-white" onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}>
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Logo (Hidden on very small screens) */}
+        <div className="hidden sm:flex items-center gap-2">
+          <img src={Logo} alt="Jaihind" className="h-8 object-contain drop-shadow-md" />
         </div>
 
+        <div className="w-px h-6 bg-slate-700 hidden sm:block" />
+
         {/* Document Title (Editable) */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {isEditingTitle ? (
             <div className="flex items-center gap-1">
               <input
@@ -129,7 +233,7 @@ export const HeaderBar: React.FC = () => {
                   }
                 }}
                 autoFocus
-                className="px-2.5 py-1 text-sm font-medium bg-slate-800 text-white border border-primary-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                className="w-24 sm:w-48 px-2 py-1 text-sm font-medium bg-slate-800 text-white border border-primary-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50 truncate"
               />
               <button
                 type="button"
@@ -146,143 +250,62 @@ export const HeaderBar: React.FC = () => {
                 setTitleInput(doc.title);
                 setIsEditingTitle(true);
               }}
-              className="group flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800/70 transition-colors"
-              title="Click to rename document"
+              className="group flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800/70 transition-colors truncate max-w-[120px] sm:max-w-xs"
+              title="Rename document"
             >
-              <span>{doc.title}</span>
-              <Edit2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-              {isDirty && (
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="Unsaved changes" />
-              )}
+              <span className="truncate">{doc.title}</span>
+              <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pr-2 py-1 flex-1 justify-end mask-fade-right">
-        {/* Load JHW */}
-        <button
-          type="button"
-          onClick={async () => {
-            try {
-              const doc = await FileService.importFromJHW();
-              loadDocumentFromObject(doc);
-            } catch (err) {
-              console.error('Failed to load JHW:', err);
-            }
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all"
-          title="Load .JHW Document"
-        >
-          <FolderOpen className="w-4 h-4 text-purple-400" />
-          <span className="hidden md:inline">Load</span>
-        </button>
+      {/* Right Area Actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        
+        {/* Status indicator always visible */}
+        {renderSaveStatus()}
 
-        {/* New Board */}
-        <button
-          type="button"
-          onClick={newDocument}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all"
-          title="Create New Whiteboard"
-        >
-          <FilePlus className="w-4 h-4 text-primary-400" />
-          <span className="hidden md:inline">New</span>
-        </button>
+        <div className="w-px h-5 bg-slate-700 mx-1 hidden sm:block" />
 
-        {/* Open Saved Boards */}
-        <button
-          type="button"
-          onClick={() => setSavedDocsModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all"
-          title="Open Saved Whiteboards"
-        >
-          <FolderOpen className="w-4 h-4 text-amber-400" />
-          <span className="hidden md:inline">Boards</span>
-        </button>
+        {/* Primary Desktop Actions */}
+        <div className="hidden lg:flex items-center gap-1">
+          <button onClick={newDocument} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
+            <FilePlus className="w-3.5 h-3.5 text-primary-400" /> New
+          </button>
+          
+          <button onClick={() => setSavedDocsModalOpen(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
+            <FolderOpen className="w-3.5 h-3.5 text-amber-400" /> Boards
+          </button>
+        </div>
 
-        {/* Save Board */}
+        {/* Export is primary on tablet and desktop */}
         <button
-          type="button"
-          onClick={handleSave}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all ${
-            saveToast
-              ? 'bg-emerald-600 text-white'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-          }`}
-          title="Save Whiteboard (IndexedDB)"
-        >
-          {saveToast ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4 text-blue-400" />}
-          <span className="hidden md:inline">{saveToast ? 'Saved!' : 'Save'}</span>
-        </button>
-
-        {/* Export Board */}
-        <button
-          type="button"
           onClick={() => setExportModalOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-primary-600 hover:bg-primary-500 text-white rounded-xl shadow-md shadow-primary-600/20 transition-all active:scale-95"
-          title="Export Image, SVG, PDF or .JHW"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary-600 hover:bg-primary-500 text-white rounded-lg shadow-md transition-all active:scale-95 ml-1"
         >
-          <Download className="w-4 h-4" />
-          <span className="hidden md:inline">Export</span>
+          <Download className="w-3.5 h-3.5" /> Export
         </button>
 
-        <div className="w-[1px] h-6 bg-slate-800 mx-1" />
-
-        {/* Import Media */}
-        <label
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all cursor-pointer"
-          title="Import Image or PDF"
-        >
-          <ImageIcon className="w-4 h-4 text-pink-400" />
-          <span className="hidden md:inline">Import</span>
-          <input
-            type="file"
-            accept="image/*,application/pdf"
-            multiple
-            onChange={handleImportFile}
-            className="hidden"
-          />
-        </label>
-
-        {/* Child Friendly Mode Toggle */}
+        {/* Present Mode always primary unless on mobile phone portrait */}
         <button
-          type="button"
-          onClick={() => setChildFriendlyMode(!childFriendlyMode)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all ${
-            childFriendlyMode
-              ? 'bg-pink-600/30 text-pink-400 border border-pink-500/50'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
-          }`}
-          title="Toggle Child-Friendly UI"
-        >
-          <Smile className="w-4 h-4" />
-          <span className="hidden xl:inline">Kids Mode</span>
-        </button>
-
-        <div className="w-[1px] h-6 bg-slate-800 mx-1" />
-
-        {/* Presentation Mode */}
-        <button
-          type="button"
           onClick={toggleFullscreen}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-md shadow-emerald-600/20 transition-all active:scale-95"
-          title="Start Presentation (Fullscreen)"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-md transition-all active:scale-95 ml-1"
         >
-          <Play className="w-4 h-4" />
-          <span className="hidden md:inline">Present</span>
+          <Play className="w-3.5 h-3.5" /> Present
         </button>
 
-        {/* Keyboard Shortcuts Help */}
-        <button
-          type="button"
-          onClick={() => setKeyboardShortcutsOpen(true)}
-          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all"
-          title="Keyboard Shortcuts"
-          aria-label="Keyboard Shortcuts"
-        >
-          <HelpCircle className="w-4 h-4" />
-        </button>
+        {/* Mobile/Tablet More Dropdown */}
+        <div className="relative" ref={moreMenuRef}>
+          <button 
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all" 
+            onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+
+          {isMoreMenuOpen && <MoreMenu />}
+        </div>
       </div>
     </header>
   );

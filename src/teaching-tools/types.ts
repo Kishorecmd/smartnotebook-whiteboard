@@ -12,6 +12,12 @@ export interface ITeachingToolDef {
   type: ToolType;
   description: string;
   
+  // Responsive UI Priority (1 = High/Core, 5 = Low/Advanced)
+  priority?: number;
+  showOnSmartboard?: boolean;
+  showOnTablet?: boolean;
+  showOnMobile?: boolean;
+  
   // For overlay-ui tools
   component?: React.ComponentType<any>;
   

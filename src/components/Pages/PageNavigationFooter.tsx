@@ -16,7 +16,7 @@ export const PageNavigationFooter: React.FC = () => {
   const hasNext = activePageIndex < totalPages - 1;
 
   return (
-    <div className="fixed top-[70px] left-2 lg:top-auto lg:bottom-6 lg:left-6 z-30 flex items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/60 rounded-2xl shadow-2xl select-none ring-1 ring-white/10">
+    <div className="flex items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/60 rounded-2xl shadow-2xl select-none ring-1 ring-white/10">
       {/* Pages Drawer Toggle */}
       <button
         type="button"

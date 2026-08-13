@@ -6,7 +6,7 @@ export const ZoomControls: React.FC = () => {
   const zoomPercent = Math.round(viewport.zoom * 100);
 
   return (
-    <div className="fixed top-[70px] right-2 lg:top-auto lg:bottom-6 lg:right-6 z-30 flex items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/60 rounded-2xl shadow-2xl select-none ring-1 ring-white/10">
+    <div className="flex items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/60 rounded-2xl shadow-2xl select-none ring-1 ring-white/10">
       {/* Zoom Out */}
       <button
         type="button"
