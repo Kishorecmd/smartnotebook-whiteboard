@@ -224,7 +224,7 @@ export class SelectTool implements ITool {
       const dy = worldPoint.y - this.startPoint.y;
 
       const updatedObjects = this.initialObjectSnapshots.map((obj) => {
-        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'teaching-tool' || obj.type === 'compass' || obj.type === 'circle' || obj.type === 'arc') {
+        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf' || obj.type === 'teaching-tool' || obj.type === 'compass' || obj.type === 'circle' || obj.type === 'arc') {
           const newObj = { ...obj } as any;
           newObj.x = obj.x + dx;
           newObj.y = obj.y + dy;
@@ -308,7 +308,7 @@ export class SelectTool implements ITool {
       const originY = handle.includes('n') ? initialBox.maxY : initialBox.minY;
 
       const updatedObjects = this.initialObjectSnapshots.map((obj) => {
-        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio') {
+        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf') {
           const newObj = { ...obj } as any;
           const relX = obj.x - originX;
           const relY = obj.y - originY;

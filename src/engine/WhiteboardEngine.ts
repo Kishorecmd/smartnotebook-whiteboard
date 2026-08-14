@@ -7,6 +7,7 @@ import { TouchActionManager } from '../input/TouchActionManager';
 import { RulerSnapper } from './RulerSnapper';
 import { StorageService } from '../services/StorageService';
 import { MediaManager } from '../media/MediaManager';
+import { TransformObjectsCommand } from './commands/TransformObjectsCommand';
 import { ITool } from './tools/ITool';
 import { PenFamilyTool } from './tools/PenFamilyTool';
 import { MarkerTool } from './tools/MarkerTool';
@@ -1023,6 +1024,66 @@ export class WhiteboardEngine {
       element.load();
     }
     this.renderer.setMediaElement(objectId, null);
+  }
+
+  // --- PDF page navigation ---
+
+  /**
+   * Turns to a page. The change goes through a command so it undoes like any
+   * other edit, and the renderer fetches the page lazily.
+   */
+  public setPdfPage(objectId: string, pageNumber: number): void {
+    const obj = this.objects.find((o) => o.id === objectId);
+    if (!obj || obj.type !== 'pdf') return;
+
+    const target = Math.min(Math.max(1, Math.round(pageNumber)), obj.pageCount);
+    if (target === obj.currentPage) return;
+
+    const before = JSON.parse(JSON.stringify(obj));
+    const after = { ...obj, currentPage: target, updatedAt: Date.now() };
+
+    this.commandManager.execute(
+      new TransformObjectsCommand(
+        [before],
+        [after],
+        () => this.getObjects(),
+        (objects) => this.setObjects(objects),
+        'Change PDF Page'
+      )
+    );
+  }
+
+  public nextPdfPage(objectId: string): void {
+    const obj = this.objects.find((o) => o.id === objectId);
+    if (obj && obj.type === 'pdf') this.setPdfPage(objectId, obj.currentPage + 1);
+  }
+
+  public previousPdfPage(objectId: string): void {
+    const obj = this.objects.find((o) => o.id === objectId);
+    if (obj && obj.type === 'pdf') this.setPdfPage(objectId, obj.currentPage - 1);
+  }
+
+  /** Rotates the page in quarter turns, keeping the object's own rotation intact. */
+  public rotatePdfPage(objectId: string): void {
+    const obj = this.objects.find((o) => o.id === objectId);
+    if (!obj || obj.type !== 'pdf') return;
+
+    const before = JSON.parse(JSON.stringify(obj));
+    const after = {
+      ...obj,
+      pageRotation: (((obj.pageRotation + 90) % 360) as 0 | 90 | 180 | 270),
+      updatedAt: Date.now(),
+    };
+
+    this.commandManager.execute(
+      new TransformObjectsCommand(
+        [before],
+        [after],
+        () => this.getObjects(),
+        (objects) => this.setObjects(objects),
+        'Rotate PDF Page'
+      )
+    );
   }
 
   // --- History Actions ---

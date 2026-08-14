@@ -213,6 +213,31 @@ export interface ImageAudioObject extends BaseWhiteboardObject {
   playerHeight: number;
 }
 
+/**
+ * A PDF placed on the board as a single object (Mode B). The file lives in the
+ * asset store; pages are rasterised lazily and cached by the renderer, so a long
+ * worksheet does not decode every page on open.
+ *
+ * Importing a PDF as separate whiteboard pages (Mode A) still goes through the
+ * existing PDF import modal and produces image objects.
+ */
+export interface PdfObject extends BaseWhiteboardObject {
+  type: 'pdf';
+  assetId: string;
+  fileName?: string;
+  pageCount: number;
+  /** 1-based. */
+  currentPage: number;
+  /** First page, captured at import, so the object draws instantly and exports. */
+  posterDataUrl?: string;
+  /** Natural page size at scale 1, used to keep the aspect ratio on page change. */
+  pageWidth: number;
+  pageHeight: number;
+  /** Quarter turns applied on top of the page's own orientation. */
+  pageRotation: 0 | 90 | 180 | 270;
+  fitMode: 'fit' | 'fill' | 'original';
+}
+
 export interface ColoringRegion extends BaseWhiteboardObject {
   type: 'coloringRegion';
   fillColor: string;
@@ -253,7 +278,7 @@ export interface CompassObject extends BaseWhiteboardObject {
   pencilAngle?: number;
 }
 
-export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | AudioObject | ImageAudioObject | ColoringRegion | CircleObject | ArcObject | CompassObject;
+export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | AudioObject | ImageAudioObject | PdfObject | ColoringRegion | CircleObject | ArcObject | CompassObject;
 
 /** Object types the media system owns. */
 export type MediaWhiteboardObject =
@@ -261,6 +286,7 @@ export type MediaWhiteboardObject =
   | VideoObject
   | AudioObject
   | ImageAudioObject
+  | PdfObject
   | YouTubeVideoObject;
 
 export interface Page {

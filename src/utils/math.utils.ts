@@ -124,6 +124,7 @@ export function getObjectBoundingBox(obj: WhiteboardObject, padding: number = 0)
     obj.type === 'text' ||
     obj.type === 'audio' ||
     obj.type === 'image-audio' ||
+    obj.type === 'pdf' ||
     obj.type === 'image' ||
     obj.type === 'youtubeVideo' ||
     obj.type === 'video' ||

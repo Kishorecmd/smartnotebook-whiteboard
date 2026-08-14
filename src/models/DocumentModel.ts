@@ -167,6 +167,19 @@ export const ImageAudioObjectSchema = BaseWhiteboardObjectSchema.extend({
   playerHeight: z.number().default(56),
 });
 
+export const PdfObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('pdf'),
+  assetId: z.string(),
+  fileName: z.string().optional(),
+  pageCount: z.number().int().positive().default(1),
+  currentPage: z.number().int().positive().default(1),
+  posterDataUrl: z.string().optional(),
+  pageWidth: z.number().positive().default(595),
+  pageHeight: z.number().positive().default(842),
+  pageRotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0),
+  fitMode: z.enum(['fit', 'fill', 'original']).default('fit'),
+});
+
 export const ColoringRegionSchema = BaseWhiteboardObjectSchema.extend({
   type: z.literal('coloringRegion'),
   fillColor: z.string(),
@@ -219,6 +232,7 @@ export const WhiteboardObjectSchema = z.discriminatedUnion('type', [
   VideoObjectSchema,
   AudioObjectSchema,
   ImageAudioObjectSchema,
+  PdfObjectSchema,
   ColoringRegionSchema,
   CircleObjectSchema,
   ArcObjectSchema,

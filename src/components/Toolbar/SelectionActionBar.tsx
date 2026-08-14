@@ -23,9 +23,12 @@ import {
   Unlock,
   PlaySquare,
   Pause,
+  ArrowLeft,
+  ArrowRight,
+  RotateCw,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
-import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, VideoObject, CompassObject } from '../../types';
+import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, VideoObject, CompassObject, PdfObject } from '../../types';
 import { CompassToolbar } from '../../teaching-tools/compass/CompassToolbar';
 
 const COLOR_SWATCHES = [
@@ -88,6 +91,11 @@ export const SelectionActionBar: React.FC = () => {
   const selectedVideoObj = isSingleVideoSelected ? (selectedObjects[0] as YouTubeVideoObject) : null;
   const isSingleLocalVideoSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'video';
   const selectedLocalVideo = isSingleLocalVideoSelected ? (selectedObjects[0] as VideoObject) : null;
+  const isSinglePdfSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'pdf';
+  const selectedPdf = isSinglePdfSelected ? (selectedObjects[0] as PdfObject) : null;
+  const isSingleAudioSelected = selectedObjects.length === 1 &&
+    (selectedObjects[0].type === 'audio' || selectedObjects[0].type === 'image-audio');
+  const selectedAudio = isSingleAudioSelected ? selectedObjects[0] : null;
   const isSingleCompassSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'compass';
   const selectedCompassObj = isSingleCompassSelected ? (selectedObjects[0] as CompassObject) : null;
 
@@ -546,6 +554,65 @@ export const SelectionActionBar: React.FC = () => {
 
         {/* Local video playback. Frames are drawn onto the canvas, so the video
             never floats above the board. */}
+        {/* Audio transport for audio and image+audio objects */}
+        {isSingleAudioSelected && selectedAudio && (
+          <>
+            <button
+              type="button"
+              onClick={() => { engine?.toggleAudioObject(selectedAudio.id); setVideoTick((t) => t + 1); }}
+              title="Play or pause"
+              aria-label="Play or pause audio"
+              className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-emerald-400 border border-emerald-900/50 hover:bg-emerald-900/40"
+            >
+              {engine && engine.isAudioPlaying(selectedAudio.id)
+                ? (<><Pause className="w-4 h-4" /><span className="hidden sm:inline">Pause</span></>)
+                : (<><PlaySquare className="w-4 h-4" /><span className="hidden sm:inline">Play</span></>)}
+            </button>
+            <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+          </>
+        )}
+
+        {/* PDF page navigation (section 20/22) */}
+        {isSinglePdfSelected && selectedPdf && (
+          <>
+            <div className="flex items-center gap-1 rounded-xl bg-slate-800 px-1.5 py-1">
+              <button
+                type="button"
+                onClick={() => engine?.previousPdfPage(selectedPdf.id)}
+                disabled={selectedPdf.currentPage <= 1}
+                title="Previous page"
+                aria-label="Previous PDF page"
+                className="rounded-lg px-2 py-1.5 text-slate-200 disabled:opacity-40 hover:bg-slate-700"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <span className="min-w-[52px] text-center text-[11px] font-bold text-slate-200">
+                {selectedPdf.currentPage} / {selectedPdf.pageCount}
+              </span>
+              <button
+                type="button"
+                onClick={() => engine?.nextPdfPage(selectedPdf.id)}
+                disabled={selectedPdf.currentPage >= selectedPdf.pageCount}
+                title="Next page"
+                aria-label="Next PDF page"
+                className="rounded-lg px-2 py-1.5 text-slate-200 disabled:opacity-40 hover:bg-slate-700"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => engine?.rotatePdfPage(selectedPdf.id)}
+                title="Rotate page"
+                aria-label="Rotate PDF page"
+                className="rounded-lg px-2 py-1.5 text-slate-200 hover:bg-slate-700"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+          </>
+        )}
+
         {isSingleLocalVideoSelected && selectedLocalVideo && (
           <>
             <button

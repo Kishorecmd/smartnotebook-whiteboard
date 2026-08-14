@@ -21,9 +21,11 @@ import {
   VideoObject,
   AudioObject,
   ImageAudioObject,
+  PdfObject,
 } from '../types';
 import { AudioCardRenderer, AudioCardState } from '../media/audio/AudioCardRenderer';
 import { MediaManager } from '../media/MediaManager';
+import { PdfRenderer } from '../media/pdf/PdfRenderer';
 import { getObjectBoundingBox, boxesIntersect } from '../utils';
 
 export interface CanvasRendererOptions {
@@ -115,6 +117,10 @@ export class CanvasRenderer {
 
     this.transformer = options.transformer;
     this.dpr = typeof window !== 'undefined' ? Math.max(1, window.devicePixelRatio || 1) : 1;
+
+    // A PDF page finishes rasterising off the main flow, so the renderer needs
+    // telling to draw again when it lands.
+    PdfRenderer.onPageReady = () => this.requestRender();
 
     this.startRenderLoop();
   }
@@ -350,6 +356,8 @@ export class CanvasRenderer {
         this.renderAudioObject(ctx, obj as AudioObject);
       } else if (obj.type === 'image-audio') {
         this.renderImageAudioObject(ctx, obj as ImageAudioObject);
+      } else if (obj.type === 'pdf') {
+        this.renderPdfObject(ctx, obj as PdfObject);
       }
     }
 
@@ -523,6 +531,82 @@ export class CanvasRenderer {
 
   private renderAudioObject(ctx: CanvasRenderingContext2D, obj: AudioObject): void {
     AudioCardRenderer.renderAudioCard(ctx, obj, this.mediaState(obj.id, obj.durationSeconds));
+  }
+
+  /**
+   * Draws the current PDF page. The rasterised page arrives asynchronously, so
+   * the poster captured at import stands in until it is ready -- the object is
+   * never blank, and a page turn shows something immediately.
+   */
+  private renderPdfObject(ctx: CanvasRenderingContext2D, obj: PdfObject): void {
+    ctx.save();
+    ctx.translate(obj.x, obj.y);
+    if (obj.rotation) {
+      ctx.translate(obj.width / 2, obj.height / 2);
+      ctx.rotate(obj.rotation);
+      ctx.translate(-obj.width / 2, -obj.height / 2);
+    }
+
+    // Paper, so a page with transparency still reads as a document.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, obj.width, obj.height);
+
+    const page = PdfRenderer.getPage(obj, obj.currentPage);
+    const quarterTurns = ((obj.pageRotation / 90) | 0) % 4;
+
+    ctx.save();
+    if (quarterTurns) {
+      ctx.translate(obj.width / 2, obj.height / 2);
+      ctx.rotate((quarterTurns * Math.PI) / 2);
+      // Swap the frame for odd turns so the page still fills its box.
+      const w = quarterTurns % 2 === 0 ? obj.width : obj.height;
+      const h = quarterTurns % 2 === 0 ? obj.height : obj.width;
+      ctx.translate(-w / 2, -h / 2);
+      if (page) ctx.drawImage(page, 0, 0, w, h);
+      else this.drawPdfPoster(ctx, obj, w, h);
+    } else if (page) {
+      ctx.drawImage(page, 0, 0, obj.width, obj.height);
+    } else {
+      this.drawPdfPoster(ctx, obj, obj.width, obj.height);
+    }
+    ctx.restore();
+
+    // Page badge, so the teacher can see where they are without selecting it.
+    if (obj.pageCount > 1) {
+      const label = `${obj.currentPage} / ${obj.pageCount}`;
+      ctx.font = '600 13px Inter, sans-serif';
+      const textW = ctx.measureText(label).width;
+      const bw = textW + 16;
+      const bh = 22;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+      ctx.beginPath();
+      ctx.roundRect(obj.width - bw - 8, obj.height - bh - 8, bw, bh, 8);
+      ctx.fill();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, obj.width - bw / 2 - 8, obj.height - bh / 2 - 8);
+    }
+
+    ctx.strokeStyle = 'rgba(100, 116, 139, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, obj.width, obj.height);
+    ctx.restore();
+  }
+
+  private drawPdfPoster(ctx: CanvasRenderingContext2D, obj: PdfObject, w: number, h: number): void {
+    if (!obj.posterDataUrl) return;
+    const key = `pdfposter_${obj.id}`;
+    let img = this.imageCache.get(key);
+    if (!img) {
+      img = new Image();
+      img.onload = () => this.requestRender();
+      img.onerror = () => this.requestRender();
+      img.src = obj.posterDataUrl;
+      this.imageCache.set(key, img);
+      return;
+    }
+    if (img.complete && img.naturalWidth > 0) ctx.drawImage(img, 0, 0, w, h);
   }
 
   private renderImageAudioObject(ctx: CanvasRenderingContext2D, obj: ImageAudioObject): void {

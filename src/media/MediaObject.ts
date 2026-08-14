@@ -11,7 +11,7 @@ import { MediaKind } from './MediaTypes';
  */
 
 /** Every object type owned by the media system. */
-export const MEDIA_OBJECT_TYPES = ['image', 'video', 'audio', 'image-audio', 'youtubeVideo'] as const;
+export const MEDIA_OBJECT_TYPES = ['image', 'video', 'audio', 'image-audio', 'pdf', 'youtubeVideo'] as const;
 
 export function isMediaObject(obj: WhiteboardObject): obj is MediaWhiteboardObject {
   return (MEDIA_OBJECT_TYPES as readonly string[]).includes(obj.type);
@@ -32,7 +32,13 @@ export function isPlayableMedia(obj: WhiteboardObject): boolean {
 
 /** Media a tap should grab rather than draw over, whatever tool is in hand. */
 export function isGrabbableMedia(obj: WhiteboardObject): boolean {
-  return obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio';
+  return (
+    obj.type === 'youtubeVideo' ||
+    obj.type === 'video' ||
+    obj.type === 'audio' ||
+    obj.type === 'image-audio' ||
+    obj.type === 'pdf'
+  );
 }
 
 /** The media kind for a board object, or null if it is not media. */
@@ -46,6 +52,8 @@ export function mediaKindOf(obj: WhiteboardObject): MediaKind | null {
       return 'audio';
     case 'image-audio':
       return 'image-audio';
+    case 'pdf':
+      return 'pdf';
     case 'youtubeVideo':
       return 'youtube';
     default:
@@ -62,6 +70,8 @@ export function assetIdsFor(obj: WhiteboardObject): string[] {
       return [obj.mediaId];
     case 'image-audio':
       return obj.imageAssetId ? [obj.audioMediaId, obj.imageAssetId] : [obj.audioMediaId];
+    case 'pdf':
+      return [obj.assetId];
     default:
       return [];
   }

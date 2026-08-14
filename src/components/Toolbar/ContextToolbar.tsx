@@ -1,11 +1,12 @@
 import React from 'react';
 import { ColorPalette } from './ColorPalette';
+import { InsertMediaPanel } from './InsertMediaPanel';
+import { MediaKind } from '../../media/MediaTypes';
 import { StrokeWidthPicker } from './StrokeWidthPicker';
 import { ShapePicker } from './ShapePicker';
 import { TextPicker } from './TextPicker';
 import { PenFamilyPicker } from './PenFamilyPicker';
 import { PenContextBar } from './PenContextBar';
-import { Video, Image as ImageIcon, Music, FileText } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 
 export type PopoverType = 'none' | 'color' | 'width' | 'shape' | 'text' | 'media' | 'pens' | 'eraser';
@@ -13,7 +14,7 @@ export type PopoverType = 'none' | 'color' | 'width' | 'shape' | 'text' | 'media
 interface ContextToolbarProps {
   activePopover: PopoverType;
   onClose: () => void;
-  onMediaInsert: (type: 'youtube' | 'image' | 'video' | 'audio' | 'pdf') => void;
+  onMediaInsert: (kind: MediaKind) => void;
 }
 
 export const ContextToolbar: React.FC<ContextToolbarProps> = ({ activePopover, onMediaInsert }) => {
@@ -109,28 +110,7 @@ export const ContextToolbar: React.FC<ContextToolbarProps> = ({ activePopover, o
       )}
 
       {activePopover === 'media' && (
-        <div className="flex bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-2 shadow-2xl gap-2">
-          <button onClick={() => onMediaInsert('youtube')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300 transition-colors">
-            <Video className="w-6 h-6 mb-1 text-red-500" />
-            <span className="text-[10px] uppercase font-bold">YouTube</span>
-          </button>
-          <button onClick={() => onMediaInsert('image')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300 transition-colors">
-            <ImageIcon className="w-6 h-6 mb-1 text-indigo-400" />
-            <span className="text-[10px] uppercase font-bold">Image</span>
-          </button>
-          <button onClick={() => onMediaInsert('video')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300 transition-colors">
-            <Video className="w-6 h-6 mb-1 text-sky-400" />
-            <span className="text-[10px] uppercase font-bold">Video</span>
-          </button>
-          <button onClick={() => onMediaInsert('audio')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300 transition-colors">
-            <Music className="w-6 h-6 mb-1 text-amber-400" />
-            <span className="text-[10px] uppercase font-bold">Audio</span>
-          </button>
-          <button onClick={() => onMediaInsert('pdf')} className="flex flex-col items-center p-3 rounded-xl hover:bg-slate-800 text-slate-300 transition-colors">
-            <FileText className="w-6 h-6 mb-1 text-rose-400" />
-            <span className="text-[10px] uppercase font-bold">PDF</span>
-          </button>
-        </div>
+        <InsertMediaPanel onInsert={(kind) => onMediaInsert(kind)} />
       )}
     </div>
   );

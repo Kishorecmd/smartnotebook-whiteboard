@@ -102,30 +102,98 @@ export const MainToolbar: React.FC = () => {
     }
   };
 
-  const handleMediaInsert = (type: 'youtube' | 'image' | 'video' | 'audio' | 'pdf') => {
+  /** Centre of the current view plus the box media should fit inside. */
+  const placement = () => {
+    const rect = engine!.getCanvas().getBoundingClientRect();
+    const transformer = engine!.getTransformer();
+    return {
+      centre: transformer.screenToWorld({ x: rect.width / 2, y: rect.height / 2 }),
+      box: visibleWorldBox(transformer.getTransform().zoom, rect.width, rect.height),
+    };
+  };
+
+  const pickFile = (accept: string): Promise<File | null> =>
+    new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = accept;
+      input.onchange = (e) => resolve((e.target as HTMLInputElement).files?.[0] ?? null);
+      input.click();
+    });
+
+  const insertAudioFile = async (file: File) => {
+    if (!engine) return;
+    try {
+      const { AudioLoader } = await import('../../media/audio/AudioLoader');
+      engine.addObject(await AudioLoader.importAudio(file, placement().centre));
+    } catch (err) {
+      console.error('Failed to import audio', err);
+      alert(err instanceof Error ? err.message : 'That audio file could not be added.');
+    }
+  };
+
+  /** Two pickers in sequence: the picture, then the sound that goes with it. */
+  const insertImageAudioPair = async () => {
+    if (!engine) return;
+    const imageFile = await pickFile('image/*');
+    if (!imageFile) return;
+    const audioFile = await pickFile('audio/*');
+    if (!audioFile) return;
+    try {
+      const { AudioLoader } = await import('../../media/audio/AudioLoader');
+      const { centre, box } = placement();
+      engine.addObject(await AudioLoader.importImageAudio(imageFile, audioFile, centre, box));
+    } catch (err) {
+      console.error('Failed to import image + audio', err);
+      alert(err instanceof Error ? err.message : 'That pair could not be added.');
+    }
+  };
+
+  const insertPdfObject = async (file: File) => {
+    if (!engine) return;
+    try {
+      const { PdfLoader } = await import('../../media/pdf/PdfLoader');
+      const { centre, box } = placement();
+      engine.addObject(await PdfLoader.importPdf(file, centre, box));
+    } catch (err) {
+      console.error('Failed to import PDF', err);
+      alert(err instanceof Error ? err.message : 'That PDF could not be opened.');
+    }
+  };
+
+  const handleMediaInsert = async (type: 'youtube' | 'image' | 'video' | 'audio' | 'image-audio' | 'pdf') => {
     setActivePopover('none');
+    if (!engine) return;
+
     if (type === 'youtube') {
       setYouTubeDialogOpen(true);
       return;
     }
+    if (type === 'image-audio') {
+      void insertImageAudioPair();
+      return;
+    }
     if (type === 'pdf') {
-      setPdfImportModalOpen(true);
+      // Ask which of the two PDF modes the teacher wants (§19). Placing it as an
+      // object keeps it on this page; importing as slides makes one page each.
+      const asObject = confirm(
+        'Place the PDF on this page as a single object?\n\nOK = place on this page\nCancel = import each page as a whiteboard page'
+      );
+      if (!asObject) {
+        setPdfImportModalOpen(true);
+        return;
+      }
+      const file = await pickFile('application/pdf');
+      if (file) void insertPdfObject(file);
       return;
     }
-    if (type === 'audio') {
-      alert("Audio files aren't supported yet.");
-      return;
-    }
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = type === 'video' ? 'video/*' : 'image/*';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      if (type === 'video') void insertVideoFile(file);
-      else void insertImageFile(file);
-    };
-    input.click();
+
+    const accept = type === 'video' ? 'video/*' : type === 'audio' ? 'audio/*' : 'image/*';
+    const file = await pickFile(accept);
+    if (!file) return;
+    if (type === 'video') void insertVideoFile(file);
+    else if (type === 'audio') void insertAudioFile(file);
+    else void insertImageFile(file);
   };
 
   const Divider = () => <div className="w-px h-8 bg-slate-500/20 mx-1 flex-shrink-0" />;
