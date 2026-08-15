@@ -7,6 +7,16 @@
     -webkit-user-select: none;
   }
 
+  :root {
+    --ui-scale: 1;
+    --ui-scale-max: 1.25;
+    --toolbar-height: clamp(60px, 5vw, 72px);
+    --tool-size: clamp(48px, 3.5vw, 64px);
+    --header-height: clamp(48px, 4vw, 60px);
+    --safe-area-x: max(env(safe-area-inset-left), 8px);
+    --safe-area-y: max(env(safe-area-inset-bottom), 8px);
+  }
+
   html, body, #root {
     height: 100%;
     width: 100%;

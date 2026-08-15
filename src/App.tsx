@@ -18,13 +18,22 @@ import {
 import { TeachingToolsPanel, TeachingToolsOverlay, initializeTeachingTools } from './teaching-tools';
 import { useWhiteboardStore } from './store';
 import { StorageService } from './services';
+import { ResponsiveLayoutManager } from './core/responsive';
 
 export const App: React.FC = () => {
-  const { setDocument, isDirty, isPresenterMode, setPresenterMode, childFriendlyMode } = useWhiteboardStore();
+  const { setDocument, isDirty, isPresenterMode, setPresenterMode, childFriendlyMode, setResponsiveState } = useWhiteboardStore();
 
   useEffect(() => {
     initializeTeachingTools();
-  }, []);
+    
+    // Initialize and subscribe to ResponsiveLayoutManager
+    const manager = ResponsiveLayoutManager.getInstance();
+    const unsubscribe = manager.subscribe((state) => {
+      setResponsiveState(state);
+    });
+    
+    return unsubscribe;
+  }, [setResponsiveState]);
 
   // Restore autosaved session on startup if present
   useEffect(() => {

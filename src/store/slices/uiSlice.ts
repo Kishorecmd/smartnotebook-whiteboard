@@ -31,4 +31,7 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
         : [...state.activeOverlayTools, toolId]
     };
   }),
+
+  setAzureCredentials: () => {},
+  clearAzureCredentials: () => {},
 });

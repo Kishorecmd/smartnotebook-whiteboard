@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
 import { ObjectManager } from '../../objects/ObjectManager';
 
 export interface ContextMenuPosition {
@@ -14,6 +14,30 @@ export interface ContextMenuProps {
 }
 
 export const ObjectContextMenu: React.FC<ContextMenuProps> = ({ position, onClose, selectedIds, objectManager }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [adjustedPos, setAdjustedPos] = useState<ContextMenuPosition | null>(null);
+
+  useLayoutEffect(() => {
+    if (!position || !containerRef.current) return;
+    
+    // Give DOM a frame to size itself naturally at top:0 left:0 invisibly, or just measure its current
+    requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      let newX = position.x;
+      let newY = position.y;
+
+      if (newX + rect.width > window.innerWidth) {
+        newX = window.innerWidth - rect.width - 8;
+      }
+      if (newY + rect.height > window.innerHeight) {
+        newY = window.innerHeight - rect.height - 8;
+      }
+      
+      setAdjustedPos({ x: Math.max(8, newX), y: Math.max(8, newY) });
+    });
+  }, [position]);
+
   if (!position || selectedIds.length === 0) return null;
 
   const handleAction = (action: () => void) => {
@@ -21,10 +45,19 @@ export const ObjectContextMenu: React.FC<ContextMenuProps> = ({ position, onClos
     onClose();
   };
 
+  const displayPos = adjustedPos || position;
+
   return (
     <div
+      ref={containerRef}
       className="absolute bg-white shadow-lg rounded-lg border border-slate-200 py-1 z-[9999]"
-      style={{ left: position.x, top: position.y, minWidth: '160px' }}
+      style={{ 
+        left: displayPos.x, 
+        top: displayPos.y, 
+        minWidth: '160px',
+        opacity: adjustedPos ? 1 : 0, // hide until measured
+        pointerEvents: adjustedPos ? 'auto' : 'none'
+      }}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <button 

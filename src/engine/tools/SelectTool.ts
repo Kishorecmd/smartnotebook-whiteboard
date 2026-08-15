@@ -9,7 +9,6 @@ import { TransformObjectsCommand } from '../commands/TransformObjectsCommand';
 import type { WhiteboardEngine } from '../WhiteboardEngine';
 import { CompassInteraction } from '../../teaching-tools/compass/CompassInteraction';
 import { CompassObject } from '../../types';
-import { ObjectManager } from '../../objects/ObjectManager';
 import { GroupManager } from '../../objects/GroupManager';
 
 type DragMode = 'idle' | 'moving' | 'resizing' | 'rotating' | 'marquee' | 'compass-drag';

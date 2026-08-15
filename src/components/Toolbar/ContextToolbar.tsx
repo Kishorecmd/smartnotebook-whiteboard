@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
 import { ColorPalette } from './ColorPalette';
 import { InsertMediaPanel } from './InsertMediaPanel';
 import { MediaKind } from '../../media/MediaTypes';
@@ -19,11 +19,40 @@ interface ContextToolbarProps {
 
 export const ContextToolbar: React.FC<ContextToolbarProps> = ({ activePopover, onMediaInsert }) => {
   const { toolSettings, updateToolSettings, setTool } = useWhiteboardStore();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [offsetX, setOffsetX] = useState(0);
+
+  useLayoutEffect(() => {
+    if (activePopover === 'none' || !containerRef.current) return;
+    
+    // Reset offset first to get natural measurement
+    setOffsetX(0);
+    
+    // Need a tiny delay for DOM to update with natural size
+    requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const padding = 16;
+      let newOffset = 0;
+
+      if (rect.left < padding) {
+        newOffset = padding - rect.left;
+      } else if (rect.right > window.innerWidth - padding) {
+        newOffset = (window.innerWidth - padding) - rect.right;
+      }
+      
+      setOffsetX(newOffset);
+    });
+  }, [activePopover]);
 
   if (activePopover === 'none') return null;
 
   return (
-    <div className="absolute bottom-[calc(100%+16px)] left-1/2 -translate-x-1/2 z-40 animate-fade-in pointer-events-auto">
+    <div 
+      ref={containerRef}
+      className="absolute bottom-[calc(100%+16px)] left-1/2 z-40 animate-fade-in pointer-events-auto transition-transform"
+      style={{ transform: `translateX(calc(-50% + ${offsetX}px))` }}
+    >
       {activePopover === 'color' && (
         <ColorPalette
           selectedColor={toolSettings.color}

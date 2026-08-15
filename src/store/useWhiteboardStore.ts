@@ -9,6 +9,7 @@ import { createSelectionSlice } from './slices/selectionSlice';
 import { createHandwritingSlice } from './slices/handwritingSlice';
 import { createPdfSlice } from './slices/pdfSlice';
 import { createUiSlice } from './slices/uiSlice';
+import { createResponsiveSlice } from './slices/responsiveSlice';
 
 /**
  * Composed from slices in ./slices. Each slice owns a disjoint set of keys and
@@ -25,4 +26,5 @@ export const useWhiteboardStore = create<WhiteboardStoreState>()((...args) => ({
   ...createHandwritingSlice(...args),
   ...createPdfSlice(...args),
   ...createUiSlice(...args),
+  ...createResponsiveSlice(...args),
 }));

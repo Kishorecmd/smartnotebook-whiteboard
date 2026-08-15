@@ -64,7 +64,6 @@ export const SelectionActionBar: React.FC = () => {
     activePageIndex,
     selectedIds,
     toolSettings,
-    duplicateSelected,
     deleteSelected,
     reorderSelected,
     applySelectedStyle,

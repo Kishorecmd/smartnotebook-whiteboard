@@ -1,4 +1,4 @@
-import { WhiteboardObject } from '../types';
+import { WhiteboardObject, ICommand } from '../types';
 import { SelectionManager } from './SelectionManager';
 import { GroupManager } from './GroupManager';
 import { ClipboardManager } from '../clipboard/ClipboardManager';
@@ -7,7 +7,7 @@ import { GroupObjectsCommand } from '../engine/commands/GroupObjectsCommand';
 import { UngroupObjectsCommand } from '../engine/commands/UngroupObjectsCommand';
 import { ChangeObjectStateCommand } from '../engine/commands/ChangeObjectStateCommand';
 import { ReorderObjectsCommand, ReorderAction } from '../engine/commands/ReorderObjectsCommand';
-import { AddObjectCommand } from '../engine/commands/AddObjectCommand';
+import { DeleteObjectsCommand } from '../engine/commands/DeleteObjectsCommand';
 
 export class ObjectManager {
   private engine: WhiteboardEngine;
@@ -42,7 +42,7 @@ export class ObjectManager {
         // After grouping, select the new group
         const newGroup = objs[objs.length - 1];
         if (newGroup.type === 'group') {
-          this.engine.selectObjects(new Set([newGroup.id]));
+          this.engine.setSelectedIds([newGroup.id]);
         }
       }
     );
@@ -67,7 +67,7 @@ export class ObjectManager {
       (objs) => {
         this.engine.setObjects(objs);
         // Select the children that were just ungrouped
-        this.engine.selectObjects(childrenToSelect);
+        this.engine.setSelectedIds(Array.from(childrenToSelect));
       }
     );
     this.engine.getCommandManager().execute(command);
@@ -130,15 +130,7 @@ export class ObjectManager {
     this.copy(selectedIds);
     // Delete the affected objects (including descendants)
     const affectedObjects = GroupManager.getAllAffectedObjects(selectedIds, this.engine.getObjects());
-    const command = new ChangeObjectStateCommand(
-      affectedObjects.map(o => o.id), // HACK: actually we should use DeleteObjectsCommand
-      { visible: false }, // Placeholder, we should use engine.deleteObject
-      'Cut',
-      () => this.engine.getObjects(),
-      (objs) => this.engine.setObjects(objs)
-    );
-    // Wait, let's actually use the proper delete loop or a multi-delete command
-    const deleteCmd = new (require('../engine/commands/DeleteObjectsCommand').DeleteObjectsCommand)(
+    const deleteCmd = new DeleteObjectsCommand(
       affectedObjects,
       () => this.engine.getObjects(),
       (objs: WhiteboardObject[]) => this.engine.setObjects(objs)
@@ -155,26 +147,23 @@ export class ObjectManager {
     // However, AddObjectCommand only takes a single object currently.
     // We can use a trick: TransformObjectsCommand or create an AddMultipleObjectsCommand.
     // For now, let's just append them and setObjects directly in a command.
-    const command = new class implements ICommand {
-      id: string = Math.random().toString();
-      name = 'Paste Objects';
-      
-      executeRef = () => {
+    const command: ICommand = {
+      id: Math.random().toString(),
+      name: 'Paste Objects',
+      execute: () => {
         const current = this.engine.getObjects();
         this.engine.setObjects([...current, ...newObjects]);
-        this.engine.selectObjects(new Set(newObjects.filter(o => !o.parentGroupId).map(o => o.id)));
-      };
-      
-      undoRef = () => {
+        this.engine.setSelectedIds(newObjects.filter(o => !o.parentGroupId).map(o => o.id));
+      },
+      undo: () => {
         const current = this.engine.getObjects();
         const pastedIds = new Set(newObjects.map(o => o.id));
         this.engine.setObjects(current.filter(o => !pastedIds.has(o.id)));
-      };
-      
-      execute = this.executeRef;
-      undo = this.undoRef;
-      redo = this.executeRef;
-    }();
+      },
+      redo: function() {
+        this.execute();
+      }
+    };
 
     this.engine.getCommandManager().execute(command);
   }

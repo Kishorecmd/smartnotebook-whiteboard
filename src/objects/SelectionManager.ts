@@ -1,6 +1,4 @@
-import { WhiteboardObject, BoundingBox, Point } from '../types';
-import { GroupManager } from './GroupManager';
-import { isPointInPolygon } from '../utils';
+import { WhiteboardObject } from '../types';
 
 export class SelectionManager {
   /**

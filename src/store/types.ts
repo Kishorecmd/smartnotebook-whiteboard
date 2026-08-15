@@ -17,6 +17,7 @@ import { StylePatch } from '../engine/commands/ChangeStyleCommand';
 import { ReorderAction } from '../engine/commands/ReorderObjectsCommand';
 import { HandwritingRecognitionResult } from '../services/HandwritingRecognitionService';
 import type { AzureVisionCredentials } from '../services/AzureInkRecognitionService';
+import { ResponsiveState } from '../core/responsive';
 
 export interface CommitTextEditParams {
   id?: string;
@@ -203,6 +204,13 @@ export interface UiSlice {
   setPresenterMode: (enabled: boolean) => void;
   setTeachingPanelOpen: (open: boolean) => void;
   toggleOverlayTool: (toolId: string) => void;
+  setAzureCredentials: (credentials: AzureVisionCredentials) => void;
+  clearAzureCredentials: () => void;
+}
+
+export interface ResponsiveSlice {
+  responsiveState: ResponsiveState;
+  setResponsiveState: (state: ResponsiveState) => void;
 }
 
 export type WhiteboardStoreState = EngineSlice &
@@ -213,7 +221,8 @@ export type WhiteboardStoreState = EngineSlice &
   SelectionSlice &
   HandwritingSlice &
   PdfSlice &
-  UiSlice;
+  UiSlice &
+  ResponsiveSlice;
 
 /**
  * Every slice is created against the full store type, so a slice can read or

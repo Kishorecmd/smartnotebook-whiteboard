@@ -4,8 +4,7 @@ import { generateId } from '../../utils';
 export class ChangeObjectStateCommand implements ICommand {
   public readonly id: string;
   public readonly name: string;
-  
-  private objectIds: string[];
+
   private previousStates: Map<string, Partial<WhiteboardObject>> = new Map();
   private newState: Partial<WhiteboardObject>;
   private objectsRef: () => WhiteboardObject[];
@@ -20,7 +19,6 @@ export class ChangeObjectStateCommand implements ICommand {
   ) {
     this.id = generateId('cmd');
     this.name = name;
-    this.objectIds = objectIds;
     this.newState = newState;
     this.objectsRef = objectsRef;
     this.setObjectsRef = setObjectsRef;
@@ -45,7 +43,7 @@ export class ChangeObjectStateCommand implements ICommand {
     
     for (let i = 0; i < list.length; i++) {
       if (this.previousStates.has(list[i].id)) {
-        list[i] = { ...list[i], ...this.newState, updatedAt: Date.now() };
+        list[i] = { ...list[i], ...this.newState, updatedAt: Date.now() } as WhiteboardObject;
       }
     }
 
@@ -58,7 +56,7 @@ export class ChangeObjectStateCommand implements ICommand {
     for (let i = 0; i < list.length; i++) {
       if (this.previousStates.has(list[i].id)) {
         const prevState = this.previousStates.get(list[i].id)!;
-        list[i] = { ...list[i], ...prevState, updatedAt: Date.now() };
+        list[i] = { ...list[i], ...prevState, updatedAt: Date.now() } as WhiteboardObject;
       }
     }
 

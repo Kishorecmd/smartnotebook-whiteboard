@@ -149,7 +149,10 @@ export const TeachingToolsPanel: React.FC = () => {
 
             {/* Grid */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-4">
+              <div 
+                className="grid gap-3 md:gap-4"
+                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}
+              >
                 {filteredTools.map(tool => {
                   const Icon = tool.icon;
                   const isFav = favoriteTools.includes(tool.id);

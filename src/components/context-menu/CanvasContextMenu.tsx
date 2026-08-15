@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
 import { ObjectManager } from '../../objects/ObjectManager';
 import { ContextMenuPosition } from './ObjectContextMenu';
 
@@ -10,6 +10,29 @@ export interface CanvasContextMenuProps {
 }
 
 export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({ position, onClose, objectManager, onSelectAll }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [adjustedPos, setAdjustedPos] = useState<ContextMenuPosition | null>(null);
+
+  useLayoutEffect(() => {
+    if (!position || !containerRef.current) return;
+    
+    requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      let newX = position.x;
+      let newY = position.y;
+
+      if (newX + rect.width > window.innerWidth) {
+        newX = window.innerWidth - rect.width - 8;
+      }
+      if (newY + rect.height > window.innerHeight) {
+        newY = window.innerHeight - rect.height - 8;
+      }
+      
+      setAdjustedPos({ x: Math.max(8, newX), y: Math.max(8, newY) });
+    });
+  }, [position]);
+
   if (!position) return null;
 
   const handleAction = (action: () => void) => {
@@ -17,10 +40,19 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({ position, 
     onClose();
   };
 
+  const displayPos = adjustedPos || position;
+
   return (
     <div
+      ref={containerRef}
       className="absolute bg-white shadow-lg rounded-lg border border-slate-200 py-1 z-[9999]"
-      style={{ left: position.x, top: position.y, minWidth: '160px' }}
+      style={{ 
+        left: displayPos.x, 
+        top: displayPos.y, 
+        minWidth: '160px',
+        opacity: adjustedPos ? 1 : 0,
+        pointerEvents: adjustedPos ? 'auto' : 'none'
+      }}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <button 
