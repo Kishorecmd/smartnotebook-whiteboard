@@ -34,6 +34,7 @@ export const BaseWhiteboardObjectSchema = z.object({
   locked: z.boolean().default(false),
   createdAt: z.number(),
   updatedAt: z.number(),
+  parentGroupId: z.string().optional(),
 });
 
 export const FreehandStrokeSchema = BaseWhiteboardObjectSchema.extend({
@@ -220,6 +221,11 @@ export const CompassObjectSchema = BaseWhiteboardObjectSchema.extend({
   pencilAngle: z.number().optional(),
 });
 
+export const GroupObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('group'),
+  children: z.array(z.string()),
+});
+
 // Must stay in sync with the WhiteboardObject union in types/whiteboard.types.ts --
 // an object type missing here is silently rejected on load.
 export const WhiteboardObjectSchema = z.discriminatedUnion('type', [
@@ -237,6 +243,7 @@ export const WhiteboardObjectSchema = z.discriminatedUnion('type', [
   CircleObjectSchema,
   ArcObjectSchema,
   CompassObjectSchema,
+  GroupObjectSchema,
 ]);
 
 export const PageSchema = z.object({

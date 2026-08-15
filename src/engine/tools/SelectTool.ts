@@ -9,6 +9,8 @@ import { TransformObjectsCommand } from '../commands/TransformObjectsCommand';
 import type { WhiteboardEngine } from '../WhiteboardEngine';
 import { CompassInteraction } from '../../teaching-tools/compass/CompassInteraction';
 import { CompassObject } from '../../types';
+import { ObjectManager } from '../../objects/ObjectManager';
+import { GroupManager } from '../../objects/GroupManager';
 
 type DragMode = 'idle' | 'moving' | 'resizing' | 'rotating' | 'marquee' | 'compass-drag';
 
@@ -63,7 +65,13 @@ export class SelectTool implements ITool {
 
         this.activeHandle = handle;
         this.initialBoundingBox = box;
-        this.initialObjectSnapshots = JSON.parse(JSON.stringify(selectedObjects));
+        
+        // Snapshot all descendants so children move/scale with the group
+        const allAffected = GroupManager.getAllAffectedObjects(
+          selectedObjects.map((o) => o.id),
+          engine.getObjects()
+        );
+        this.initialObjectSnapshots = JSON.parse(JSON.stringify(allAffected));
 
         if (handle === 'rotate' && box) {
           this.dragMode = 'rotating';
@@ -117,13 +125,26 @@ export class SelectTool implements ITool {
       this.lastClickObjId = hitObj.id;
 
       const isShift = e.shiftKey || e.ctrlKey || e.metaKey;
+      let newSelection = new Set(engine.getSelectedIds());
+      
       if (isShift) {
-        engine.toggleSelection(hitObj.id);
+        if (newSelection.has(hitObj.id)) {
+          newSelection.delete(hitObj.id);
+        } else {
+          newSelection.add(hitObj.id);
+        }
       } else {
         if (!engine.isSelected(hitObj.id)) {
-          engine.setSelectedIds([hitObj.id]);
+          newSelection = new Set([hitObj.id]);
         }
       }
+
+      // Expand to effective selection (select parent groups)
+      newSelection = engine.getObjectManager().getEffectiveSelection(newSelection);
+      // Ensure we don't select locked objects
+      newSelection = engine.getObjectManager().filterLocked(newSelection);
+      
+      engine.setSelectedIds(Array.from(newSelection));
 
       // Prepare for potential move immediately
       const activeSelection = engine.getSelectedObjects();
@@ -136,7 +157,12 @@ export class SelectTool implements ITool {
         this.dragMode = 'moving';
         this.activeHandle = 'body';
         this.initialBoundingBox = getCombinedBoundingBox(activeSelection, 4 / zoom);
-        this.initialObjectSnapshots = JSON.parse(JSON.stringify(activeSelection));
+        // Snapshot all descendants so children move/scale with the group
+        const allAffected = GroupManager.getAllAffectedObjects(
+          activeSelection.map((o) => o.id),
+          engine.getObjects()
+        );
+        this.initialObjectSnapshots = JSON.parse(JSON.stringify(allAffected));
       }
     } else {
       // 3. Clicked empty canvas -> Start Marquee selection or deselect
@@ -183,7 +209,10 @@ export class SelectTool implements ITool {
 
       // Dynamically select objects within marquee
       const hits = HitTest.findObjectsInBox(marqueeBox, engine.getObjects());
-      engine.setSelectedIds(hits.map((h) => h.id));
+      let hitIds = new Set(hits.map((h) => h.id));
+      hitIds = engine.getObjectManager().getEffectiveSelection(hitIds);
+      hitIds = engine.getObjectManager().filterLocked(hitIds);
+      engine.setSelectedIds(Array.from(hitIds));
       return;
     }
 
@@ -365,18 +394,22 @@ export class SelectTool implements ITool {
       engine.getRenderer().setMarqueeBox(null);
     } else if (this.dragMode === 'moving' || this.dragMode === 'resizing' || this.dragMode === 'rotating' || this.dragMode === 'compass-drag') {
       // Commit the transform command for undo/redo
-      const currentSelected = engine.getSelectedObjects();
-      if (this.initialObjectSnapshots.length > 0 && currentSelected.length > 0) {
-        const cmd = new TransformObjectsCommand(
-          this.initialObjectSnapshots,
-          currentSelected,
-          () => engine.getObjects(),
-          (objects) => engine.setObjects(objects),
-          this.dragMode === 'moving' || this.dragMode === 'compass-drag' ? 'Move' : this.dragMode === 'rotating' ? 'Rotate' : 'Resize'
-        );
-        // We push this directly into CommandManager history stack without calling execute again
-        // since objects are already transformed in memory
-        engine.getCommandManager().recordCommand(cmd);
+      if (this.initialObjectSnapshots.length > 0) {
+        const snapshotIds = new Set(this.initialObjectSnapshots.map(o => o.id));
+        const currentStates = engine.getObjects().filter(o => snapshotIds.has(o.id));
+
+        if (currentStates.length > 0) {
+          const cmd = new TransformObjectsCommand(
+            this.initialObjectSnapshots,
+            currentStates,
+            () => engine.getObjects(),
+            (objects) => engine.setObjects(objects),
+            this.dragMode === 'moving' || this.dragMode === 'compass-drag' ? 'Move' : this.dragMode === 'rotating' ? 'Rotate' : 'Resize'
+          );
+          // We push this directly into CommandManager history stack without calling execute again
+          // since objects are already transformed in memory
+          engine.getCommandManager().recordCommand(cmd);
+        }
       }
     }
 

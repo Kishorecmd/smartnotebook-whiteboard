@@ -7,6 +7,9 @@ import { MultitouchDebugOverlay } from '../MultitouchDebugOverlay';
 import { FileImportService } from '../../services';
 import { visibleWorldBox } from '../../utils';
 import { Point } from '../../types';
+import { ObjectContextMenu, ContextMenuPosition } from '../context-menu/ObjectContextMenu';
+import { CanvasContextMenu as CanvasMenu } from '../context-menu/CanvasContextMenu';
+import { HitTest } from '../../engine/HitTest';
 
 export const WhiteboardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -25,6 +28,9 @@ export const WhiteboardCanvas: React.FC = () => {
     startTextEditing,
     setPdfImportModalOpen,
   } = useWhiteboardStore();
+
+  const [objectContextMenuPos, setObjectContextMenuPos] = React.useState<ContextMenuPosition | null>(null);
+  const [canvasContextMenuPos, setCanvasContextMenuPos] = React.useState<ContextMenuPosition | null>(null);
 
   const activePage = doc.pages[activePageIndex] || doc.pages[0];
 
@@ -100,10 +106,39 @@ export const WhiteboardCanvas: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         engine.redo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        engine.getObjectManager().copy(engine.getSelectedIds());
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        engine.getObjectManager().cut(engine.getSelectedIds());
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        engine.getObjectManager().paste();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        engine.selectAll();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          engine.getObjectManager().ungroupObjects(engine.getSelectedIds());
+        } else {
+          engine.getObjectManager().groupObjects(engine.getSelectedIds());
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          const selected = engine.getSelectedObjects();
+          if (selected.some(o => !o.locked)) {
+            engine.getObjectManager().lockObjects(engine.getSelectedIds());
+          } else {
+            engine.getObjectManager().unlockObjects(engine.getSelectedIds());
+          }
+        }
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
         // Duplicate selected
         e.preventDefault();
-        engine.duplicateSelected();
+        engine.getObjectManager().duplicate(engine.getSelectedIds());
       } else if ((e.ctrlKey || e.metaKey) && (e.altKey || e.shiftKey) && e.key.toLowerCase() === 't') {
         // Convert handwriting to text
         e.preventDefault();
@@ -123,19 +158,19 @@ export const WhiteboardCanvas: React.FC = () => {
         } else {
           engine.clearSelection();
         }
-      } else if (e.key === 'v' || e.key === 'V') {
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === 'v' || e.key === 'V')) {
         useWhiteboardStore.getState().setTool('select');
-      } else if (e.key === 't' || e.key === 'T') {
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === 't' || e.key === 'T')) {
         useWhiteboardStore.getState().setTool('text');
-      } else if (e.key === 'u' || e.key === 'U') {
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === 'u' || e.key === 'U')) {
         useWhiteboardStore.getState().setTool('shape');
-      } else if (e.key === 'p' || e.key === 'P') {
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === 'p' || e.key === 'P')) {
         useWhiteboardStore.getState().setTool('pen');
-      } else if (e.key === 'm' || e.key === 'M') {
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === 'm' || e.key === 'M')) {
         useWhiteboardStore.getState().setTool('marker');
-      } else if (e.key === 'e' || e.key === 'E') {
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === 'e' || e.key === 'E')) {
         useWhiteboardStore.getState().setTool('eraser');
-      } else if (e.key === 'h' || e.key === 'H') {
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === 'h' || e.key === 'H')) {
         useWhiteboardStore.getState().setTool('pan');
       } else if (e.key === ']') {
         if (e.ctrlKey || e.metaKey) {
@@ -150,6 +185,19 @@ export const WhiteboardCanvas: React.FC = () => {
           engine.reorderSelected('sendToBack');
         } else {
           engine.reorderSelected('sendBackward');
+        }
+      } else if (e.key.startsWith('Arrow')) {
+        if (engine.getSelectedIds().length > 0) {
+          e.preventDefault();
+          const amount = e.shiftKey ? 10 : 1;
+          const zoom = engine.getTransformer().getZoom();
+          const d = amount / zoom;
+          switch (e.key) {
+            case 'ArrowUp': engine.nudgeSelected(0, -d); break;
+            case 'ArrowDown': engine.nudgeSelected(0, d); break;
+            case 'ArrowLeft': engine.nudgeSelected(-d, 0); break;
+            case 'ArrowRight': engine.nudgeSelected(d, 0); break;
+          }
         }
       } else if (e.key === '+' || e.key === '=') {
         if (e.ctrlKey || e.metaKey) {
@@ -225,6 +273,34 @@ export const WhiteboardCanvas: React.FC = () => {
         backgroundColor: activePage.background,
       }}
       tabIndex={0}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        const engine = useWhiteboardStore.getState().engine;
+        if (!engine || !containerRef.current) return;
+        
+        const rect = containerRef.current.getBoundingClientRect();
+        const screenPoint = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const worldPoint = engine.getTransformer().screenToWorld(screenPoint);
+        const zoom = engine.getTransformer().getZoom();
+        
+        const hitObj = HitTest.findObjectAtPoint(worldPoint, engine.getObjects(), 8 / zoom);
+        
+        if (hitObj) {
+          if (!engine.isSelected(hitObj.id)) {
+            engine.setSelectedIds([hitObj.id]);
+          }
+          setObjectContextMenuPos({ x: e.clientX, y: e.clientY });
+          setCanvasContextMenuPos(null);
+        } else {
+          engine.clearSelection();
+          setCanvasContextMenuPos({ x: e.clientX, y: e.clientY });
+          setObjectContextMenuPos(null);
+        }
+      }}
+      onClick={() => {
+        setObjectContextMenuPos(null);
+        setCanvasContextMenuPos(null);
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
@@ -278,6 +354,24 @@ export const WhiteboardCanvas: React.FC = () => {
 
       {/* Multitouch Debugger */}
       {useWhiteboardStore.getState().engine && <MultitouchDebugOverlay engine={useWhiteboardStore.getState().engine!} />}
+
+      {/* Context Menus */}
+      {useWhiteboardStore.getState().engine && (
+        <>
+          <ObjectContextMenu
+            position={objectContextMenuPos}
+            onClose={() => setObjectContextMenuPos(null)}
+            selectedIds={useWhiteboardStore.getState().engine!.getSelectedIds()}
+            objectManager={useWhiteboardStore.getState().engine!.getObjectManager()}
+          />
+          <CanvasMenu
+            position={canvasContextMenuPos}
+            onClose={() => setCanvasContextMenuPos(null)}
+            objectManager={useWhiteboardStore.getState().engine!.getObjectManager()}
+            onSelectAll={() => useWhiteboardStore.getState().engine!.selectAll()}
+          />
+        </>
+      )}
 
       {/* Primary persistent objects canvas */}
       <canvas

@@ -26,6 +26,9 @@ import {
   ArrowLeft,
   ArrowRight,
   RotateCw,
+  Scissors,
+  Combine,
+  SplitSquareHorizontal,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, VideoObject, CompassObject, PdfObject } from '../../types';
@@ -675,10 +678,32 @@ export const SelectionActionBar: React.FC = () => {
           <CompassToolbar compass={selectedCompassObj} />
         )}
 
+        {/* Cut Button */}
+        <button
+          type="button"
+          onClick={() => engine?.getObjectManager()?.cut(selectedIds)}
+          title="Cut (Ctrl+X)"
+          aria-label="Cut selected"
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+        >
+          <Scissors className="w-4 h-4 text-pink-400" />
+        </button>
+        
+        {/* Copy Button */}
+        <button
+          type="button"
+          onClick={() => engine?.getObjectManager()?.copy(selectedIds)}
+          title="Copy (Ctrl+C)"
+          aria-label="Copy selected"
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+        >
+          <Copy className="w-4 h-4 text-teal-400" />
+        </button>
+
         {/* Duplicate Button */}
         <button
           type="button"
-          onClick={duplicateSelected}
+          onClick={() => engine?.getObjectManager()?.duplicate(selectedIds)}
           title="Duplicate (Ctrl+D)"
           aria-label="Duplicate selected"
           className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
@@ -686,6 +711,56 @@ export const SelectionActionBar: React.FC = () => {
           <Copy className="w-4 h-4 text-sky-400" />
           <span className="hidden sm:inline">Duplicate</span>
         </button>
+
+        {/* Separator */}
+        <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+
+        {/* Group / Ungroup Buttons */}
+        {selectedIds.length > 1 && (
+          <button
+            type="button"
+            onClick={() => engine?.getObjectManager()?.groupObjects(selectedIds)}
+            title="Group Objects (Ctrl+G)"
+            aria-label="Group objects"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          >
+            <Combine className="w-4 h-4 text-amber-400" />
+          </button>
+        )}
+        {selectedObjects.some(obj => obj.type === 'group') && (
+          <button
+            type="button"
+            onClick={() => engine?.getObjectManager()?.ungroupObjects(selectedIds)}
+            title="Ungroup Objects (Ctrl+Shift+G)"
+            aria-label="Ungroup objects"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          >
+            <SplitSquareHorizontal className="w-4 h-4 text-orange-400" />
+          </button>
+        )}
+
+        {/* Lock / Unlock Buttons */}
+        {selectedObjects.some(obj => !obj.locked) ? (
+          <button
+            type="button"
+            onClick={() => engine?.getObjectManager()?.lockObjects(selectedIds)}
+            title="Lock Objects (Ctrl+Shift+L)"
+            aria-label="Lock objects"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          >
+            <Lock className="w-4 h-4 text-slate-400" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => engine?.getObjectManager()?.unlockObjects(selectedIds)}
+            title="Unlock Objects (Ctrl+Shift+L)"
+            aria-label="Unlock objects"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          >
+            <Unlock className="w-4 h-4 text-slate-400" />
+          </button>
+        )}
 
         {/* Delete Button */}
         <button

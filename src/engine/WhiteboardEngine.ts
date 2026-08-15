@@ -7,6 +7,8 @@ import { TouchActionManager } from '../input/TouchActionManager';
 import { RulerSnapper } from './RulerSnapper';
 import { StorageService } from '../services/StorageService';
 import { MediaManager } from '../media/MediaManager';
+import { ObjectManager } from '../objects/ObjectManager';
+import { GroupManager } from '../objects/GroupManager';
 import { TransformObjectsCommand } from './commands/TransformObjectsCommand';
 import { ITool } from './tools/ITool';
 import { PenFamilyTool } from './tools/PenFamilyTool';
@@ -67,6 +69,7 @@ export class WhiteboardEngine {
   private touchActionManager: TouchActionManager;
   private commandManager: CommandManager;
   private rulerSnapper: RulerSnapper;
+  private objectManager: ObjectManager;
   // Object URLs for local video blobs, revoked on dispose.
   private videoObjectUrls: Map<string, string> = new Map();
 
@@ -188,6 +191,9 @@ export class WhiteboardEngine {
       onPointerUpdate: (pointer, e) => this.inputRouter.onPointerUpdate(pointer, e, this.pointerManager.getActivePointers()),
       onPointerRemove: (pointer, e) => this.inputRouter.onPointerRemove(pointer, e, this.pointerManager.getActivePointers()),
     });
+
+    // 7. Initialize Object Manager
+    this.objectManager = new ObjectManager(this);
   }
 
   private registerTools(): void {
@@ -240,6 +246,10 @@ export class WhiteboardEngine {
 
   public getCommandManager(): CommandManager {
     return this.commandManager;
+  }
+
+  public getObjectManager(): ObjectManager {
+    return this.objectManager;
   }
 
   public isSpacePressed(): boolean {
@@ -340,16 +350,71 @@ export class WhiteboardEngine {
     this.selectedIds.clear();
     this.updateSelectionVisuals();
     if (this.callbacks.onSelectionChange) {
-      this.callbacks.onSelectionChange([]);
+      this.callbacks.onSelectionChange(this.getSelectedIds());
     }
   }
 
   public selectAll(): void {
-    this.selectedIds = new Set(this.objects.map((o) => o.id));
+    const selectableObjects = this.objects.filter(o => !o.locked);
+    if (selectableObjects.length === 0) return;
+
+    this.selectedIds = new Set(selectableObjects.map(o => o.id));
     this.updateSelectionVisuals();
     if (this.callbacks.onSelectionChange) {
       this.callbacks.onSelectionChange(this.getSelectedIds());
     }
+  }
+
+  public nudgeSelected(dx: number, dy: number): void {
+    const selectedIds = this.getSelectedIds();
+    if (selectedIds.length === 0) return;
+
+    // Get all affected objects including children of selected groups
+    const allAffected = GroupManager.getAllAffectedObjects(selectedIds, this.objects);
+    
+    if (allAffected.length === 0) return;
+
+    const snapshot = JSON.parse(JSON.stringify(allAffected)) as typeof allAffected;
+    
+    const updatedObjects = snapshot.map(obj => {
+      if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf' || obj.type === 'teaching-tool' || obj.type === 'compass' || obj.type === 'circle' || obj.type === 'arc') {
+        const newObj = { ...obj } as any;
+        newObj.x = obj.x + dx;
+        newObj.y = obj.y + dy;
+        if (newObj.centerX !== undefined && newObj.centerY !== undefined) {
+          newObj.centerX += dx;
+          newObj.centerY += dy;
+        }
+        if (newObj.points) {
+          newObj.points = newObj.points.map((p: any) => ({ ...p, x: p.x + dx, y: p.y + dy }));
+        }
+        return newObj;
+      } else if (obj.type === 'stroke') {
+        const stroke = { ...obj } as any;
+        stroke.x = obj.x + dx;
+        stroke.y = obj.y + dy;
+        stroke.points = stroke.points.map((p: any) => ({
+          ...p,
+          x: p.x + dx,
+          y: p.y + dy,
+        }));
+        return stroke;
+      }
+      return obj;
+    });
+
+    const cmd = new TransformObjectsCommand(
+      allAffected,
+      updatedObjects,
+      () => this.getObjects(),
+      (objs: any[]) => this.setObjects(objs),
+      'Nudge'
+    );
+    this.getCommandManager().execute(cmd);
+    
+    // update visuals
+    const newBox = getCombinedBoundingBox(updatedObjects, 4 / this.getTransformer().getZoom());
+    this.renderer.setSelectionBox(newBox, null);
   }
 
   public updateSelectionVisuals(): void {

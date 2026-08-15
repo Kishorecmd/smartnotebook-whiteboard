@@ -43,6 +43,7 @@ export interface BaseWhiteboardObject {
   locked: boolean;
   createdAt: number;
   updatedAt: number;
+  parentGroupId?: string;
 }
 
 export interface FreehandStroke extends BaseWhiteboardObject {
@@ -278,7 +279,12 @@ export interface CompassObject extends BaseWhiteboardObject {
   pencilAngle?: number;
 }
 
-export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | AudioObject | ImageAudioObject | PdfObject | ColoringRegion | CircleObject | ArcObject | CompassObject;
+export interface GroupObject extends BaseWhiteboardObject {
+  type: 'group';
+  children: string[]; // IDs of child objects
+}
+
+export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | AudioObject | ImageAudioObject | PdfObject | ColoringRegion | CircleObject | ArcObject | CompassObject | GroupObject;
 
 /** Object types the media system owns. */
 export type MediaWhiteboardObject =
