@@ -35,9 +35,6 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
     };
   }),
 
-  setAzureCredentials: () => {},
-  clearAzureCredentials: () => {},
-
   showToast: (message: string) => {
     set({ toastMessage: message });
     setTimeout(() => {

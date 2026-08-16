@@ -11,7 +11,6 @@ import {
   AlignCenter,
   AlignRight,
   Settings2,
-  Cloud,
   AlertTriangle,
 } from 'lucide-react';
 import { TextAlign } from '../../types';
@@ -47,15 +46,11 @@ export const HandwritingRecognitionModal: React.FC = () => {
     applyHandwritingRecognition,
     recognitionEngine,
     setRecognitionEngine,
-    azureCredentials,
-    setAzureCredentials,
     recognitionError,
     recognizeHandwritingForSelected,
   } = useWhiteboardStore();
 
   const [showSettings, setShowSettings] = useState(false);
-  const [endpointDraft, setEndpointDraft] = useState(azureCredentials.endpoint);
-  const [keyDraft, setKeyDraft] = useState(azureCredentials.apiKey);
 
   const [text, setText] = useState('');
   const [fontSize, setFontSize] = useState(28);
@@ -101,6 +96,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
 
   const isLowConfidenceOfflineResult =
     handwritingResult?.engine === 'tesseract' &&
+    handwritingResult.confidence !== null &&
     handwritingResult.confidence < MINIMUM_RELIABLE_OFFLINE_CONFIDENCE;
   const mustReviewResult = isLowConfidenceOfflineResult && !hasReviewedLowConfidenceResult;
   const displayedRecognitionEngine = handwritingResult?.engine ?? recognitionEngine;
@@ -122,7 +118,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
                 Handwriting to Text
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Client-side OCR recognition for interactive whiteboard
+                On-device handwriting recognition for interactive whiteboard
               </p>
             </div>
           </div>
@@ -150,7 +146,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
                   {handwritingStatus || 'Analyzing handwriting...'}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Running WebAssembly OCR engine in background worker
+                  The handwriting model runs locally in a background worker
                 </p>
               </div>
 
@@ -195,7 +191,9 @@ export const HandwritingRecognitionModal: React.FC = () => {
                       Recognized Text
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">
-                      {handwritingResult.confidence}% confidence
+                      {handwritingResult.confidence === null
+                        ? 'TrOCR on-device AI'
+                        : `${handwritingResult.confidence}% confidence`}
                     </span>
                   </div>
                   <textarea
@@ -212,7 +210,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
                     <p>
-                      This offline result is only {handwritingResult.confidence}% confident. Tesseract is suitable for neat printed/block letters, not cursive writing like this sample. Choose <strong>Change</strong> below to use Azure AI Vision for cursive, or review the text before inserting it.
+                      This offline result is only {handwritingResult.confidence}% confident. Tesseract is suitable for neat printed/block letters, not cursive writing like this sample. Choose <strong>Change</strong> below to use TrOCR for cursive, or review the text before inserting it.
                     </p>
                   </div>
                   <label className="mt-2 flex cursor-pointer items-center gap-2 font-medium">
@@ -227,16 +225,16 @@ export const HandwritingRecognitionModal: React.FC = () => {
                 </div>
               )}
 
-              {/* Recognition engine + Azure credentials */}
+              {/* Recognition engine */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40">
                 <div className="flex items-center justify-between px-3 py-2">
                   <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                     <Settings2 className="w-3.5 h-3.5" />
                     <span className="font-semibold">Recognition engine:</span>
                     <span className="font-medium">
-                      {displayedRecognitionEngine === 'azure'
-                        ? 'Azure AI Vision (cloud)'
-                        : 'Offline (Tesseract; printed / block letters)'}
+                      {displayedRecognitionEngine === 'trocr'
+                        ? 'TrOCR handwriting AI (on-device)'
+                        : 'Tesseract (printed / block letters)'}
                     </span>
                   </div>
                   <button
@@ -258,7 +256,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
                 {showSettings && (
                   <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 px-3 py-3">
                     <div className="flex gap-2">
-                      {(['tesseract', 'azure'] as const).map((eng) => (
+                      {(['trocr', 'tesseract'] as const).map((eng) => (
                         <button
                           key={eng}
                           type="button"
@@ -269,61 +267,25 @@ export const HandwritingRecognitionModal: React.FC = () => {
                               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
                           }`}
                         >
-                          {eng === 'tesseract' ? 'Offline (printed / block letters)' : 'Azure AI Vision (cursive)'}
+                          {eng === 'trocr' ? 'TrOCR (handwriting; on-device)' : 'Tesseract (printed / block letters)'}
                         </button>
                       ))}
                     </div>
 
-                    {recognitionEngine === 'azure' && (
-                      <div className="space-y-2">
-                        <input
-                          type="url"
-                          value={endpointDraft}
-                          onChange={(e) => setEndpointDraft(e.target.value)}
-                          placeholder="https://<your-resource>.cognitiveservices.azure.com"
-                          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        />
-                        <input
-                          type="password"
-                          value={keyDraft}
-                          onChange={(e) => setKeyDraft(e.target.value)}
-                          placeholder="Azure subscription key"
-                          autoComplete="off"
-                          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        />
-                        <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
-                          Stored only in this browser. The ink image is sent to Azure for
-                          recognition, so use it only where sending pupils' writing to a
-                          cloud service is acceptable.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAzureCredentials({ endpoint: endpointDraft, apiKey: keyDraft });
-                            setShowSettings(false);
-                            recognizeHandwritingForSelected();
-                          }}
-                          disabled={!endpointDraft.trim() || !keyDraft.trim()}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Cloud className="w-3.5 h-3.5" />
-                          Save and recognize again
-                        </button>
-                      </div>
-                    )}
-
-                    {recognitionEngine === 'tesseract' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowSettings(false);
-                          recognizeHandwritingForSelected();
-                        }}
-                        className="w-full rounded-lg bg-slate-200 dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200"
-                      >
-                        Recognize again
-                      </button>
-                    )}
+                    <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      TrOCR downloads its open handwriting model once, then runs locally in this
+                      browser. Your handwritten ink is not sent to an OCR service.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSettings(false);
+                        recognizeHandwritingForSelected();
+                      }}
+                      className="w-full rounded-lg bg-slate-200 dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200"
+                    >
+                      Recognize again
+                    </button>
                   </div>
                 )}
               </div>

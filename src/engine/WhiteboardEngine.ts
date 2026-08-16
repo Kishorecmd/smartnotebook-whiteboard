@@ -924,7 +924,15 @@ export class WhiteboardEngine {
       element.muted = obj.muted;
       element.loop = obj.loop;
       element.playsInline = true;
-      // Never attached to the DOM: frames are drawn onto the canvas instead, so
+      element.style.position = 'absolute';
+      element.style.opacity = '0.0001';
+      element.style.pointerEvents = 'none';
+      element.style.width = '1px';
+      element.style.height = '1px';
+      element.style.zIndex = '-9999';
+      document.body.appendChild(element);
+      
+      // Frames are drawn onto the canvas instead, so
       // the video can't float above the board the way the old iframe did.
       element.addEventListener('ended', () => this.renderer.requestRender());
       element.addEventListener('play', () => this.renderer.requestRender());
@@ -989,6 +997,9 @@ export class WhiteboardEngine {
       element.pause();
       element.removeAttribute('src');
       element.load();
+      if (element.parentElement) {
+        element.parentElement.removeChild(element);
+      }
     }
     this.renderer.setVideoElement(objectId, null);
     const url = this.videoObjectUrls.get(objectId);

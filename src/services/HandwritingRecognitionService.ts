@@ -4,9 +4,9 @@ import { calculateBoundingBox, getMidPoint } from '../utils/math.utils';
 
 export interface HandwritingRecognitionResult {
   text: string;
-  confidence: number;
+  confidence: number | null;
   /** Identifies the recognizer that produced this result, including a cloud fallback. */
-  engine: 'tesseract' | 'azure';
+  engine: 'trocr' | 'tesseract' | 'azure';
   bbox: BoundingBox;
   previewDataUrl: string;
   suggestedFontSize: number;

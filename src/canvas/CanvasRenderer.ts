@@ -540,8 +540,19 @@ export class CanvasRenderer {
    * and owned by the engine; the renderer only paints its current frame.
    */
   public setVideoElement(objectId: string, element: HTMLVideoElement | null): void {
-    if (element) this.videoElements.set(objectId, element);
-    else this.videoElements.delete(objectId);
+    if (element) {
+      this.videoElements.set(objectId, element);
+      if ('requestVideoFrameCallback' in element) {
+        const callback = () => {
+          if (this.videoElements.get(objectId) !== element) return;
+          this.requestRender();
+          (element as any).requestVideoFrameCallback(callback);
+        };
+        (element as any).requestVideoFrameCallback(callback);
+      }
+    } else {
+      this.videoElements.delete(objectId);
+    }
     this.requestRender();
   }
 
@@ -566,9 +577,20 @@ export class CanvasRenderer {
     const isPlaying = !!videoEl && !videoEl.paused && !videoEl.ended && videoEl.readyState >= 2;
 
     if (isPlaying && videoEl) {
+      const prevSmoothing = ctx.imageSmoothingEnabled;
+      const prevQuality = ctx.imageSmoothingQuality;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'low';
+
       ctx.drawImage(videoEl, 0, 0, obj.width, obj.height);
-      // Keep the loop alive so the next frame gets painted.
-      this.videoNeedsFrame = true;
+      
+      ctx.imageSmoothingEnabled = prevSmoothing;
+      ctx.imageSmoothingQuality = prevQuality;
+      
+      // Fallback: If no native callback, we must force the loop alive at 60fps
+      if (!('requestVideoFrameCallback' in videoEl)) {
+        this.videoNeedsFrame = true;
+      }
     } else {
       const poster = this.getVideoPoster(obj);
       if (poster && poster.complete && poster.naturalWidth > 0) {
