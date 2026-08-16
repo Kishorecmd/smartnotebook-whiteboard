@@ -39,7 +39,7 @@ export const BaseWhiteboardObjectSchema = z.object({
 
 export const FreehandStrokeSchema = BaseWhiteboardObjectSchema.extend({
   type: z.literal('stroke'),
-  tool: z.enum(['pen', 'marker', 'pencil', 'brush', 'crayon', 'highlighter']),
+  tool: z.enum(['pen', 'marker', 'pencil', 'brush', 'crayon', 'highlighter', 'magic_pen']),
   points: z.array(PointSchema),
   color: z.string(),
   width: z.number().positive(),
