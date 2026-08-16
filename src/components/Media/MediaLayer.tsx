@@ -66,7 +66,7 @@ export const MediaLayer: React.FC<MediaLayerProps> = ({ engine }) => {
     return () => cancelAnimationFrame(animationFrameId);
   }, [engine]);
 
-  if (youtubeObjects.length === 0) return null;
+  if (youtubeObjects.length === 0 && webAppObjects.length === 0) return null;
 
   return (
     <div 
