@@ -16,7 +16,7 @@ export const YouTubePlayerNode: React.FC<YouTubePlayerNodeProps> = ({ object }) 
     enablejsapi: '1',
     playsinline: '1',
     rel: '0',
-    autoplay: object.autoplay ? '1' : '0',
+    autoplay: (object.autoplay || object.isInteractive || isPresenterMode) ? '1' : '0',
     mute: object.muted ? '1' : '0',
     controls: object.controls ? '1' : '0',
   });
