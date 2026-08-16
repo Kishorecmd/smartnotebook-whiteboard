@@ -149,6 +149,7 @@ export interface YouTubeVideoObject extends BaseWhiteboardObject {
   muted: boolean;
   controls: boolean;
   startTime: number;
+  isInteractive?: boolean;
 }
 
 /**

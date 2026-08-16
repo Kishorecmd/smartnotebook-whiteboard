@@ -14,6 +14,7 @@ import {
   PdfImportModal,
   PresenterToolbar,
   PenNameToast,
+  GlobalToast,
 } from './components';
 import { TeachingToolsPanel, TeachingToolsOverlay, initializeTeachingTools } from './teaching-tools';
 import { useWhiteboardStore } from './store';
@@ -112,6 +113,7 @@ export const App: React.FC = () => {
         <PdfImportModal />
         <TeachingToolsPanel />
         <TeachingToolsOverlay />
+        <GlobalToast />
       </main>
     </div>
   );

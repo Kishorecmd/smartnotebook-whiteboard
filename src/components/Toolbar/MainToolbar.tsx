@@ -105,7 +105,7 @@ export const MainToolbar: React.FC = () => {
     const transformer = engine.getTransformer();
     const centerPoint = transformer.screenToWorld({ x: rect.width / 2, y: rect.height / 2 });
     try {
-      const imageObject = await FileImportService.importImage(
+      const imageObject = await FileImportService.importImageBlob(
         file, centerPoint, visibleWorldBox(transformer.getTransform().zoom, rect.width, rect.height)
       );
       engine.addObject(imageObject);

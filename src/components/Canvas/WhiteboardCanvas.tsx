@@ -10,6 +10,7 @@ import { Point } from '../../types';
 import { ObjectContextMenu, ContextMenuPosition } from '../context-menu/ObjectContextMenu';
 import { CanvasContextMenu as CanvasMenu } from '../context-menu/CanvasContextMenu';
 import { HitTest } from '../../engine/HitTest';
+import { MediaLayer } from '../Media/MediaLayer';
 
 export const WhiteboardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -321,40 +322,108 @@ export const WhiteboardCanvas: React.FC = () => {
         e.preventDefault();
         const files = Array.from(e.dataTransfer.files);
         const engine = useWhiteboardStore.getState().engine;
+        const showToast = useWhiteboardStore.getState().showToast;
         
-        if (files.length > 0 && engine) {
-          // Get drop coordinates in screen space, convert to world space
-          const rect = containerRef.current?.getBoundingClientRect();
-          if (!rect) return;
-          const dropPoint: Point = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-          };
-          const worldPoint = engine.getTransformer().screenToWorld(dropPoint);
+        if (!engine) return;
 
+        // Get drop coordinates in screen space, convert to world space
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const dropPoint: Point = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+        const worldPoint = engine.getTransformer().screenToWorld(dropPoint);
+        const maxDisplaySize = visibleWorldBox(engine.getTransformer().getTransform().zoom, rect.width, rect.height);
+        
+        let handled = false;
+
+        if (files.length > 0) {
           for (const file of files) {
             if (file.type.startsWith('image/')) {
               try {
-                const imgObj = await FileImportService.importImage(
+                const imgObj = await FileImportService.importImageBlob(
                   file,
                   worldPoint,
-                  visibleWorldBox(engine.getTransformer().getTransform().zoom, rect.width, rect.height)
+                  maxDisplaySize
                 );
                 engine.addObject(imgObj);
-              } catch (err) {
-                console.error("Failed to import image", err);
+                engine.setSelectedIds([imgObj.id]);
+                handled = true;
+              } catch (err: any) {
+                console.error("Failed to import dropped image", err);
+                showToast(err.message || 'Failed to import dropped image.');
               }
             } else if (file.type === 'application/pdf') {
               try {
                 const images = await FileImportService.importPdfAsImages(file, worldPoint, 2.0);
                 if (images.length > 0) {
                   setPdfImportModalOpen(true, images);
+                  handled = true;
                 }
               } catch (err) {
                 console.error("Failed to import PDF", err);
               }
             }
           }
+        }
+
+        if (!handled) {
+          const htmlData = e.dataTransfer.getData('text/html');
+          const uriData = e.dataTransfer.getData('text/uri-list');
+          const textData = e.dataTransfer.getData('text/plain');
+
+          // Check HTML first
+          if (htmlData) {
+            try {
+               const doc = new DOMParser().parseFromString(htmlData, "text/html");
+               const img = doc.querySelector('img[src], img[srcset]');
+               if (img) {
+                 let src = img.getAttribute('src');
+                 const srcset = img.getAttribute('srcset');
+                 
+                 if (srcset) {
+                    const candidates = srcset.split(',').map(s => s.trim().split(/\s+/));
+                    if (candidates.length > 0) {
+                        src = candidates[candidates.length - 1][0];
+                    }
+                 }
+                 
+                 if (src && (src.startsWith('http:') || src.startsWith('https:') || src.startsWith('data:'))) {
+                     try {
+                        const imageObj = await FileImportService.importImageUrl(src, worldPoint, maxDisplaySize);
+                        engine.addObject(imageObj);
+                        engine.setSelectedIds([imageObj.id]);
+                        handled = true;
+                     } catch (err: any) {
+                        showToast(err.message || 'Failed to fetch image from dropped HTML.');
+                     }
+                 }
+               }
+            } catch (err) {
+               console.error('Failed to parse dropped HTML payload', err);
+            }
+          }
+
+          // Check direct URL fallback
+          if (!handled && (uriData || textData)) {
+            const urlToCheck = uriData ? uriData.split('\n')[0].trim() : textData.trim();
+            const isImageUrl = /^https?:\/\/.*\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(urlToCheck);
+            if (isImageUrl) {
+                try {
+                    const imageObj = await FileImportService.importImageUrl(urlToCheck, worldPoint, maxDisplaySize);
+                    engine.addObject(imageObj);
+                    engine.setSelectedIds([imageObj.id]);
+                    handled = true;
+                } catch (err: any) {
+                    showToast(err.message || 'Failed to fetch dropped image URL.');
+                }
+            }
+          }
+        }
+
+        if (handled) {
+            showToast("Image imported");
         }
       }}
     >
@@ -382,6 +451,9 @@ export const WhiteboardCanvas: React.FC = () => {
             objectManager={useWhiteboardStore.getState().engine!.getObjectManager()}
             onSelectAll={() => useWhiteboardStore.getState().engine!.selectAll()}
           />
+          
+          {/* Media layer for interactive DOM objects like YouTube videos */}
+          <MediaLayer engine={useWhiteboardStore.getState().engine!} />
         </>
       )}
 

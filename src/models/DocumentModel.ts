@@ -129,6 +129,7 @@ export const YouTubeVideoObjectSchema = BaseWhiteboardObjectSchema.extend({
   controls: z.boolean().default(true),
   // Documents saved before startTime existed omit it, so default rather than reject.
   startTime: z.number().default(0),
+  isInteractive: z.boolean().optional(),
 });
 
 export const VideoObjectSchema = BaseWhiteboardObjectSchema.extend({

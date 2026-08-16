@@ -438,6 +438,12 @@ export class CanvasRenderer {
    * DOM iframe layered over the board.
    */
   private renderYouTubeThumbnail(ctx: CanvasRenderingContext2D, obj: YouTubeVideoObject): void {
+    if (obj.isInteractive) {
+      // The Media DOM Layer will render the iframe over this space. 
+      // We don't render the thumbnail under it during Play Mode so it doesn't flash or look weird.
+      return;
+    }
+
     ctx.save();
     ctx.translate(obj.x, obj.y);
     if (obj.rotation) {

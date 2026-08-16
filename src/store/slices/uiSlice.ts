@@ -10,6 +10,7 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
   isDocTitleEditing: false,
   isPresenterMode: false,
   isTeachingPanelOpen: false,
+  toastMessage: null,
 
   activeOverlayTools: [],
 
@@ -34,4 +35,11 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
 
   setAzureCredentials: () => {},
   clearAzureCredentials: () => {},
+
+  showToast: (message: string) => {
+    set({ toastMessage: message });
+    setTimeout(() => {
+      set((state) => (state.toastMessage === message ? { toastMessage: null } : {}));
+    }, 3000);
+  },
 });

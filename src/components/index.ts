@@ -14,6 +14,7 @@ export * from './Toolbar/SelectionActionBar';
 export * from './Toolbar/PenFamilyPicker';
 export * from './Toolbar/PenContextBar';
 export * from './Toolbar/PenNameToast';
+export * from './GlobalToast';
 export * from './Toolbar/BottomDock';
 export * from './Header/HeaderBar';
 export * from './Pages/PageDrawer';

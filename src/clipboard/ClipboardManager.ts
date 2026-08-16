@@ -2,6 +2,7 @@ import { WhiteboardObject, ImageObject } from '../types';
 import { ClipboardSerializer } from './ClipboardSerializer';
 import { AssetManager } from '../assets/AssetManager';
 import { FileImportService } from '../services/FileImportService';
+import { useWhiteboardStore } from '../store/useWhiteboardStore';
 
 const STORAGE_KEY = 'smartnotebook_clipboard';
 const CLIPBOARD_SIGNATURE = 'JAIHIND_CLIPBOARD_V1:';
@@ -72,31 +73,99 @@ export class ClipboardManager {
    */
   public async paste(e?: ClipboardEvent, centerPoint?: { x: number, y: number }): Promise<WhiteboardObject[] | null> {
     console.log('[Clipboard] Paste requested');
+    const showToast = useWhiteboardStore.getState().showToast;
+    const targetPoint = centerPoint || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    // Size constraint (60% of viewport)
+    const maxDisplaySize = { width: window.innerWidth * 0.6, height: window.innerHeight * 0.6 };
+
     let dataToPaste = this.lastCopiedData;
     
     // 1. If an event is provided, check if it's an internal copy via text signature
     if (e && e.clipboardData) {
+      const types = Array.from(e.clipboardData.types);
+      console.log('[Clipboard] types:', types);
+
       const textData = e.clipboardData.getData('text/plain');
+
+      // 1. Internal Signature Check
       if (textData && textData.startsWith(CLIPBOARD_SIGNATURE)) {
          dataToPaste = textData.substring(CLIPBOARD_SIGNATURE.length);
          console.log('[Clipboard] System clipboard: FOUND INTERNAL SIGNATURE');
       } else {
-         // 2. Check for image files in the system clipboard
+         // 2. Direct Image Blob Check
          const items = e.clipboardData.files;
          for (let i = 0; i < items.length; i++) {
            if (items[i].type.startsWith('image/')) {
              try {
-                const targetPoint = centerPoint || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-                // Calculate size constraint (40% of viewport)
-                const maxDisplaySize = { width: window.innerWidth * 0.4, height: window.innerHeight * 0.4 };
-                
-                const imageObj = await FileImportService.importImage(items[i], targetPoint, maxDisplaySize);
-                console.log('[Clipboard] Paste: SUCCESS (External Image)');
+                console.log('[Clipboard] Direct image: FOUND');
+                const imageObj = await FileImportService.importImageBlob(items[i], targetPoint, maxDisplaySize);
+                console.log('[Clipboard] Direct image: SUCCESS');
+                showToast("Image pasted");
                 return [imageObj];
-             } catch (err) {
-                console.error('Failed to paste external image', err);
+             } catch (err: any) {
+                console.error('Failed to paste external image blob', err);
+                showToast(err.message || 'This image format is not supported.');
+                return null;
              }
            }
+         }
+
+         // 3. HTML Clipboard Check
+         const htmlData = e.clipboardData.getData('text/html');
+         if (htmlData) {
+            console.log('[Clipboard] HTML: FOUND');
+            try {
+               const doc = new DOMParser().parseFromString(htmlData, "text/html");
+               const img = doc.querySelector('img[src], img[srcset]');
+               if (img) {
+                 let src = img.getAttribute('src');
+                 const srcset = img.getAttribute('srcset');
+                 
+                 if (srcset) {
+                    const candidates = srcset.split(',').map(s => s.trim().split(/\s+/));
+                    if (candidates.length > 0) {
+                        src = candidates[candidates.length - 1][0];
+                    }
+                 }
+                 
+                 if (src && (src.startsWith('http:') || src.startsWith('https:') || src.startsWith('data:'))) {
+                     console.log('[Clipboard] HTML image src: FOUND. Fetching image...', src);
+                     try {
+                        const imageObj = await FileImportService.importImageUrl(src, targetPoint, maxDisplaySize);
+                        console.log('[Clipboard] Fetch: SUCCESS. Image created.');
+                        showToast("Image pasted");
+                        return [imageObj];
+                     } catch (err: any) {
+                        console.error('[Clipboard] HTML Fetch: FAILED', err);
+                        showToast(err.message || 'Failed to fetch image from HTML payload.');
+                        return null; 
+                     }
+                 }
+               }
+            } catch (err) {
+               console.error('[Clipboard] Failed to parse HTML payload', err);
+            }
+         }
+
+         // 4. Plain text URL Check
+         if (textData) {
+            const isImageUrl = /^https?:\/\/.*\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(textData.trim());
+            const isWebpageUrl = /^https?:\/\//i.test(textData.trim());
+            
+            if (isImageUrl) {
+                console.log('[Clipboard] Plain text image URL: FOUND. Fetching...', textData);
+                try {
+                    const imageObj = await FileImportService.importImageUrl(textData.trim(), targetPoint, maxDisplaySize);
+                    showToast("Image pasted");
+                    return [imageObj];
+                } catch (err: any) {
+                    showToast(err.message || 'Failed to fetch image from URL.');
+                    return null;
+                }
+            } else if (isWebpageUrl) {
+                showToast("The clipboard contains a webpage link, not image data.");
+                return null;
+            }
          }
       }
     }

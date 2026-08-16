@@ -12,21 +12,20 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 export class FileImportService {
   /**
-   * Imports an image file and returns an ImageObject placed at the specified center point.
+   * Imports an image blob and returns an ImageObject placed at the specified center point.
    */
-  /**
-   * @param maxDisplaySize Optional box, in world units, the image should fit inside.
-   * A photo straight off a phone is several thousand pixels across and would other-
-   * wise be placed at that size, dwarfing the board. The intrinsic size is still
-   * recorded in originalWidth/originalHeight.
-   */
-  public static async importImage(
-    file: File,
+  public static async importImageBlob(
+    blob: Blob,
     centerPoint: Point,
     maxDisplaySize?: { width: number; height: number }
   ): Promise<ImageObject> {
-    const assetId = await AssetManager.addImage(file, file.type);
-    const objectUrl = URL.createObjectURL(file);
+    const validTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
+    if (!validTypes.includes(blob.type)) {
+      throw new Error(`This image format (${blob.type || 'unknown'}) is not supported.`);
+    }
+
+    const assetId = await AssetManager.addImage(blob, blob.type);
+    const objectUrl = URL.createObjectURL(blob);
 
     return new Promise((resolve, reject) => {
       // Load image to get intrinsic dimensions
@@ -61,7 +60,7 @@ export class FileImportService {
           locked: false,
           assetId,
           src: objectUrl,
-          mimeType: file.type,
+          mimeType: blob.type,
           originalWidth: naturalWidth,
           originalHeight: naturalHeight,
           createdAt: now,
@@ -73,6 +72,35 @@ export class FileImportService {
       img.onerror = () => reject(new Error('Failed to load image to calculate dimensions.'));
       img.src = objectUrl;
     });
+  }
+
+  /**
+   * Fetches an image from a URL and imports it via importImageBlob.
+   */
+  public static async importImageUrl(
+    url: string,
+    centerPoint: Point,
+    maxDisplaySize?: { width: number; height: number }
+  ): Promise<ImageObject> {
+    let response: Response;
+    try {
+      // Intentionally avoiding mode: 'no-cors' so we get readable image data or fail with a clear CORS error.
+      response = await fetch(url);
+    } catch (err) {
+      throw new Error('This website prevents direct image import. Try Copy image or download the image first.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+      throw new Error('The URL did not return a valid image.');
+    }
+
+    const blob = await response.blob();
+    return FileImportService.importImageBlob(blob, centerPoint, maxDisplaySize);
   }
 
   /**

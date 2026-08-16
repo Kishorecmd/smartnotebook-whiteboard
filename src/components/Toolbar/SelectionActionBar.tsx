@@ -648,25 +648,35 @@ export const SelectionActionBar: React.FC = () => {
           </>
         )}
 
-        {/* Watch on YouTube — videos render as a poster on the canvas, so playback
-            happens in a real YouTube tab rather than an iframe over the board. */}
+        {/* YouTube Interaction Toggle */}
         {isSingleVideoSelected && selectedVideoObj && (
           <>
             <button
               type="button"
               onClick={() => {
-                const start = selectedVideoObj.startTime;
-                const url =
-                  `https://www.youtube.com/watch?v=${selectedVideoObj.videoId}` +
-                  (start > 0 ? `&t=${Math.floor(start)}s` : '');
-                window.open(url, '_blank', 'noopener,noreferrer');
+                engine?.getObjectManager().updateObject(selectedVideoObj.id, { 
+                  isInteractive: !selectedVideoObj.isInteractive 
+                });
               }}
-              title="Watch on YouTube (opens in a new tab)"
-              aria-label="Watch on YouTube"
-              className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-red-400 border border-red-900/50 hover:bg-red-900/40 hover:text-red-300"
+              title={selectedVideoObj.isInteractive ? "Return to Edit Mode" : "Play Interactive Video"}
+              aria-label={selectedVideoObj.isInteractive ? "Edit Mode" : "Play Video"}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold border ${
+                selectedVideoObj.isInteractive 
+                  ? "bg-blue-900/40 text-blue-300 border-blue-900/50 hover:bg-blue-800/60"
+                  : "bg-slate-800 text-red-400 border-red-900/50 hover:bg-red-900/40 hover:text-red-300"
+              }`}
             >
-              <PlaySquare className="w-4 h-4" />
-              <span className="hidden sm:inline">Watch on YouTube</span>
+              {selectedVideoObj.isInteractive ? (
+                <>
+                  <span className="hidden sm:inline">↖ Edit</span>
+                  <span className="sm:hidden">Edit</span>
+                </>
+              ) : (
+                <>
+                  <PlaySquare className="w-4 h-4" />
+                  <span className="hidden sm:inline">Play</span>
+                </>
+              )}
             </button>
             <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
           </>

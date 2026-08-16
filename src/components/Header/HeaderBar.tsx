@@ -102,7 +102,7 @@ export const HeaderBar: React.FC = () => {
       if (file.type.startsWith('image/')) {
         try {
           const rect = engine.getCanvas().getBoundingClientRect();
-          const imgObj = await FileImportService.importImage(
+          const imgObj = await FileImportService.importImageBlob(
             file,
             centerPoint,
             visibleWorldBox(engine.getTransformer().getTransform().zoom, rect.width, rect.height)

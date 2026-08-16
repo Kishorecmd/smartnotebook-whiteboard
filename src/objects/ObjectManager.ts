@@ -72,6 +72,17 @@ export class ObjectManager {
     );
     this.engine.getCommandManager().execute(command);
   }
+  
+  public updateObject(id: string, partialState: Partial<WhiteboardObject>): void {
+    const command = new ChangeObjectStateCommand(
+      [id],
+      partialState,
+      'Update Object',
+      () => this.engine.getObjects(),
+      (objs) => this.engine.setObjects(objs)
+    );
+    this.engine.getCommandManager().execute(command);
+  }
 
   // --- Locking ---
 

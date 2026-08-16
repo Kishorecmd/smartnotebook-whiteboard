@@ -94,26 +94,31 @@ export class SelectTool implements ITool {
     if (hitObj) {
       const now = Date.now();
       if (
-        hitObj.type === 'text' &&
+        (hitObj.type === 'text' || hitObj.type === 'youtubeVideo') &&
         this.lastClickObjId === hitObj.id &&
         now - this.lastClickTime < 350
       ) {
-        const textObj = hitObj as TextObject;
-        engine.startTextEditing({
-          id: textObj.id,
-          worldPoint: { x: textObj.x, y: textObj.y },
-          initialText: textObj.text,
-          fontSize: textObj.fontSize,
-          fontFamily: textObj.fontFamily,
-          fontWeight: textObj.fontWeight,
-          fontStyle: textObj.fontStyle,
-          underline: textObj.underline,
-          textAlign: textObj.textAlign,
-          color: textObj.color,
-          width: textObj.width,
-          height: textObj.height,
-          rotation: textObj.rotation,
-        });
+        if (hitObj.type === 'text') {
+          const textObj = hitObj as TextObject;
+          engine.startTextEditing({
+            id: textObj.id,
+            worldPoint: { x: textObj.x, y: textObj.y },
+            initialText: textObj.text,
+            fontSize: textObj.fontSize,
+            fontFamily: textObj.fontFamily,
+            fontWeight: textObj.fontWeight,
+            fontStyle: textObj.fontStyle,
+            underline: textObj.underline,
+            textAlign: textObj.textAlign,
+            color: textObj.color,
+            width: textObj.width,
+            height: textObj.height,
+            rotation: textObj.rotation,
+          });
+        } else if (hitObj.type === 'youtubeVideo') {
+          engine.getObjectManager().updateObject(hitObj.id, { isInteractive: true });
+        }
+        
         this.lastClickTime = 0;
         this.lastClickObjId = null;
         this.dragMode = 'idle';

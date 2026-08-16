@@ -190,6 +190,7 @@ export interface UiSlice {
   isDocTitleEditing: boolean;
   isPresenterMode: boolean;
   isTeachingPanelOpen: boolean;
+  toastMessage: string | null;
 
   // Active Teaching Overlay Tools (e.g. Timer, Calculator)
   activeOverlayTools: string[];
@@ -206,6 +207,7 @@ export interface UiSlice {
   toggleOverlayTool: (toolId: string) => void;
   setAzureCredentials: (credentials: AzureVisionCredentials) => void;
   clearAzureCredentials: () => void;
+  showToast: (message: string) => void;
 }
 
 export interface ResponsiveSlice {
