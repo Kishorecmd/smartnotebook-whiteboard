@@ -118,7 +118,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
                 Handwriting to Text
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                On-device handwriting recognition for interactive whiteboard
+                AI handwriting recognition for interactive whiteboard
               </p>
             </div>
           </div>
@@ -146,7 +146,9 @@ export const HandwritingRecognitionModal: React.FC = () => {
                   {handwritingStatus || 'Analyzing handwriting...'}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  The handwriting model runs locally in a background worker
+                  {recognitionEngine === 'gemini'
+                    ? 'Gemini Vision is reading only the selected handwriting image'
+                    : 'The handwriting model runs locally in a background worker'}
                 </p>
               </div>
 
@@ -210,7 +212,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
                     <p>
-                      This offline result is only {handwritingResult.confidence}% confident. Tesseract is suitable for neat printed/block letters, not cursive writing like this sample. Choose <strong>Change</strong> below to use TrOCR for cursive, or review the text before inserting it.
+                      This offline result is only {handwritingResult.confidence}% confident. Tesseract is suitable for neat printed/block letters, not cursive writing like this sample. Choose <strong>Change</strong> below to use Gemini Vision, or review the text before inserting it.
                     </p>
                   </div>
                   <label className="mt-2 flex cursor-pointer items-center gap-2 font-medium">
@@ -232,9 +234,11 @@ export const HandwritingRecognitionModal: React.FC = () => {
                     <Settings2 className="w-3.5 h-3.5" />
                     <span className="font-semibold">Recognition engine:</span>
                     <span className="font-medium">
-                      {displayedRecognitionEngine === 'trocr'
-                        ? 'TrOCR handwriting AI (on-device)'
-                        : 'Tesseract (printed / block letters)'}
+                      {displayedRecognitionEngine === 'gemini'
+                        ? 'Gemini Vision (cloud AI)'
+                        : displayedRecognitionEngine === 'trocr'
+                          ? 'TrOCR handwriting AI (on-device)'
+                          : 'Tesseract (printed / block letters)'}
                     </span>
                   </div>
                   <button
@@ -255,8 +259,8 @@ export const HandwritingRecognitionModal: React.FC = () => {
 
                 {showSettings && (
                   <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 px-3 py-3">
-                    <div className="flex gap-2">
-                      {(['trocr', 'tesseract'] as const).map((eng) => (
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {(['gemini', 'trocr', 'tesseract'] as const).map((eng) => (
                         <button
                           key={eng}
                           type="button"
@@ -267,14 +271,19 @@ export const HandwritingRecognitionModal: React.FC = () => {
                               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
                           }`}
                         >
-                          {eng === 'trocr' ? 'TrOCR (handwriting; on-device)' : 'Tesseract (printed / block letters)'}
+                          {eng === 'gemini'
+                            ? 'Gemini Vision (recommended)'
+                            : eng === 'trocr'
+                              ? 'TrOCR (handwriting; on-device)'
+                              : 'Tesseract (printed / block letters)'}
                         </button>
                       ))}
                     </div>
 
                     <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
-                      TrOCR downloads its open handwriting model once, then runs locally in this
-                      browser. Your handwritten ink is not sent to an OCR service.
+                      Gemini Vision sends the selected handwriting image to your configured Node
+                      server and Gemini; the API key stays on the server. TrOCR and Tesseract run
+                      locally in the browser and do not send the ink to a recognition service.
                     </p>
                     <button
                       type="button"

@@ -149,8 +149,8 @@ export interface SelectionSlice {
   cancelTextEdit: () => void;
 }
 
-/** Local TrOCR handwriting AI, with Tesseract retained for printed/block text. */
-export type RecognitionEngine = 'trocr' | 'tesseract';
+/** Gemini Vision is the default; local engines remain available as fallbacks. */
+export type RecognitionEngine = 'gemini' | 'trocr' | 'tesseract';
 
 export interface HandwritingSlice {
   isHandwritingModalOpen: boolean;

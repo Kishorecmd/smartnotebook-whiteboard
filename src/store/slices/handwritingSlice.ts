@@ -1,15 +1,28 @@
 import { FreehandStroke } from '../../types';
 import { HandwritingRecognitionService } from '../../services/HandwritingRecognitionService';
+import { GeminiVisionRecognitionService } from '../../services/GeminiVisionRecognitionService';
 import { TrOCRRecognitionService } from '../../services/TrOCRRecognitionService';
 import type { HandwritingSlice, RecognitionEngine, SliceCreator } from '../types';
 
 const ENGINE_KEY = 'jhw_recognition_engine';
+const ENGINE_VERSION_KEY = 'jhw_recognition_engine_version';
+const ENGINE_VERSION = 'gemini-v1';
 
 const loadEngine = (): RecognitionEngine => {
   try {
-    return localStorage.getItem(ENGINE_KEY) === 'tesseract' ? 'tesseract' : 'trocr';
+    // Earlier releases defaulted to a local recognizer and persisted that
+    // implicit choice. Migrate once so existing users receive the requested
+    // Gemini Vision default, while later choices still remain respected.
+    if (localStorage.getItem(ENGINE_VERSION_KEY) !== ENGINE_VERSION) {
+      localStorage.setItem(ENGINE_VERSION_KEY, ENGINE_VERSION);
+      localStorage.setItem(ENGINE_KEY, 'gemini');
+      return 'gemini';
+    }
+
+    const saved = localStorage.getItem(ENGINE_KEY);
+    return saved === 'gemini' || saved === 'trocr' || saved === 'tesseract' ? saved : 'gemini';
   } catch {
-    return 'trocr';
+    return 'gemini';
   }
 };
 
@@ -62,10 +75,13 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
       set({ handwritingProgress: progress, handwritingStatus: status });
 
     try {
-      const useTesseract = get().recognitionEngine === 'tesseract';
-      const result = useTesseract
-        ? await HandwritingRecognitionService.recognizeStrokes(selectedStrokes, onProgress)
-        : await TrOCRRecognitionService.recognizeStrokes(selectedStrokes, onProgress);
+      const recognizer = get().recognitionEngine;
+      const result =
+        recognizer === 'gemini'
+          ? await GeminiVisionRecognitionService.recognizeStrokes(selectedStrokes, onProgress)
+          : recognizer === 'trocr'
+            ? await TrOCRRecognitionService.recognizeStrokes(selectedStrokes, onProgress)
+            : await HandwritingRecognitionService.recognizeStrokes(selectedStrokes, onProgress);
 
       if (result) {
         set({
