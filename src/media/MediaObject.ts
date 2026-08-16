@@ -11,7 +11,7 @@ import { MediaKind } from './MediaTypes';
  */
 
 /** Every object type owned by the media system. */
-export const MEDIA_OBJECT_TYPES = ['image', 'video', 'audio', 'image-audio', 'pdf', 'youtubeVideo'] as const;
+export const MEDIA_OBJECT_TYPES = ['image', 'video', 'audio', 'image-audio', 'pdf', 'youtubeVideo', 'webApp'] as const;
 
 export function isMediaObject(obj: WhiteboardObject): obj is MediaWhiteboardObject {
   return (MEDIA_OBJECT_TYPES as readonly string[]).includes(obj.type);
@@ -34,6 +34,7 @@ export function isPlayableMedia(obj: WhiteboardObject): boolean {
 export function isGrabbableMedia(obj: WhiteboardObject): boolean {
   return (
     obj.type === 'youtubeVideo' ||
+    obj.type === 'webApp' ||
     obj.type === 'video' ||
     obj.type === 'audio' ||
     obj.type === 'image-audio' ||
@@ -56,6 +57,8 @@ export function mediaKindOf(obj: WhiteboardObject): MediaKind | null {
       return 'pdf';
     case 'youtubeVideo':
       return 'youtube';
+    case 'webApp':
+      return 'webApp';
     default:
       return null;
   }

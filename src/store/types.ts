@@ -187,6 +187,7 @@ export interface UiSlice {
   isKeyboardShortcutsOpen: boolean;
   isClearDialogOpen: boolean;
   isYouTubeDialogOpen: boolean;
+  isWebAppDialogOpen: boolean;
   isDocTitleEditing: boolean;
   isPresenterMode: boolean;
   isTeachingPanelOpen: boolean;
@@ -201,6 +202,7 @@ export interface UiSlice {
   setKeyboardShortcutsOpen: (open: boolean) => void;
   setClearDialogOpen: (open: boolean) => void;
   setYouTubeDialogOpen: (open: boolean) => void;
+  setWebAppDialogOpen: (open: boolean) => void;
   setDocTitleEditing: (editing: boolean) => void;
   setPresenterMode: (enabled: boolean) => void;
   setTeachingPanelOpen: (open: boolean) => void;

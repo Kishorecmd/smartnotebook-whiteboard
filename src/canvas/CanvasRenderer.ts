@@ -22,6 +22,7 @@ import {
   AudioObject,
   ImageAudioObject,
   PdfObject,
+  WebAppObject,
 } from '../types';
 import { AudioCardRenderer, AudioCardState } from '../media/audio/AudioCardRenderer';
 import { MediaManager } from '../media/MediaManager';
@@ -350,6 +351,8 @@ export class CanvasRenderer {
         }
       } else if (obj.type === 'youtubeVideo') {
         this.renderYouTubeThumbnail(ctx, obj as YouTubeVideoObject);
+      } else if (obj.type === 'webApp') {
+        this.renderWebAppPlaceholder(ctx, obj as WebAppObject);
       } else if (obj.type === 'video') {
         this.renderVideoObject(ctx, obj as VideoObject);
       } else if (obj.type === 'audio') {
@@ -462,6 +465,44 @@ export class CanvasRenderer {
     }
 
     this.renderPlayBadge(ctx, obj.width, obj.height);
+    ctx.restore();
+  }
+
+  private renderWebAppPlaceholder(ctx: CanvasRenderingContext2D, obj: WebAppObject): void {
+    if (obj.isInteractive) {
+      // The Media DOM Layer renders the live iframe over this space. 
+      // We skip drawing the placeholder in Interact Mode.
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(obj.x, obj.y);
+    if (obj.rotation) {
+      ctx.translate(obj.width / 2, obj.height / 2);
+      ctx.rotate(obj.rotation);
+      ctx.translate(-obj.width / 2, -obj.height / 2);
+    }
+
+    // Draw placeholder background
+    ctx.fillStyle = '#0f172a'; // slate-900
+    ctx.fillRect(0, 0, obj.width, obj.height);
+    
+    // Draw border
+    ctx.strokeStyle = '#334155'; // slate-700
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, obj.width, obj.height);
+
+    // Draw title and URL
+    ctx.fillStyle = '#f8fafc'; // slate-50
+    ctx.font = 'bold 24px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(obj.title || 'Embedded Website', obj.width / 2, obj.height / 2 - 15);
+    
+    ctx.fillStyle = '#94a3b8'; // slate-400
+    ctx.font = '16px Inter, sans-serif';
+    ctx.fillText(obj.url, obj.width / 2, obj.height / 2 + 20);
+
     ctx.restore();
   }
 

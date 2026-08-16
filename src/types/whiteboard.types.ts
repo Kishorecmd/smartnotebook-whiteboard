@@ -139,6 +139,13 @@ export interface TeachingToolObject extends BaseWhiteboardObject {
   toolData: Record<string, any>;
 }
 
+export interface WebAppObject extends BaseWhiteboardObject {
+  type: 'webApp';
+  url: string;
+  title: string;
+  isInteractive?: boolean;
+}
+
 export interface YouTubeVideoObject extends BaseWhiteboardObject {
   type: 'youtubeVideo';
   videoId: string;
@@ -291,7 +298,7 @@ export interface GroupObject extends BaseWhiteboardObject {
   children: string[]; // IDs of child objects
 }
 
-export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | AudioObject | ImageAudioObject | PdfObject | ColoringRegion | CircleObject | ArcObject | CompassObject | GroupObject;
+export type WhiteboardObject = FreehandStroke | ShapeObject | TextObject | ImageObject | TeachingToolObject | YouTubeVideoObject | VideoObject | AudioObject | ImageAudioObject | PdfObject | ColoringRegion | CircleObject | ArcObject | CompassObject | GroupObject | WebAppObject;
 
 /** Object types the media system owns. */
 export type MediaWhiteboardObject =
@@ -300,7 +307,8 @@ export type MediaWhiteboardObject =
   | AudioObject
   | ImageAudioObject
   | PdfObject
-  | YouTubeVideoObject;
+  | YouTubeVideoObject
+  | WebAppObject;
 
 export interface Page {
   id: string;

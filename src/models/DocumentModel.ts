@@ -132,6 +132,13 @@ export const YouTubeVideoObjectSchema = BaseWhiteboardObjectSchema.extend({
   isInteractive: z.boolean().optional(),
 });
 
+export const WebAppObjectSchema = BaseWhiteboardObjectSchema.extend({
+  type: z.literal('webApp'),
+  url: z.string(),
+  title: z.string(),
+  isInteractive: z.boolean().optional(),
+});
+
 export const VideoObjectSchema = BaseWhiteboardObjectSchema.extend({
   type: z.literal('video'),
   mediaId: z.string(),
@@ -256,6 +263,7 @@ export const WhiteboardObjectSchema = z.discriminatedUnion('type', [
   ArcObjectSchema,
   CompassObjectSchema,
   GroupObjectSchema,
+  WebAppObjectSchema,
 ]);
 
 export const PageSchema = z.object({

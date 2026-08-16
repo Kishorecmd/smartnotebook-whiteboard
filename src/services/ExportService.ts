@@ -1,4 +1,4 @@
-import { WhiteboardPage, FreehandStroke, ShapeObject, TextObject, ImageObject, YouTubeVideoObject, VideoObject } from '../types';
+import { WhiteboardPage, FreehandStroke, ShapeObject, TextObject, ImageObject, YouTubeVideoObject, WebAppObject, VideoObject } from '../types';
 import { StrokeRenderer, ShapeRenderer, TextRenderer } from '../canvas';
 
 /**
@@ -139,6 +139,29 @@ export class ExportService {
       } else if (obj.type === 'video') {
         const v = obj as VideoObject;
         if (v.posterDataUrl) drawLoadedImage(ctx, v.posterDataUrl, obj, imageCache);
+      } else if (obj.type === 'webApp') {
+        const wa = obj as WebAppObject;
+        ctx.save();
+        ctx.translate(wa.x, wa.y);
+        if (wa.rotation) {
+          ctx.translate(wa.width / 2, wa.height / 2);
+          ctx.rotate(wa.rotation);
+          ctx.translate(-wa.width / 2, -wa.height / 2);
+        }
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, wa.width, wa.height);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, wa.width, wa.height);
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 24px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(wa.title || 'Embedded Website', wa.width / 2, wa.height / 2 - 15);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '16px Inter, sans-serif';
+        ctx.fillText(wa.url, wa.width / 2, wa.height / 2 + 20);
+        ctx.restore();
       }
     }
 

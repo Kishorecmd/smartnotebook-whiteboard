@@ -94,7 +94,7 @@ export class SelectTool implements ITool {
     if (hitObj) {
       const now = Date.now();
       if (
-        (hitObj.type === 'text' || hitObj.type === 'youtubeVideo') &&
+        (hitObj.type === 'text' || hitObj.type === 'youtubeVideo' || hitObj.type === 'webApp') &&
         this.lastClickObjId === hitObj.id &&
         now - this.lastClickTime < 350
       ) {
@@ -115,7 +115,7 @@ export class SelectTool implements ITool {
             height: textObj.height,
             rotation: textObj.rotation,
           });
-        } else if (hitObj.type === 'youtubeVideo') {
+        } else if (hitObj.type === 'youtubeVideo' || hitObj.type === 'webApp') {
           engine.getObjectManager().updateObject(hitObj.id, { isInteractive: true });
         }
         
@@ -257,7 +257,7 @@ export class SelectTool implements ITool {
       const dy = worldPoint.y - this.startPoint.y;
 
       const updatedObjects = this.initialObjectSnapshots.map((obj) => {
-        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf' || obj.type === 'teaching-tool' || obj.type === 'compass' || obj.type === 'circle' || obj.type === 'arc') {
+        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'webApp' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf' || obj.type === 'teaching-tool' || obj.type === 'compass' || obj.type === 'circle' || obj.type === 'arc') {
           const newObj = { ...obj } as any;
           newObj.x = obj.x + dx;
           newObj.y = obj.y + dy;
@@ -341,7 +341,7 @@ export class SelectTool implements ITool {
       const originY = handle.includes('n') ? initialBox.maxY : initialBox.minY;
 
       const updatedObjects = this.initialObjectSnapshots.map((obj) => {
-        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf') {
+        if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'webApp' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf') {
           const newObj = { ...obj } as any;
           const relX = obj.x - originX;
           const relY = obj.y - originY;

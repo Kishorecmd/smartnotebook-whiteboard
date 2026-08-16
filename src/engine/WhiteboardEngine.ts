@@ -377,7 +377,7 @@ export class WhiteboardEngine {
     const snapshot = JSON.parse(JSON.stringify(allAffected)) as typeof allAffected;
     
     const updatedObjects = snapshot.map(obj => {
-      if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf' || obj.type === 'teaching-tool' || obj.type === 'compass' || obj.type === 'circle' || obj.type === 'arc') {
+      if (obj.type === 'shape' || obj.type === 'text' || obj.type === 'image' || obj.type === 'youtubeVideo' || obj.type === 'webApp' || obj.type === 'video' || obj.type === 'audio' || obj.type === 'image-audio' || obj.type === 'pdf' || obj.type === 'teaching-tool' || obj.type === 'compass' || obj.type === 'circle' || obj.type === 'arc') {
         const newObj = { ...obj } as any;
         newObj.x = obj.x + dx;
         newObj.y = obj.y + dy;
@@ -593,7 +593,7 @@ export class WhiteboardEngine {
           updatedAt: now,
         });
       } else {
-        // Everything else (text, image, youtubeVideo, teaching-tool, coloringRegion)
+        // Everything else (text, image, youtubeVideo, webApp, teaching-tool, coloringRegion)
         // duplicates by offsetting position; previously these silently produced no
         // clone, which also cleared the selection via setSelectedIds([]) below.
         clonedObjects.push({

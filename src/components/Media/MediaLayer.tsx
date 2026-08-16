@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { WhiteboardEngine } from '../../engine/WhiteboardEngine';
-import { YouTubeVideoObject, WhiteboardObject } from '../../types';
+import { YouTubeVideoObject, WebAppObject, WhiteboardObject } from '../../types';
 import { YouTubePlayerNode } from './YouTubePlayerNode';
+import { WebAppNode } from './WebAppNode';
 
 interface MediaLayerProps {
   engine: WhiteboardEngine;
@@ -10,6 +11,7 @@ interface MediaLayerProps {
 export const MediaLayer: React.FC<MediaLayerProps> = ({ engine }) => {
   const layerRef = useRef<HTMLDivElement>(null);
   const [youtubeObjects, setYoutubeObjects] = useState<YouTubeVideoObject[]>([]);
+  const [webAppObjects, setWebAppObjects] = useState<WebAppObject[]>([]);
   
   useEffect(() => {
     let animationFrameId: number;
@@ -42,16 +44,19 @@ export const MediaLayer: React.FC<MediaLayerProps> = ({ engine }) => {
     const checkObjects = () => {
       const allObjects = engine.getObjects();
       const ytObjects = allObjects.filter((obj: WhiteboardObject) => obj.type === 'youtubeVideo') as YouTubeVideoObject[];
+      const waObjects = allObjects.filter((obj: WhiteboardObject) => obj.type === 'webApp') as WebAppObject[];
       
       // We only care if id, position, size, rotation, or isInteractive changes.
       // Stringifying a projection of these properties is extremely fast.
-      const stateStr = JSON.stringify(
-        ytObjects.map(o => `${o.id}-${o.x}-${o.y}-${o.width}-${o.height}-${o.rotation}-${!!o.isInteractive}`)
-      );
+      const stateStr = JSON.stringify([
+        ytObjects.map(o => `${o.id}-${o.x}-${o.y}-${o.width}-${o.height}-${o.rotation}-${!!o.isInteractive}`),
+        waObjects.map(o => `${o.id}-${o.x}-${o.y}-${o.width}-${o.height}-${o.rotation}-${!!o.isInteractive}-${o.url}`)
+      ]);
       
       if (stateStr !== lastStateStr) {
         lastStateStr = stateStr;
         setYoutubeObjects(ytObjects);
+        setWebAppObjects(waObjects);
       }
       
       animationFrameId = requestAnimationFrame(checkObjects);
@@ -68,13 +73,12 @@ export const MediaLayer: React.FC<MediaLayerProps> = ({ engine }) => {
       className="whiteboard-media-layer absolute inset-0 pointer-events-none overflow-hidden" 
       style={{ zIndex: 25 }}
     >
-      <div 
-        ref={layerRef}
-        className="media-layer-transform absolute inset-0"
-        style={{ transformOrigin: '0 0' }}
-      >
+      <div ref={layerRef} className="absolute inset-0 origin-top-left pointer-events-none transform-gpu">
         {youtubeObjects.map(obj => (
           <YouTubePlayerNode key={obj.id} object={obj} />
+        ))}
+        {webAppObjects.map(obj => (
+          <WebAppNode key={obj.id} object={obj} />
         ))}
       </div>
     </div>

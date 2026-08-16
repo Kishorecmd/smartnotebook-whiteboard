@@ -29,9 +29,11 @@ import {
   Scissors,
   Combine,
   SplitSquareHorizontal,
+  RefreshCw,
+  Maximize2,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
-import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, VideoObject, CompassObject, PdfObject } from '../../types';
+import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, WebAppObject, VideoObject, CompassObject, PdfObject } from '../../types';
 import { CompassToolbar } from '../../teaching-tools/compass/CompassToolbar';
 
 const COLOR_SWATCHES = [
@@ -91,6 +93,8 @@ export const SelectionActionBar: React.FC = () => {
   const selectedGuideObj = isSingleGuideSelected ? (selectedObjects[0] as TeachingToolObject) : null;
   const isSingleVideoSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'youtubeVideo';
   const selectedVideoObj = isSingleVideoSelected ? (selectedObjects[0] as YouTubeVideoObject) : null;
+  const isSingleWebAppSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'webApp';
+  const selectedWebAppObj = isSingleWebAppSelected ? (selectedObjects[0] as WebAppObject) : null;
   const isSingleLocalVideoSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'video';
   const selectedLocalVideo = isSingleLocalVideoSelected ? (selectedObjects[0] as VideoObject) : null;
   const isSinglePdfSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'pdf';
@@ -611,6 +615,70 @@ export const SelectionActionBar: React.FC = () => {
                 <RotateCw className="w-4 h-4" />
               </button>
             </div>
+            <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+          </>
+        )}
+
+        {/* Web App Interaction Toggle */}
+        {isSingleWebAppSelected && selectedWebAppObj && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                engine?.getObjectManager().updateObject(selectedWebAppObj.id, { 
+                  isInteractive: !selectedWebAppObj.isInteractive 
+                });
+              }}
+              title={selectedWebAppObj.isInteractive ? "Return to Edit Mode" : "Interact with Website"}
+              aria-label={selectedWebAppObj.isInteractive ? "Edit Mode" : "Interact with Website"}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold border ${
+                selectedWebAppObj.isInteractive 
+                  ? "bg-blue-900/40 text-blue-300 border-blue-900/50 hover:bg-blue-800/60"
+                  : "bg-slate-800 text-sky-400 border-sky-900/50 hover:bg-sky-900/40 hover:text-sky-300"
+              }`}
+            >
+              {selectedWebAppObj.isInteractive ? (
+                <>
+                  <span className="hidden sm:inline">↖ Edit</span>
+                  <span className="sm:hidden">Edit</span>
+                </>
+              ) : (
+                <>
+                  <PlaySquare className="w-4 h-4" />
+                  <span className="hidden sm:inline">Interact</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const url = selectedWebAppObj.url;
+                engine?.getObjectManager().updateObject(selectedWebAppObj.id, { 
+                  url: url + (url.includes('?') ? '&' : '?') + 'refresh=' + Date.now()
+                });
+              }}
+              title="Refresh Website"
+              aria-label="Refresh Website"
+              className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700/50 hover:bg-slate-700 hover:text-white"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const iframe = document.getElementById(`webapp-object-${selectedWebAppObj.id}`);
+                if (iframe && iframe.requestFullscreen) {
+                  iframe.requestFullscreen().catch(err => {
+                    console.error("Error attempting to enable fullscreen:", err);
+                  });
+                }
+              }}
+              title="Fullscreen"
+              aria-label="Fullscreen"
+              className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700/50 hover:bg-slate-700 hover:text-white"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
             <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
           </>
         )}

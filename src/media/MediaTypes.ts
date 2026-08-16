@@ -6,7 +6,7 @@
  * of browser APIs and leaves the Android port a clear seam to swap out.
  */
 
-export type MediaKind = 'image' | 'video' | 'audio' | 'image-audio' | 'pdf' | 'youtube';
+export type MediaKind = 'image' | 'video' | 'audio' | 'image-audio' | 'pdf' | 'youtube' | 'webApp';
 
 /** Where a media object's bytes actually live. */
 export type MediaSourceKind =
@@ -97,6 +97,7 @@ export const MEDIA_CAPABILITIES: Record<MediaKind, MediaCapabilities> = {
   'image-audio': { playable: true, croppable: true, paginated: false, hasVisualFrame: true, exportsStatically: true },
   pdf: { playable: false, croppable: false, paginated: true, hasVisualFrame: true, exportsStatically: true },
   youtube: { playable: false, croppable: false, paginated: false, hasVisualFrame: true, exportsStatically: true },
+  webApp: { playable: false, croppable: false, paginated: false, hasVisualFrame: true, exportsStatically: true },
 };
 
 /** Presentation metadata for the insert panel and the media library. */

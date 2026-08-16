@@ -53,6 +53,7 @@ export const MainToolbar: React.FC = () => {
     setClearDialogOpen,
     setTeachingPanelOpen,
     setYouTubeDialogOpen,
+    setWebAppDialogOpen,
     setPdfImportModalOpen,
     engine,
     activateLastPen,
@@ -183,10 +184,11 @@ export const MainToolbar: React.FC = () => {
     }
   };
 
-  const handleMediaInsert = async (type: 'youtube' | 'image' | 'video' | 'audio' | 'image-audio' | 'pdf') => {
+  const handleMediaInsert = async (type: 'youtube' | 'image' | 'video' | 'audio' | 'image-audio' | 'pdf' | 'webApp') => {
     setActivePopover('none');
     if (!engine) return;
     if (type === 'youtube') return setYouTubeDialogOpen(true);
+    if (type === 'webApp') return setWebAppDialogOpen(true);
     if (type === 'image-audio') return void insertImageAudioPair();
     if (type === 'pdf') {
       const asObject = confirm('Place the PDF on this page as a single object?\n\nOK = place on this page\nCancel = import each page as a whiteboard page');

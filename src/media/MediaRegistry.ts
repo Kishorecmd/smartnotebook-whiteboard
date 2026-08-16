@@ -101,3 +101,12 @@ MediaRegistry.register({
   accept: '',
   description: 'Paste a YouTube link',
 });
+
+MediaRegistry.register({
+  kind: 'webApp',
+  label: 'Website / Web App',
+  icon: '🌐',
+  group: 'online',
+  accept: '',
+  description: 'Embed a website or web app',
+});
