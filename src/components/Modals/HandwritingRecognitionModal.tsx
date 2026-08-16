@@ -34,6 +34,8 @@ const PRESET_COLORS = [
   '#ffffff', // White
 ];
 
+const MINIMUM_RELIABLE_OFFLINE_CONFIDENCE = 60;
+
 export const HandwritingRecognitionModal: React.FC = () => {
   const {
     isHandwritingModalOpen,
@@ -63,6 +65,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
   const [underline, setUnderline] = useState(false);
   const [textAlign, setTextAlign] = useState<TextAlign>('left');
   const [color, setColor] = useState('#0f172a');
+  const [hasReviewedLowConfidenceResult, setHasReviewedLowConfidenceResult] = useState(false);
 
   // Synchronize local edit state when new recognition results arrive
   useEffect(() => {
@@ -70,6 +73,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
       setText(handwritingResult.text);
       setFontSize(handwritingResult.suggestedFontSize || 28);
       setColor(handwritingResult.color || '#0f172a');
+      setHasReviewedLowConfidenceResult(false);
     }
   }, [handwritingResult]);
 
@@ -94,6 +98,12 @@ export const HandwritingRecognitionModal: React.FC = () => {
       replace,
     });
   };
+
+  const isLowConfidenceOfflineResult =
+    handwritingResult?.engine === 'tesseract' &&
+    handwritingResult.confidence < MINIMUM_RELIABLE_OFFLINE_CONFIDENCE;
+  const mustReviewResult = isLowConfidenceOfflineResult && !hasReviewedLowConfidenceResult;
+  const displayedRecognitionEngine = handwritingResult?.engine ?? recognitionEngine;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -197,6 +207,26 @@ export const HandwritingRecognitionModal: React.FC = () => {
                 </div>
               </div>
 
+              {isLowConfidenceOfflineResult && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-300">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
+                    <p>
+                      This offline result is only {handwritingResult.confidence}% confident. Tesseract is suitable for neat printed/block letters, not cursive writing like this sample. Choose <strong>Change</strong> below to use Azure AI Vision for cursive, or review the text before inserting it.
+                    </p>
+                  </div>
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={hasReviewedLowConfidenceResult}
+                      onChange={(e) => setHasReviewedLowConfidenceResult(e.target.checked)}
+                      className="h-3.5 w-3.5 accent-amber-700"
+                    />
+                    I have reviewed and corrected this text.
+                  </label>
+                </div>
+              )}
+
               {/* Recognition engine + Azure credentials */}
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40">
                 <div className="flex items-center justify-between px-3 py-2">
@@ -204,7 +234,9 @@ export const HandwritingRecognitionModal: React.FC = () => {
                     <Settings2 className="w-3.5 h-3.5" />
                     <span className="font-semibold">Recognition engine:</span>
                     <span className="font-medium">
-                      {recognitionEngine === 'azure' ? 'Azure AI Vision (cloud)' : 'Offline (Tesseract)'}
+                      {displayedRecognitionEngine === 'azure'
+                        ? 'Azure AI Vision (cloud)'
+                        : 'Offline (Tesseract; printed / block letters)'}
                     </span>
                   </div>
                   <button
@@ -458,7 +490,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => handleApply(false)}
-              disabled={isRecognizingHandwriting || !text.trim()}
+              disabled={isRecognizingHandwriting || !text.trim() || mustReviewResult}
               className="px-4 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/60 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -467,7 +499,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
 
             <button
               onClick={() => handleApply(true)}
-              disabled={isRecognizingHandwriting || !text.trim()}
+              disabled={isRecognizingHandwriting || !text.trim() || mustReviewResult}
               className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50 flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5" />

@@ -4,6 +4,7 @@ import { AzureInkRecognitionService } from '../../services/AzureInkRecognitionSe
 import type { HandwritingSlice, RecognitionEngine, SliceCreator } from '../types';
 
 const ENGINE_KEY = 'jhw_recognition_engine';
+const MINIMUM_RELIABLE_OFFLINE_CONFIDENCE = 60;
 
 const loadEngine = (): RecognitionEngine => {
   try {
@@ -73,6 +74,7 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
     try {
       let result = null;
       const useAzure = get().recognitionEngine === 'azure';
+      let usedOfflineFallback = !useAzure;
 
       if (useAzure) {
         try {
@@ -83,6 +85,7 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
           const message = azureErr instanceof Error ? azureErr.message : String(azureErr);
           console.warn('Azure recognition failed, falling back to offline engine:', message);
           set({ recognitionError: `${message} Fell back to offline recognition.` });
+          usedOfflineFallback = true;
           result = await runTesseract();
         }
       } else {
@@ -90,11 +93,20 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
       }
 
       if (result) {
+        const offlineConfidenceWarning =
+          usedOfflineFallback && result.confidence < MINIMUM_RELIABLE_OFFLINE_CONFIDENCE
+            ? `Offline OCR is only ${result.confidence}% confident. It cannot reliably read cursive handwriting; correct the text manually or use Azure AI Vision.`
+            : null;
+        const existingWarning = get().recognitionError;
+
         set({
           isRecognizingHandwriting: false,
           handwritingResult: result,
           handwritingProgress: 100,
           handwritingStatus: 'Recognition complete!',
+          recognitionError: [existingWarning, offlineConfidenceWarning]
+            .filter((message): message is string => Boolean(message))
+            .join(' ') || null,
         });
       } else {
         set({

@@ -57,7 +57,7 @@ export class AzureInkRecognitionService {
   /** Normalises whatever the user pasted into a usable analyze URL. */
   private static buildAnalyzeUrl(endpoint: string): string {
     const base = endpoint.trim().replace(/\/+$/, '');
-    return `${base}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read`;
+    return `${base}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read&model-version=latest`;
   }
 
   /** Grows the canvas if either side is under Azure's 50px floor. */
@@ -183,6 +183,7 @@ export class AzureInkRecognitionService {
     return {
       text,
       confidence,
+      engine: 'azure',
       bbox: rasterized.bbox,
       previewDataUrl: rasterized.previewDataUrl,
       suggestedFontSize,
