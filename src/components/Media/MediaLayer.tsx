@@ -66,7 +66,7 @@ export const MediaLayer: React.FC<MediaLayerProps> = ({ engine }) => {
   return (
     <div 
       className="whiteboard-media-layer absolute inset-0 pointer-events-none overflow-hidden" 
-      style={{ zIndex: 15 }}
+      style={{ zIndex: 25 }}
     >
       <div 
         ref={layerRef}
