@@ -112,9 +112,6 @@ export const WhiteboardCanvas: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
         e.preventDefault();
         engine.getObjectManager().cut(engine.getSelectedIds());
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-        e.preventDefault();
-        engine.getObjectManager().paste();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
         e.preventDefault();
         engine.selectAll();
@@ -238,12 +235,27 @@ export const WhiteboardCanvas: React.FC = () => {
       }
     };
 
+    const handlePaste = (e: ClipboardEvent) => {
+      // Don't intercept when user is typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+      e.preventDefault();
+      engine.getObjectManager().paste(e);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('paste', handlePaste);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('paste', handlePaste);
       resizeObserver.disconnect();
       engine.dispose();
       setEngine(null);

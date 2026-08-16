@@ -28,8 +28,25 @@ function drawLoadedImage(
 /** Preloads every image the page needs so the synchronous draw pass can use them. */
 async function preloadPageImages(page: WhiteboardPage): Promise<Map<string, HTMLImageElement>> {
   const sources: string[] = [];
+  
+  // We may need to resolve asset IDs
+  const { AssetManager } = await import('../assets/AssetManager');
+
   for (const obj of page.objects) {
-    if (obj.type === 'image') sources.push((obj as ImageObject).dataUrl);
+    if (obj.type === 'image') {
+      const imgObj = obj as ImageObject;
+      if (imgObj.src) {
+        sources.push(imgObj.src);
+      } else if (imgObj.assetId) {
+        const url = await AssetManager.getImageUrl(imgObj.assetId);
+        if (url) {
+          imgObj.src = url; // Save it to avoid fetching again in export
+          sources.push(url);
+        }
+      } else if (imgObj.dataUrl) {
+        sources.push(imgObj.dataUrl);
+      }
+    }
     if (obj.type === 'youtubeVideo') {
       const v = obj as YouTubeVideoObject;
       sources.push(v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`);
@@ -114,7 +131,8 @@ export class ExportService {
       } else if (obj.type === 'text') {
         TextRenderer.renderText(ctx, obj as TextObject);
       } else if (obj.type === 'image') {
-        drawLoadedImage(ctx, (obj as ImageObject).dataUrl, obj, imageCache);
+        const imgObj = obj as ImageObject;
+        drawLoadedImage(ctx, imgObj.src || imgObj.dataUrl || '', obj, imageCache);
       } else if (obj.type === 'youtubeVideo') {
         const v = obj as YouTubeVideoObject;
         drawLoadedImage(ctx, v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`, obj, imageCache);

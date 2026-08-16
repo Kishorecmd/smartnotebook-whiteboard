@@ -2,6 +2,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { ImageObject, Point, VideoObject } from '../types';
 import { generateId } from '../utils';
 import { StorageService } from './StorageService';
+import { AssetManager } from '../assets/AssetManager';
 
 // Set worker source for pdfjs-dist
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -24,56 +25,53 @@ export class FileImportService {
     centerPoint: Point,
     maxDisplaySize?: { width: number; height: number }
   ): Promise<ImageObject> {
+    const assetId = await AssetManager.addImage(file, file.type);
+    const objectUrl = URL.createObjectURL(file);
+
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
+      // Load image to get intrinsic dimensions
+      const img = new Image();
+      img.onload = () => {
+        const naturalWidth = img.naturalWidth;
+        const naturalHeight = img.naturalHeight;
 
-        // Load image to get intrinsic dimensions
-        const img = new Image();
-        img.onload = () => {
-          const naturalWidth = img.naturalWidth;
-          const naturalHeight = img.naturalHeight;
+        // Shrink to fit while preserving aspect ratio; never scale small images up.
+        let fitScale = 1;
+        if (maxDisplaySize && maxDisplaySize.width > 0 && maxDisplaySize.height > 0) {
+          fitScale = Math.min(
+            1,
+            maxDisplaySize.width / naturalWidth,
+            maxDisplaySize.height / naturalHeight
+          );
+        }
+        const width = Math.max(1, Math.round(naturalWidth * fitScale));
+        const height = Math.max(1, Math.round(naturalHeight * fitScale));
 
-          // Shrink to fit while preserving aspect ratio; never scale small images up.
-          let fitScale = 1;
-          if (maxDisplaySize && maxDisplaySize.width > 0 && maxDisplaySize.height > 0) {
-            fitScale = Math.min(
-              1,
-              maxDisplaySize.width / naturalWidth,
-              maxDisplaySize.height / naturalHeight
-            );
-          }
-          const width = Math.max(1, Math.round(naturalWidth * fitScale));
-          const height = Math.max(1, Math.round(naturalHeight * fitScale));
-
-          const now = Date.now();
-          const imageObject: ImageObject = {
-            id: generateId('image'),
-            type: 'image',
-            x: centerPoint.x - width / 2,
-            y: centerPoint.y - height / 2,
-            width,
-            height,
-            rotation: 0,
-            zIndex: 0,
-            visible: true,
-            locked: false,
-            dataUrl,
-            mimeType: file.type,
-            originalWidth: naturalWidth,
-            originalHeight: naturalHeight,
-            createdAt: now,
-            updatedAt: now,
-          };
-
-          resolve(imageObject);
+        const now = Date.now();
+        const imageObject: ImageObject = {
+          id: generateId('image'),
+          type: 'image',
+          x: centerPoint.x - width / 2,
+          y: centerPoint.y - height / 2,
+          width,
+          height,
+          rotation: 0,
+          zIndex: 0,
+          visible: true,
+          locked: false,
+          assetId,
+          src: objectUrl,
+          mimeType: file.type,
+          originalWidth: naturalWidth,
+          originalHeight: naturalHeight,
+          createdAt: now,
+          updatedAt: now,
         };
-        img.onerror = () => reject(new Error('Failed to load image to calculate dimensions.'));
-        img.src = dataUrl;
+
+        resolve(imageObject);
       };
-      reader.onerror = () => reject(new Error('Failed to read file as DataURL.'));
-      reader.readAsDataURL(file);
+      img.onerror = () => reject(new Error('Failed to load image to calculate dimensions.'));
+      img.src = objectUrl;
     });
   }
 
@@ -210,7 +208,11 @@ export class FileImportService {
       
       await page.render(renderContext as any).promise;
       
-      const dataUrl = canvas.toDataURL('image/png');
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Failed to create blob for PDF page');
+      
+      const assetId = await AssetManager.addImage(blob, 'image/png');
+      const objectUrl = URL.createObjectURL(blob);
       const now = Date.now();
       
       // Calculate display width based on the scale to ensure it fits well on the whiteboard
@@ -228,8 +230,9 @@ export class FileImportService {
         zIndex: 0,
         visible: true,
         locked: false,
-        dataUrl,
-        mimeType: 'image/png', // Rendered PDF page is saved as a PNG data URL
+        assetId,
+        src: objectUrl,
+        mimeType: 'image/png', // Rendered PDF page is saved as a PNG
         originalWidth: viewport.width,
         originalHeight: viewport.height,
         createdAt: now,

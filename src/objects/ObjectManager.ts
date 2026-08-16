@@ -139,14 +139,11 @@ export class ObjectManager {
     this.engine.clearSelection();
   }
 
-  public paste(): void {
-    const newObjects = this.clipboard.paste();
+  public async paste(e?: ClipboardEvent, centerPoint?: { x: number, y: number }): Promise<void> {
+    const newObjects = await this.clipboard.paste(e, centerPoint);
     if (!newObjects || newObjects.length === 0) return;
 
     // To make pasting undoable, we add all pasted objects in a single batch.
-    // However, AddObjectCommand only takes a single object currently.
-    // We can use a trick: TransformObjectsCommand or create an AddMultipleObjectsCommand.
-    // For now, let's just append them and setObjects directly in a command.
     const command: ICommand = {
       id: Math.random().toString(),
       name: 'Paste Objects',

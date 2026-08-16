@@ -121,10 +121,16 @@ export interface TextObject extends BaseWhiteboardObject {
 // Union of all whiteboard object types
 export interface ImageObject extends BaseWhiteboardObject {
   type: 'image';
-  dataUrl: string; // Base64 encoded image data
+  dataUrl?: string; // Optional: legacy Base64 or object URL fallback
+  assetId?: string; // Reference to AssetManager storage
+  src?: string;     // Transient object URL for fast rendering
   mimeType: string;
   originalWidth: number;
   originalHeight: number;
+  crop?: { x: number; y: number; width: number; height: number };
+  flipX?: boolean;
+  flipY?: boolean;
+  metadata?: Record<string, any>;
 }
 
 export interface TeachingToolObject extends BaseWhiteboardObject {

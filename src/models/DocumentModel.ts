@@ -95,10 +95,21 @@ export const TextObjectSchema = BaseWhiteboardObjectSchema.extend({
 
 export const ImageObjectSchema = BaseWhiteboardObjectSchema.extend({
   type: z.literal('image'),
-  dataUrl: z.string(),
+  dataUrl: z.string().optional(),
+  assetId: z.string().optional(),
+  src: z.string().optional(),
   mimeType: z.string(),
   originalWidth: z.number(),
   originalHeight: z.number(),
+  crop: z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+  }).optional(),
+  flipX: z.boolean().optional(),
+  flipY: z.boolean().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export const TeachingToolObjectSchema = BaseWhiteboardObjectSchema.extend({

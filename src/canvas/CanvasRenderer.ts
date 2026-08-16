@@ -392,15 +392,28 @@ export class CanvasRenderer {
   private renderImage(ctx: CanvasRenderingContext2D, obj: ImageObject): void {
     let img = this.imageCache.get(obj.id);
     if (!img) {
-      // Create and load image
-      img = new Image();
-      img.src = obj.dataUrl;
-      this.imageCache.set(obj.id, img);
-      
-      // Request a re-render when image finally decodes and loads
-      img.onload = () => {
-        this.requestRender();
-      };
+      const source = obj.src || obj.dataUrl;
+      if (source) {
+        // Create and load image
+        img = new Image();
+        img.src = source;
+        this.imageCache.set(obj.id, img);
+        
+        // Request a re-render when image finally decodes and loads
+        img.onload = () => {
+          this.requestRender();
+        };
+      } else if (obj.assetId) {
+        // Asynchronously load the asset
+        import('../assets/AssetManager').then(({ AssetManager }) => {
+          AssetManager.getImageUrl(obj.assetId!).then(url => {
+            if (url) {
+              obj.src = url;
+              this.requestRender();
+            }
+          });
+        });
+      }
       return; // Skip rendering on this frame until loaded
     }
 
