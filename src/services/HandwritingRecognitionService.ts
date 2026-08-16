@@ -1,4 +1,4 @@
-import { createWorker, Worker } from 'tesseract.js';
+import { createWorker, PSM, Worker } from 'tesseract.js';
 import { FreehandStroke, BoundingBox } from '../types/whiteboard.types';
 import { calculateBoundingBox, getMidPoint } from '../utils/math.utils';
 
@@ -54,7 +54,16 @@ export class HandwritingRecognitionService {
       return worker;
     })();
 
-    return this.initPromise;
+    try {
+      return await this.initPromise;
+    } catch (error) {
+      // Do not cache a failed network/worker initialization forever. Without
+      // this reset, one transient CDN or worker error makes every later OCR
+      // attempt immediately fail with the same rejected promise.
+      this.worker = null;
+      this.initPromise = null;
+      throw error;
+    }
   }
 
   /**
@@ -224,14 +233,25 @@ export class HandwritingRecognitionService {
     strokes: FreehandStroke[],
     onProgress?: (progress: number, status: string) => void
   ): Promise<HandwritingRecognitionResult | null> {
-    if (strokes.length === 0) {
+    const drawableStrokes = strokes.filter((stroke) => stroke.points.length > 0);
+    if (drawableStrokes.length === 0) {
       return null;
     }
 
     onProgress?.(5, 'Preparing handwriting sample...');
-    const rasterized = this.rasterizeStrokes(strokes);
+    const rasterized = this.rasterizeStrokes(drawableStrokes);
 
     const worker = await this.getWorker(onProgress);
+    const lineCount = this.estimateLineCount(drawableStrokes);
+
+    // The automatic page-segmentation mode is intended for document photos and
+    // often drops or rearranges a small selection of ink. Tell Tesseract the
+    // shape of the sample instead: a selected line is a line, while several
+    // lines form one text block.
+    await worker.setParameters({
+      tessedit_pageseg_mode: lineCount === 1 ? PSM.SINGLE_LINE : PSM.SINGLE_BLOCK,
+      preserve_interword_spaces: '1',
+    });
 
     onProgress?.(30, 'Analyzing handwritten characters...');
     const result = await worker.recognize(rasterized.canvas);
@@ -244,18 +264,20 @@ export class HandwritingRecognitionService {
       .filter((line) => line.length > 0)
       .join('\n');
 
-    // If completely empty after OCR, provide a clean fallback
+    // A placeholder such as "Handwritten Text" looks like a successful
+    // conversion and can overwrite the user's ink. Surface a useful error so
+    // they can retry with a clearer/larger selection instead.
     if (!cleanedText) {
-      cleanedText = 'Handwritten Text';
+      throw new Error('No text was detected. Select clear, dark handwriting and try again.');
     }
 
     const lines = cleanedText.split('\n');
-    const lineCount = Math.max(1, lines.length);
+    const recognizedLineCount = Math.max(1, lines.length);
 
     // Calculate suggested font size matching the handwriting scale
     const suggestedFontSize = Math.max(
       16,
-      Math.min(96, Math.round((rasterized.bbox.height / lineCount) * 0.65))
+      Math.min(96, Math.round((rasterized.bbox.height / recognizedLineCount) * 0.65))
     );
 
     onProgress?.(100, 'Handwriting recognized successfully!');
@@ -267,7 +289,7 @@ export class HandwritingRecognitionService {
       previewDataUrl: rasterized.previewDataUrl,
       suggestedFontSize,
       color: rasterized.primaryColor,
-      strokeIds: strokes.map((s) => s.id),
+      strokeIds: drawableStrokes.map((s) => s.id),
     };
   }
 

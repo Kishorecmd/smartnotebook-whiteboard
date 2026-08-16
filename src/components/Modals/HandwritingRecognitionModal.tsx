@@ -424,6 +424,21 @@ export const HandwritingRecognitionModal: React.FC = () => {
                 </div>
               </div>
             </div>
+          ) : recognitionError ? (
+            <div
+              role="alert"
+              className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 p-5 text-center text-sm text-amber-800 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-300"
+            >
+              <AlertTriangle className="h-5 w-5" />
+              <p>{recognitionError}</p>
+              <button
+                type="button"
+                onClick={() => recognizeHandwritingForSelected()}
+                className="rounded-lg bg-amber-700 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500"
+              >
+                Try again
+              </button>
+            </div>
           ) : (
             <div className="py-8 text-center text-sm text-slate-500">
               No strokes available for recognition.

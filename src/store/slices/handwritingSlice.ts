@@ -40,17 +40,20 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
   },
 
   recognizeHandwritingForSelected: async () => {
-    const { document, activePageIndex, selectedIds, engine } = get();
+    const { engine } = get();
     if (!engine) return;
 
-    const page = document.pages[activePageIndex];
-    if (!page) return;
+    // The engine is the source of truth for selection and objects. Reading the
+    // Zustand document/selection here can race the selection callback when the
+    // keyboard shortcut is pressed immediately after selecting ink.
+    const selectedStrokes = engine
+      .getSelectedObjects()
+      .filter((obj): obj is FreehandStroke => obj.type === 'stroke');
 
-    const selectedStrokes = page.objects.filter(
-      (obj): obj is FreehandStroke => obj.type === 'stroke' && selectedIds.includes(obj.id)
-    );
-
-    if (selectedStrokes.length === 0) return;
+    if (selectedStrokes.length === 0) {
+      get().showToast('Select one or more handwriting strokes before converting to text.');
+      return;
+    }
 
     set({
       isHandwritingModalOpen: true,
