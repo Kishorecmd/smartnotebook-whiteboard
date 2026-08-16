@@ -59,7 +59,6 @@ export class FileImportService {
           visible: true,
           locked: false,
           assetId,
-          src: objectUrl,
           mimeType: blob.type,
           originalWidth: naturalWidth,
           originalHeight: naturalHeight,
@@ -67,9 +66,13 @@ export class FileImportService {
           updatedAt: now,
         };
 
+        URL.revokeObjectURL(objectUrl);
         resolve(imageObject);
       };
-      img.onerror = () => reject(new Error('Failed to load image to calculate dimensions.'));
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Failed to load image to calculate dimensions.'));
+      };
       img.src = objectUrl;
     });
   }
@@ -240,7 +243,6 @@ export class FileImportService {
       if (!blob) throw new Error('Failed to create blob for PDF page');
       
       const assetId = await AssetManager.addImage(blob, 'image/png');
-      const objectUrl = URL.createObjectURL(blob);
       const now = Date.now();
       
       // Calculate display width based on the scale to ensure it fits well on the whiteboard
@@ -259,7 +261,6 @@ export class FileImportService {
         visible: true,
         locked: false,
         assetId,
-        src: objectUrl,
         mimeType: 'image/png', // Rendered PDF page is saved as a PNG
         originalWidth: viewport.width,
         originalHeight: viewport.height,

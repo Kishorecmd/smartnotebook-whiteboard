@@ -85,6 +85,10 @@ export class CanvasRenderer {
   private isDisposed = false;
   
   private imageCache = new Map<string, HTMLImageElement>();
+  // URLs created to display IndexedDB-backed images are renderer-owned. They
+  // must never be written into document objects: blob URLs expire on reload.
+  private imageObjectUrls = new Map<string, string>();
+  private pendingImageLoads = new Set<string>();
   // <video> elements backing video objects, owned by the engine.
   private videoElements = new Map<string, HTMLVideoElement>();
   // <audio>/<video> elements backing audio and image+audio objects.
@@ -395,32 +399,18 @@ export class CanvasRenderer {
   private renderImage(ctx: CanvasRenderingContext2D, obj: ImageObject): void {
     let img = this.imageCache.get(obj.id);
     if (!img) {
-      const source = obj.src || obj.dataUrl;
-      if (source) {
-        // Create and load image
-        img = new Image();
-        img.src = source;
-        this.imageCache.set(obj.id, img);
-        
-        // Request a re-render when image finally decodes and loads
-        img.onload = () => {
-          this.requestRender();
-        };
-      } else if (obj.assetId) {
-        // Asynchronously load the asset
-        import('../assets/AssetManager').then(({ AssetManager }) => {
-          AssetManager.getImageUrl(obj.assetId!).then(url => {
-            if (url) {
-              obj.src = url;
-              this.requestRender();
-            }
-          });
-        });
+      // An asset ID is durable, whereas `src` may be a blob URL written by an
+      // older session. Prefer the asset so existing documents recover too.
+      if (obj.assetId) {
+        this.loadAssetImage(obj);
+      } else {
+        const source = obj.dataUrl || obj.src;
+        if (source) this.loadImageSource(obj.id, source);
       }
       return; // Skip rendering on this frame until loaded
     }
 
-    if (!img.complete) return;
+    if (!img.complete || img.naturalWidth === 0) return;
 
     ctx.save();
     ctx.translate(obj.x, obj.y);
@@ -433,6 +423,45 @@ export class CanvasRenderer {
     // Draw the image scaled to the object's width/height
     ctx.drawImage(img, 0, 0, obj.width, obj.height);
     ctx.restore();
+  }
+
+  /** Loads a document-independent source such as a legacy data URL. */
+  private loadImageSource(id: string, source: string): void {
+    const img = new Image();
+    img.onload = () => this.requestRender();
+    img.onerror = () => this.requestRender();
+    this.imageCache.set(id, img);
+    img.src = source;
+  }
+
+  /** Resolves an IndexedDB asset without mutating the persistent image object. */
+  private loadAssetImage(obj: ImageObject): void {
+    if (!obj.assetId || this.pendingImageLoads.has(obj.id)) return;
+    this.pendingImageLoads.add(obj.id);
+
+    void import('../assets/AssetManager')
+      .then(({ AssetManager }) => AssetManager.getImageUrl(obj.assetId!))
+      .then((url) => {
+        if (!url) return;
+
+        // The image may have been deleted or the renderer disposed while the
+        // IndexedDB request was pending. Do not retain an orphaned blob URL.
+        if (this.isDisposed || !this.objects.some((object) => object.id === obj.id)) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => this.requestRender();
+        img.onerror = () => this.requestRender();
+        this.imageObjectUrls.set(obj.id, url);
+        this.imageCache.set(obj.id, img);
+        img.src = url;
+      })
+      .catch(() => {
+        // A missing or corrupted asset simply remains unavailable on canvas.
+      })
+      .finally(() => this.pendingImageLoads.delete(obj.id));
   }
 
   /**
@@ -1039,5 +1068,10 @@ export class CanvasRenderer {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    for (const url of this.imageObjectUrls.values()) {
+      URL.revokeObjectURL(url);
+    }
+    this.imageObjectUrls.clear();
+    this.pendingImageLoads.clear();
   }
 }

@@ -26,8 +26,16 @@ function drawLoadedImage(
 }
 
 /** Preloads every image the page needs so the synchronous draw pass can use them. */
-async function preloadPageImages(page: WhiteboardPage): Promise<Map<string, HTMLImageElement>> {
+interface PreloadedPageImages {
+  cache: Map<string, HTMLImageElement>;
+  sourceByObjectId: Map<string, string>;
+  temporaryObjectUrls: string[];
+}
+
+async function preloadPageImages(page: WhiteboardPage): Promise<PreloadedPageImages> {
   const sources: string[] = [];
+  const sourceByObjectId = new Map<string, string>();
+  const temporaryObjectUrls: string[] = [];
   
   // We may need to resolve asset IDs
   const { AssetManager } = await import('../assets/AssetManager');
@@ -35,16 +43,21 @@ async function preloadPageImages(page: WhiteboardPage): Promise<Map<string, HTML
   for (const obj of page.objects) {
     if (obj.type === 'image') {
       const imgObj = obj as ImageObject;
-      if (imgObj.src) {
-        sources.push(imgObj.src);
-      } else if (imgObj.assetId) {
+      // Asset IDs remain valid across reloads; `src` may be an expired blob URL
+      // inherited from an older saved document.
+      if (imgObj.assetId) {
         const url = await AssetManager.getImageUrl(imgObj.assetId);
         if (url) {
-          imgObj.src = url; // Save it to avoid fetching again in export
           sources.push(url);
+          sourceByObjectId.set(imgObj.id, url);
+          temporaryObjectUrls.push(url);
         }
       } else if (imgObj.dataUrl) {
         sources.push(imgObj.dataUrl);
+        sourceByObjectId.set(imgObj.id, imgObj.dataUrl);
+      } else if (imgObj.src) {
+        sources.push(imgObj.src);
+        sourceByObjectId.set(imgObj.id, imgObj.src);
       }
     }
     if (obj.type === 'youtubeVideo') {
@@ -70,7 +83,7 @@ async function preloadPageImages(page: WhiteboardPage): Promise<Map<string, HTML
         })
     )
   );
-  return cache;
+  return { cache, sourceByObjectId, temporaryObjectUrls };
 }
 
 export interface ExportImageOptions {
@@ -119,61 +132,68 @@ export class ExportService {
 
     // 2. Draw all page objects (sorted by zIndex). Previously only strokes were
     // drawn, so shapes, text, images and videos were silently missing from exports.
-    const imageCache = await preloadPageImages(page);
-    const objects = [...page.objects].sort((a, b) => a.zIndex - b.zIndex);
-    for (const obj of objects) {
-      if (obj.visible === false) continue;
+    const { cache: imageCache, sourceByObjectId, temporaryObjectUrls } = await preloadPageImages(page);
+    try {
+      const objects = [...page.objects].sort((a, b) => a.zIndex - b.zIndex);
+      for (const obj of objects) {
+        if (obj.visible === false) continue;
 
-      if (obj.type === 'stroke') {
-        StrokeRenderer.renderStroke(ctx, obj as FreehandStroke);
-      } else if (obj.type === 'shape') {
-        ShapeRenderer.renderShape(ctx, obj as ShapeObject);
-      } else if (obj.type === 'text') {
-        TextRenderer.renderText(ctx, obj as TextObject);
-      } else if (obj.type === 'image') {
-        const imgObj = obj as ImageObject;
-        drawLoadedImage(ctx, imgObj.src || imgObj.dataUrl || '', obj, imageCache);
-      } else if (obj.type === 'youtubeVideo') {
-        const v = obj as YouTubeVideoObject;
-        drawLoadedImage(ctx, v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`, obj, imageCache);
-      } else if (obj.type === 'video') {
-        const v = obj as VideoObject;
-        if (v.posterDataUrl) drawLoadedImage(ctx, v.posterDataUrl, obj, imageCache);
-      } else if (obj.type === 'webApp') {
-        const wa = obj as WebAppObject;
-        ctx.save();
-        ctx.translate(wa.x, wa.y);
-        if (wa.rotation) {
-          ctx.translate(wa.width / 2, wa.height / 2);
-          ctx.rotate(wa.rotation);
-          ctx.translate(-wa.width / 2, -wa.height / 2);
+        if (obj.type === 'stroke') {
+          StrokeRenderer.renderStroke(ctx, obj as FreehandStroke);
+        } else if (obj.type === 'shape') {
+          ShapeRenderer.renderShape(ctx, obj as ShapeObject);
+        } else if (obj.type === 'text') {
+          TextRenderer.renderText(ctx, obj as TextObject);
+        } else if (obj.type === 'image') {
+          const imgObj = obj as ImageObject;
+          const imageSource = sourceByObjectId.get(imgObj.id) || '';
+          drawLoadedImage(ctx, imageSource, obj, imageCache);
+        } else if (obj.type === 'youtubeVideo') {
+          const v = obj as YouTubeVideoObject;
+          drawLoadedImage(ctx, v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`, obj, imageCache);
+        } else if (obj.type === 'video') {
+          const v = obj as VideoObject;
+          if (v.posterDataUrl) drawLoadedImage(ctx, v.posterDataUrl, obj, imageCache);
+        } else if (obj.type === 'webApp') {
+          const wa = obj as WebAppObject;
+          ctx.save();
+          ctx.translate(wa.x, wa.y);
+          if (wa.rotation) {
+            ctx.translate(wa.width / 2, wa.height / 2);
+            ctx.rotate(wa.rotation);
+            ctx.translate(-wa.width / 2, -wa.height / 2);
+          }
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(0, 0, wa.width, wa.height);
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(0, 0, wa.width, wa.height);
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = 'bold 24px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(wa.title || 'Embedded Website', wa.width / 2, wa.height / 2 - 15);
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '16px Inter, sans-serif';
+          ctx.fillText(wa.url, wa.width / 2, wa.height / 2 + 20);
+          ctx.restore();
         }
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, wa.width, wa.height);
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, 0, wa.width, wa.height);
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = 'bold 24px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(wa.title || 'Embedded Website', wa.width / 2, wa.height / 2 - 15);
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '16px Inter, sans-serif';
-        ctx.fillText(wa.url, wa.width / 2, wa.height / 2 + 20);
-        ctx.restore();
+      }
+
+      const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+      const dataUrl = offscreenCanvas.toDataURL(mimeType, quality);
+
+      const anchor = document.createElement('a');
+      anchor.href = dataUrl;
+      anchor.download = `${filename}.${format}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+    } finally {
+      for (const url of temporaryObjectUrls) {
+        URL.revokeObjectURL(url);
       }
     }
-
-    const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-    const dataUrl = offscreenCanvas.toDataURL(mimeType, quality);
-
-    const anchor = document.createElement('a');
-    anchor.href = dataUrl;
-    anchor.download = `${filename}.${format}`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
   }
 
   /**

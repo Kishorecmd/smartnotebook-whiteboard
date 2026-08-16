@@ -28,6 +28,7 @@ export const WhiteboardCanvas: React.FC = () => {
     setSelectedIds,
     startTextEditing,
     setPdfImportModalOpen,
+    engine,
   } = useWhiteboardStore();
 
   const [objectContextMenuPos, setObjectContextMenuPos] = React.useState<ContextMenuPosition | null>(null);
@@ -434,26 +435,26 @@ export const WhiteboardCanvas: React.FC = () => {
       <CanvasTextEditor />
 
       {/* Multitouch Debugger */}
-      {useWhiteboardStore.getState().engine && <MultitouchDebugOverlay engine={useWhiteboardStore.getState().engine!} />}
+      {engine && <MultitouchDebugOverlay engine={engine} />}
 
       {/* Context Menus */}
-      {useWhiteboardStore.getState().engine && (
+      {engine && (
         <>
           <ObjectContextMenu
             position={objectContextMenuPos}
             onClose={() => setObjectContextMenuPos(null)}
-            selectedIds={useWhiteboardStore.getState().engine!.getSelectedIds()}
-            objectManager={useWhiteboardStore.getState().engine!.getObjectManager()}
+            selectedIds={engine.getSelectedIds()}
+            objectManager={engine.getObjectManager()}
           />
           <CanvasMenu
             position={canvasContextMenuPos}
             onClose={() => setCanvasContextMenuPos(null)}
-            objectManager={useWhiteboardStore.getState().engine!.getObjectManager()}
-            onSelectAll={() => useWhiteboardStore.getState().engine!.selectAll()}
+            objectManager={engine.getObjectManager()}
+            onSelectAll={() => engine.selectAll()}
           />
           
           {/* Media layer for interactive DOM objects like YouTube videos */}
-          <MediaLayer engine={useWhiteboardStore.getState().engine!} />
+          <MediaLayer engine={engine} />
         </>
       )}
 
