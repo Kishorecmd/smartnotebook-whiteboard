@@ -61,6 +61,9 @@ export const MainToolbar: React.FC = () => {
 
   const [activePopover, setActivePopover] = useState<PopoverType>('none');
   const [isMoreModalOpen, setIsMoreModalOpen] = useState(false);
+  const [pendingImageAudioImage, setPendingImageAudioImage] = useState<File | null>(null);
+  const [isImageAudioDialogOpen, setIsImageAudioDialogOpen] = useState(false);
+  const [imageAudioError, setImageAudioError] = useState<string | null>(null);
   const activePen = PenRegistry.getOrDefault(toolSettings.activePenId);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -144,7 +147,19 @@ export const MainToolbar: React.FC = () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = accept;
-      input.onchange = (e) => resolve((e.target as HTMLInputElement).files?.[0] ?? null);
+      input.style.display = 'none';
+      document.body.appendChild(input);
+
+      let settled = false;
+      const finish = (file: File | null) => {
+        if (settled) return;
+        settled = true;
+        input.remove();
+        resolve(file);
+      };
+
+      input.onchange = (e) => finish((e.target as HTMLInputElement).files?.[0] ?? null);
+      input.addEventListener('cancel', () => finish(null), { once: true });
       input.click();
     });
 
@@ -158,19 +173,39 @@ export const MainToolbar: React.FC = () => {
     }
   };
 
-  const insertImageAudioPair = async () => {
+  const startImageAudioPair = async () => {
     if (!engine) return;
     const imageFile = await pickFile('image/*');
     if (!imageFile) return;
-    const audioFile = await pickFile('audio/*');
-    if (!audioFile) return;
+
+    // The audio picker must be opened by an explicit second click. Triggering a
+    // second native picker after awaiting the image picker loses browser user
+    // activation on Android and Safari, so nothing happens after image choice.
+    setPendingImageAudioImage(imageFile);
+    setImageAudioError(null);
+    setIsImageAudioDialogOpen(true);
+  };
+
+  const addImageAudioPair = async (imageFile: File, audioFile: File) => {
+    if (!engine) return;
     try {
       const { AudioLoader } = await import('../../media/audio/AudioLoader');
       const { centre, box } = placement();
       engine.addObject(await AudioLoader.importImageAudio(imageFile, audioFile, centre, box));
-    } catch (err) {
-      alert('That pair could not be added.');
+      setPendingImageAudioImage(null);
+      setIsImageAudioDialogOpen(false);
+      setImageAudioError(null);
+    } catch {
+      setImageAudioError('The image and audio could not be added. Try a PNG/JPEG image and MP3, WAV, OGG, or M4A audio file.');
     }
+  };
+
+  const chooseAudioForImage = async () => {
+    const imageFile = pendingImageAudioImage;
+    if (!imageFile) return;
+
+    const audioFile = await pickFile('audio/*');
+    if (audioFile) await addImageAudioPair(imageFile, audioFile);
   };
 
   const insertPdfObject = async (file: File) => {
@@ -189,7 +224,7 @@ export const MainToolbar: React.FC = () => {
     if (!engine) return;
     if (type === 'youtube') return setYouTubeDialogOpen(true);
     if (type === 'webApp') return setWebAppDialogOpen(true);
-    if (type === 'image-audio') return void insertImageAudioPair();
+    if (type === 'image-audio') return void startImageAudioPair();
     if (type === 'pdf') {
       const asObject = confirm('Place the PDF on this page as a single object?\n\nOK = place on this page\nCancel = import each page as a whiteboard page');
       if (!asObject) return setPdfImportModalOpen(true);
@@ -309,6 +344,52 @@ export const MainToolbar: React.FC = () => {
           hiddenItemIds={TOOLBAR_CONFIG.filter(x => !visibleItems.includes(x) && !x.isDivider).map(x => x.id)}
         />
       </div>
+
+      {isImageAudioDialogOpen && pendingImageAudioImage && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 pointer-events-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="image-audio-dialog-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
+            <h2 id="image-audio-dialog-title" className="text-base font-bold text-slate-100">
+              Add audio to image
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">
+              Image selected: <span className="font-semibold text-white">{pendingImageAudioImage.name}</span>
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+              Choose the spoken word or sound file to attach. This separate button works reliably on touch devices.
+            </p>
+            {imageAudioError && (
+              <p role="alert" className="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                {imageAudioError}
+              </p>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingImageAudioImage(null);
+                  setImageAudioError(null);
+                  setIsImageAudioDialogOpen(false);
+                }}
+                className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void chooseAudioForImage()}
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500"
+              >
+                Choose audio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
