@@ -96,14 +96,16 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
     const updatedPages = doc.pages.map((p) =>
       p.id === pageId ? { ...p, title: newTitle, updatedAt: Date.now() } : p
     );
+    const updatedDoc = {
+      ...doc,
+      pages: updatedPages,
+      updatedAt: Date.now(),
+    };
     set({
-      document: {
-        ...doc,
-        pages: updatedPages,
-        updatedAt: Date.now(),
-      },
+      document: updatedDoc,
       isDirty: true,
     });
+    StorageService.saveAutosave(updatedDoc);
   },
 
   duplicatePage: (pageId) => {

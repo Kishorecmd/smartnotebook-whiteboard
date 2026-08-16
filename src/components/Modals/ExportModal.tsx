@@ -16,6 +16,7 @@ export const ExportModal: React.FC = () => {
     activePageIndex,
     isExportModalOpen,
     setExportModalOpen,
+    showToast,
   } = useWhiteboardStore();
 
   const [scale, setScale] = useState<number>(2);
@@ -62,9 +63,16 @@ export const ExportModal: React.FC = () => {
     setExportModalOpen(false);
   };
 
-  const handleExportJHW = () => {
-    FileService.exportToJHW(doc, doc.title);
-    setExportModalOpen(false);
+  const handleExportJHW = async () => {
+    setIsExporting(true);
+    try {
+      await FileService.exportToJHW(doc, doc.title);
+      setExportModalOpen(false);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not export this whiteboard.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handlePrint = () => {
@@ -179,6 +187,7 @@ export const ExportModal: React.FC = () => {
             <button
               type="button"
               onClick={handleExportJHW}
+              disabled={isExporting}
               className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-primary-900/40 to-indigo-900/40 hover:from-primary-900/60 hover:to-indigo-900/60 border border-primary-500/40 rounded-2xl transition-all text-left group active:scale-[0.99]"
             >
               <div className="flex items-center gap-3">
@@ -190,7 +199,7 @@ export const ExportModal: React.FC = () => {
                     Jaihind Document (.jhw)
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Complete multi-page vector project file
+                    Complete multi-page project file, including local media
                   </p>
                 </div>
               </div>

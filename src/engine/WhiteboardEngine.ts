@@ -927,6 +927,11 @@ export class WhiteboardEngine {
       // Never attached to the DOM: frames are drawn onto the canvas instead, so
       // the video can't float above the board the way the old iframe did.
       element.addEventListener('ended', () => this.renderer.requestRender());
+      element.addEventListener('play', () => this.renderer.requestRender());
+      element.addEventListener('playing', () => this.renderer.requestRender());
+      element.addEventListener('pause', () => this.renderer.requestRender());
+      element.addEventListener('seeked', () => this.renderer.requestRender());
+      element.addEventListener('loadeddata', () => this.renderer.requestRender());
       this.renderer.setVideoElement(objectId, element);
 
       await new Promise<void>((resolve) => {
@@ -1024,6 +1029,11 @@ export class WhiteboardEngine {
       element.src = url;
       element.preload = 'auto';
       element.addEventListener('ended', () => this.renderer.requestRender());
+      element.addEventListener('play', () => this.renderer.requestRender());
+      element.addEventListener('playing', () => this.renderer.requestRender());
+      element.addEventListener('pause', () => this.renderer.requestRender());
+      element.addEventListener('seeked', () => this.renderer.requestRender());
+      element.addEventListener('loadeddata', () => this.renderer.requestRender());
       this.renderer.setMediaElement(objectId, element);
       await new Promise<void>((resolve) => {
         element!.oncanplay = () => resolve();
