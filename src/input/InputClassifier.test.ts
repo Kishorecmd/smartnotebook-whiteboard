@@ -48,6 +48,16 @@ describe('InputClassifier', () => {
     expect(classifier.classify(movingPalm, DEFAULT_INPUT_SETTINGS, [])).toBe('PALM_ERASER');
   });
 
+  it('recognizes a smaller broad palm reported by interactive smartboards', () => {
+    const movingPalm = pointer('touch', { width: 36, height: 28, x: 28, y: 10 });
+    expect(classifier.classify(movingPalm, DEFAULT_INPUT_SETTINGS, [])).toBe('PALM_ERASER');
+  });
+
+  it('keeps an ordinary moving fingertip classified as a finger', () => {
+    const movingFinger = pointer('touch', { width: 24, height: 20, x: 28, y: 10 });
+    expect(classifier.classify(movingFinger, DEFAULT_INPUT_SETTINGS, [])).toBe('FINGER');
+  });
+
   it('treats a resting large contact as accidental while a stylus is active', () => {
     const stylus = pointer('pen', { pointerId: 2 });
     const palm = pointer('touch', { width: 55, height: 50 });

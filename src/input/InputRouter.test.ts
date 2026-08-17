@@ -48,4 +48,46 @@ describe('InputRouter physical-device routing', () => {
     expect(router.route(sample('FINGER'), event)).toMatchObject({ action: 'SELECT', tool: select });
     expect(router.route(sample('PALM_ERASER'), event)).toMatchObject({ action: 'ERASE', tool: palm });
   });
+
+  it('routes a finger through the selected eraser in touch mode', () => {
+    const eraser = tool('eraser');
+    const select = tool('select');
+    const transformer = new CoordinateTransformer();
+    const tools: Record<string, ITool> = { eraser, select };
+    const engine = {
+      getActiveToolType: () => 'eraser',
+      getActiveTool: () => eraser,
+      getTool: (name: string) => tools[name],
+      getTransformer: () => transformer,
+      getObjects: () => [],
+      isSpacePressed: () => false,
+    } as unknown as WhiteboardEngine;
+    const gesture = new GestureEngine({ transformer, getSettings: () => DEFAULT_INPUT_SETTINGS, onPanZoom: vi.fn() });
+    const router = new InputRouter(engine, gesture, () => DEFAULT_INPUT_SETTINGS);
+
+    expect(router.route(sample('FINGER'), { button: 0, buttons: 1 } as PointerEvent))
+      .toMatchObject({ action: 'ERASE', tool: eraser });
+  });
+
+  it('promotes a moving palm candidate and starts its pointer-local eraser', () => {
+    const palm = tool('palm');
+    const transformer = new CoordinateTransformer();
+    const engine = {
+      getPalmEraserTool: () => palm,
+      getTransformer: () => transformer,
+    } as unknown as WhiteboardEngine;
+    const gesture = new GestureEngine({ transformer, getSettings: () => DEFAULT_INPUT_SETTINGS, onPanZoom: vi.fn() });
+    const router = new InputRouter(engine, gesture, () => DEFAULT_INPUT_SETTINGS);
+    const contact = sample('PALM_CANDIDATE');
+    const event = { pointerId: contact.pointerId, button: 0, buttons: 1 } as PointerEvent;
+
+    router.onPointerAdd(contact, event, [contact]);
+    contact.classification = 'PALM_ERASER';
+    contact.x = 24;
+    contact.hasMovedSignificantly = true;
+    router.onPointerUpdate(contact, event, [contact]);
+
+    expect(router.getPointerAction(contact.pointerId)).toBe('ERASE');
+    expect(palm.onPointerDown).toHaveBeenCalledOnce();
+  });
 });

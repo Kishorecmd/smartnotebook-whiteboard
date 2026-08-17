@@ -48,6 +48,14 @@ export class InputRouter {
       return { action: 'ERASE', tool: this.engine.getPalmEraserTool(), started: false };
     }
     if (pointer.classification === 'FINGER') {
+      const selectedTool = this.engine.getActiveToolType();
+      if (selectedTool === 'eraser' || selectedTool === 'magic_eraser') {
+        return {
+          action: 'ERASE',
+          tool: this.engine.getTool(selectedTool) || this.engine.getTool('eraser'),
+          started: false,
+        };
+      }
       return { action: 'SELECT', tool: this.engine.getTool('select'), started: false };
     }
     if (pointer.classification === 'MOUSE') {
@@ -162,8 +170,12 @@ export class InputRouter {
 
     if (fingers.length === 1) {
       this.startRoute(pointer, event, route);
-      this.stateMachine.transition(GestureState.FINGER_SELECTING);
-      if (this.touchManager.hitObject(pointer, this.engine)) this.scheduleLongPress(pointer, event);
+      this.stateMachine.transition(route.action === 'ERASE'
+        ? GestureState.FINGER_ERASING
+        : GestureState.FINGER_SELECTING);
+      if (route.action === 'SELECT' && this.touchManager.hitObject(pointer, this.engine)) {
+        this.scheduleLongPress(pointer, event);
+      }
       return;
     }
 
