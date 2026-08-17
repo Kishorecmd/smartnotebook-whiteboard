@@ -6,7 +6,7 @@ export class CoordinateTransformer {
   private panY: number = 0;
   private zoom: number = 1.0;
 
-  public static readonly MIN_ZOOM = 0.2; // 20%
+  public static readonly MIN_ZOOM = 0.25; // 25%
   public static readonly MAX_ZOOM = 5.0; // 500%
 
   constructor(initial?: Partial<ViewportTransform>) {

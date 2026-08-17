@@ -1,9 +1,9 @@
 import { CoordinateTransformer, CanvasRenderer, TextRenderer } from '../canvas';
 import { CommandManager } from './CommandManager';
-import { PointerManager } from '../input/PointerManager';
-import { InputRouter } from '../input/InputRouter';
-import { GestureEngine } from '../input/GestureEngine';
-import { TouchActionManager } from '../input/TouchActionManager';
+import { InputManager } from '../input/InputManager';
+import type { PointerManager } from '../input/PointerManager';
+import type { InputRouter } from '../input/InputRouter';
+import type { InputSettings } from '../input/InputSettings';
 import { RulerSnapper } from './RulerSnapper';
 import { StorageService } from '../services/StorageService';
 import { MediaManager } from '../media/MediaManager';
@@ -29,6 +29,7 @@ import { HighlighterTool } from './tools/HighlighterTool';
 import { MagicEraserTool } from './tools/MagicEraserTool';
 import { EyedropperTool } from './tools/EyedropperTool';
 import { FillTool } from './tools/FillTool';
+import { PalmEraserTool } from './tools/PalmEraserTool';
 import { ClearPageCommand } from './commands/ClearPageCommand';
 import { DeleteObjectsCommand } from './commands/DeleteObjectsCommand';
 import { AddObjectCommand } from './commands/AddObjectCommand';
@@ -64,10 +65,7 @@ export class WhiteboardEngine {
   private canvasElement: HTMLCanvasElement;
   private transformer: CoordinateTransformer;
   private renderer: CanvasRenderer;
-  private pointerManager: PointerManager;
-  private inputRouter: InputRouter;
-  private gestureEngine: GestureEngine;
-  private touchActionManager: TouchActionManager;
+  private inputManager: InputManager;
   private commandManager: CommandManager;
   private rulerSnapper: RulerSnapper;
   private objectManager: ObjectManager;
@@ -76,6 +74,7 @@ export class WhiteboardEngine {
 
   // Tools registry
   private tools: Map<ToolType, ITool> = new Map();
+  private palmEraserTool = new PalmEraserTool();
   private activeToolType: ToolType = 'pen';
 
   // Tool settings
@@ -197,28 +196,11 @@ export class WhiteboardEngine {
     // 5. Initialize Ruler Snapper
     this.rulerSnapper = new RulerSnapper(this);
 
-    // 6. Initialize Multitouch Input Engine
+    // 6. Initialize unified pen/touch/palm/mouse input engine.
     const inputElement = options.overlayCanvas || options.canvas;
-    
-    this.touchActionManager = new TouchActionManager(inputElement, 'none');
-    
-    this.gestureEngine = new GestureEngine({
-      transformer: this.transformer,
-      onPanZoom: () => {
+    this.inputManager = new InputManager(inputElement, this, () => {
         this.render();
-        // Pinch/two-finger gestures move the transformer directly, so the store
-        // needs telling too or the zoom indicator and any viewport consumers go stale.
         this.notifyViewportChange();
-      },
-    });
-    
-    this.inputRouter = new InputRouter(this, this.gestureEngine);
-    
-    this.pointerManager = new PointerManager({
-      element: inputElement,
-      onPointerAdd: (pointer, e) => this.inputRouter.onPointerAdd(pointer, e, this.pointerManager.getActivePointers()),
-      onPointerUpdate: (pointer, e) => this.inputRouter.onPointerUpdate(pointer, e, this.pointerManager.getActivePointers()),
-      onPointerRemove: (pointer, e) => this.inputRouter.onPointerRemove(pointer, e, this.pointerManager.getActivePointers()),
     });
 
     // 7. Initialize Object Manager
@@ -266,11 +248,15 @@ export class WhiteboardEngine {
   }
 
   public getPointerManager(): PointerManager {
-    return this.pointerManager;
+    return this.inputManager.getPointerManager();
   }
 
   public getInputRouter(): InputRouter {
-    return this.inputRouter;
+    return this.inputManager.getRouter();
+  }
+
+  public getInputSettings(): InputSettings {
+    return this.inputManager.getSettings();
   }
 
   public getCommandManager(): CommandManager {
@@ -291,6 +277,14 @@ export class WhiteboardEngine {
 
   public getActiveTool(): ITool | undefined {
     return this.tools.get(this.activeToolType);
+  }
+
+  public getTool(toolType: ToolType): ITool | undefined {
+    return this.tools.get(toolType);
+  }
+
+  public getPalmEraserTool(): ITool {
+    return this.palmEraserTool;
   }
 
   public getActiveToolType(): ToolType {
@@ -1239,8 +1233,7 @@ export class WhiteboardEngine {
 
   public dispose(): void {
     this.disposeAllVideos();
-    this.pointerManager.destroy();
-    this.touchActionManager.reset();
+    this.inputManager.destroy();
     this.renderer.dispose();
   }
 }

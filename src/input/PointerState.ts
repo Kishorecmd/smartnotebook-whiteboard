@@ -1,10 +1,44 @@
 
 
 export type PointerType = 'mouse' | 'pen' | 'touch';
+export type InputClassification =
+  | 'STYLUS'
+  | 'FINGER'
+  | 'PALM_CANDIDATE'
+  | 'PALM_ERASER'
+  | 'ACCIDENTAL_PALM'
+  | 'MOUSE'
+  | 'UNKNOWN';
 
-export interface PointerState {
+export type PointerAction =
+  | 'DRAW'
+  | 'ERASE'
+  | 'SELECT'
+  | 'PAN_ZOOM'
+  | 'OBJECT_TRANSFORM'
+  | 'CONTEXT_MENU'
+  | 'IGNORE'
+  | 'MOUSE_TOOL';
+
+export interface InputSample {
   pointerId: number;
   pointerType: PointerType;
+  isPrimary: boolean;
+  x: number;
+  y: number;
+  previousX: number;
+  previousY: number;
+  pressure: number;
+  width: number;
+  height: number;
+  tiltX: number;
+  tiltY: number;
+  twist: number;
+  buttons: number;
+  timestamp: number;
+}
+
+export interface PointerState extends InputSample {
   
   // Current position (Screen Coordinates)
   x: number;
@@ -18,9 +52,8 @@ export interface PointerState {
   startX: number;
   startY: number;
   
-  pressure: number;
-  buttons: number;
-  timestamp: number;
+  classification: InputClassification;
+  action: PointerAction;
   
   target: EventTarget | null;
   isPrimary: boolean;
@@ -49,11 +82,18 @@ export function createPointerState(e: PointerEvent, screenX: number, screenY: nu
     startX: screenX,
     startY: screenY,
     pressure,
+    width: e.width || 1,
+    height: e.height || 1,
+    tiltX: e.tiltX || 0,
+    tiltY: e.tiltY || 0,
+    twist: e.twist || 0,
     buttons: e.buttons,
     timestamp: e.timeStamp || Date.now(),
     target: e.target,
     isPrimary: e.isPrimary,
     hasMovedSignificantly: false,
     isActive: true,
+    classification: 'UNKNOWN',
+    action: 'IGNORE',
   };
 }

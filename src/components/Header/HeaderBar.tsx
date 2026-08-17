@@ -16,6 +16,7 @@ import {
   RefreshCw,
   History,
   LibraryBig,
+  Settings2,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService, FileService } from '../../services';
@@ -200,6 +201,10 @@ export const HeaderBar: React.FC = () => {
 
       <button onClick={() => { setIsMoreMenuOpen(false); openLibrary(); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
         <LibraryBig className="w-4 h-4 text-violet-400" /> Lesson Library
+      </button>
+
+      <button onClick={() => { setIsMoreMenuOpen(false); window.dispatchEvent(new Event('jhw-open-input-settings')); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <Settings2 className="w-4 h-4 text-emerald-400" /> Input & Gestures
       </button>
 
       <div className="h-px bg-slate-700/50 my-1" />

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { WhiteboardEngine } from '../engine/WhiteboardEngine';
 import { PointerState } from '../input/PointerState';
+import { loadInputSettings } from '../input/InputSettings';
 
 interface MultitouchDebugOverlayProps {
   engine: WhiteboardEngine;
@@ -9,9 +10,17 @@ interface MultitouchDebugOverlayProps {
 export const MultitouchDebugOverlay: React.FC<MultitouchDebugOverlayProps> = ({ engine }) => {
   const [pointers, setPointers] = useState<PointerState[]>([]);
   const [gestureState, setGestureState] = useState<string>('IDLE');
+  const [enabled, setEnabled] = useState(() => import.meta.env.DEV && loadInputSettings().debugOverlay);
 
   useEffect(() => {
-    let animationFrameId: number;
+    const updateSetting = () => setEnabled(import.meta.env.DEV && loadInputSettings().debugOverlay);
+    window.addEventListener('jhw-input-settings-change', updateSetting);
+    return () => window.removeEventListener('jhw-input-settings-change', updateSetting);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let timerId: number;
     
     const update = () => {
       if (engine.getPointerManager()) {
@@ -20,15 +29,15 @@ export const MultitouchDebugOverlay: React.FC<MultitouchDebugOverlayProps> = ({ 
       if (engine.getInputRouter()) {
         setGestureState(engine.getInputRouter().getCurrentState());
       }
-      animationFrameId = requestAnimationFrame(update);
+      timerId = window.setTimeout(update, 100);
     };
 
     update();
     
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [engine]);
+    return () => window.clearTimeout(timerId);
+  }, [enabled, engine]);
 
-  if (pointers.length === 0 && gestureState === 'IDLE') return null;
+  if (!enabled || (pointers.length === 0 && gestureState === 'IDLE')) return null;
 
   return (
     <div className="absolute top-16 left-4 bg-black/80 text-green-400 font-mono text-xs p-4 rounded shadow-lg pointer-events-none z-50 min-w-[250px]">
@@ -44,8 +53,9 @@ export const MultitouchDebugOverlay: React.FC<MultitouchDebugOverlayProps> = ({ 
           {pointers.map(p => (
             <li key={p.pointerId} className="bg-gray-800 p-1 rounded">
               ID: {p.pointerId} | Type: <span className="text-blue-300">{p.pointerType}</span><br/>
+              Class: <span className="text-violet-300">{p.classification}</span> | Action: <span className="text-amber-300">{p.action}</span><br/>
               Pos: {Math.round(p.x)}, {Math.round(p.y)}<br/>
-              Pressure: {p.pressure.toFixed(2)} | Active: {p.isActive ? 'Y' : 'N'}
+              Contact: {Math.round(p.width)}×{Math.round(p.height)} | Pressure: {p.pressure.toFixed(2)}
             </li>
           ))}
         </ul>

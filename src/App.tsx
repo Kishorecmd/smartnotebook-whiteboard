@@ -18,6 +18,7 @@ import {
   PresenterToolbar,
   PenNameToast,
   GlobalToast,
+  InputSettingsModal,
 } from './components';
 import { TeachingToolsPanel, TeachingToolsOverlay, initializeTeachingTools } from './teaching-tools';
 import { useWhiteboardStore } from './store';
@@ -125,6 +126,7 @@ export const App: React.FC = () => {
         <WebAppDialog />
         <HandwritingRecognitionModal />
         <PdfImportModal />
+        <InputSettingsModal />
         <TeachingToolsPanel />
         <TeachingToolsOverlay />
         <GlobalToast />

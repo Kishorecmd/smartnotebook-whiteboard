@@ -66,7 +66,6 @@ export const SelectionActionBar: React.FC = () => {
     document: doc,
     activePageIndex,
     selectedIds,
-    toolSettings,
     deleteSelected,
     reorderSelected,
     applySelectedStyle,
@@ -81,7 +80,7 @@ export const SelectionActionBar: React.FC = () => {
   // to swap the play/pause label.
   const [, setVideoTick] = useState(0);
 
-  if (selectedIds.length === 0 || toolSettings.tool !== 'select') {
+  if (selectedIds.length === 0) {
     return null;
   }
 

@@ -30,3 +30,4 @@ export * from './Modals/YouTubeDialog';
 export * from './Modals/WebAppDialog';
 export * from './Modals/HandwritingRecognitionModal';
 export * from './Modals/PdfImportModal';
+export * from './Modals/InputSettingsModal';

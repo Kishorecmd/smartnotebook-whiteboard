@@ -52,7 +52,7 @@ export class SelectTool implements ITool {
       
       // Fallback to bounding box handles
       if (!handle && box) {
-         handle = HitTest.hitTestHandle(worldPoint, box, zoom);
+         handle = HitTest.hitTestHandle(worldPoint, box, zoom, e.pointerType === 'touch' ? 26 : 12);
       }
 
       if (handle) {
@@ -89,7 +89,11 @@ export class SelectTool implements ITool {
     }
 
     // 2. Not clicking existing selection handle; hit test objects directly
-    const hitObj = HitTest.findObjectAtPoint(worldPoint, engine.getObjects(), 8 / zoom);
+    const hitObj = HitTest.findObjectAtPoint(
+      worldPoint,
+      engine.getObjects(),
+      (e.pointerType === 'touch' ? 22 : 8) / zoom,
+    );
 
     if (hitObj) {
       const now = Date.now();
