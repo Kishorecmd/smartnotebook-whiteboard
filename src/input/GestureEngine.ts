@@ -177,8 +177,14 @@ export class GestureEngine {
       const bounds = calculateBoundingBox(object.points);
       object.x = bounds.minX;
       object.y = bounds.minY;
-      object.width = Math.max(1, bounds.width);
-      object.height = Math.max(1, bounds.height);
+      if (source.type === 'stroke') {
+        // For strokes, width is line thickness. Geometry comes from points.
+        object.width = Math.max(0.5, source.width * scale);
+        object.height = Math.max(1, bounds.height);
+      } else {
+        object.width = Math.max(1, bounds.width);
+        object.height = Math.max(1, bounds.height);
+      }
     }
     if ('centerX' in object && 'centerY' in object) {
       const transformed = this.transformPoint({ x: object.centerX, y: object.centerY }, anchor, translation, scale, rotation);
@@ -187,7 +193,6 @@ export class GestureEngine {
     }
     if (typeof object.radius === 'number') object.radius = Math.max(1, object.radius * scale);
     if (typeof object.fontSize === 'number') object.fontSize = Math.max(8, object.fontSize * scale);
-    if (source.type === 'stroke') object.width = Math.max(1, object.width);
     return object as WhiteboardObject;
   }
 }

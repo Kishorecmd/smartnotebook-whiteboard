@@ -368,18 +368,19 @@ export class SelectTool implements ITool {
           return newObj;
         } else if (obj.type === 'stroke') {
           const stroke = { ...obj };
-          const relX = obj.x - originX;
-          const relY = obj.y - originY;
-          stroke.x = originX + relX * scaleX;
-          stroke.y = originY + relY * scaleY;
           stroke.points = stroke.points.map((p) => ({
             ...p,
             x: originX + (p.x - originX) * scaleX,
             y: originY + (p.y - originY) * scaleY,
           }));
           const bounds = calculateBoundingBox(stroke.points);
-          stroke.width = Math.max(1, bounds.width);
+          stroke.x = bounds.minX;
+          stroke.y = bounds.minY;
+          // FreehandStroke.width is the pen thickness, not its bounding-box width.
+          // Scaling it to bounds.width turns handwriting into huge overlapping blobs.
+          stroke.width = Math.max(0.5, obj.width * Math.sqrt(scaleX * scaleY));
           stroke.height = Math.max(1, bounds.height);
+          stroke.updatedAt = Date.now();
           return stroke;
         }
         return obj;
