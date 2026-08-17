@@ -1,8 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { ImageObject, Point, VideoObject } from '../types';
 import { generateId } from '../utils';
-import { StorageService } from './StorageService';
 import { AssetManager } from '../assets/AssetManager';
+import { MediaManager } from '../media/MediaManager';
 
 // Set worker source for pdfjs-dist
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -33,6 +33,7 @@ export class FileImportService {
       img.onload = () => {
         const naturalWidth = img.naturalWidth;
         const naturalHeight = img.naturalHeight;
+        MediaManager.updateAssetRecord(assetId, { naturalWidth, naturalHeight });
 
         // Shrink to fit while preserving aspect ratio; never scale small images up.
         let fitScale = 1;
@@ -174,14 +175,20 @@ export class FileImportService {
       const width = Math.max(1, Math.round(naturalWidth * fitScale));
       const height = Math.max(1, Math.round(naturalHeight * fitScale));
 
-      const mediaId = generateId('media');
-      await StorageService.saveMedia(mediaId, file);
+      const asset = await MediaManager.putAsset(file, 'video', {
+        fileName: file.name,
+        mimeType: file.type,
+        thumbnailDataUrl: posterDataUrl,
+        durationSeconds: Number.isFinite(video.duration) ? video.duration : 0,
+        naturalWidth,
+        naturalHeight,
+      });
 
       const now = Date.now();
       return {
         id: generateId('video'),
         type: 'video',
-        mediaId,
+        mediaId: asset.id,
         mimeType: file.type,
         posterDataUrl,
         durationSeconds: Number.isFinite(video.duration) ? video.duration : 0,
@@ -242,7 +249,7 @@ export class FileImportService {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('Failed to create blob for PDF page');
       
-      const assetId = await AssetManager.addImage(blob, 'image/png');
+      const assetId = await AssetManager.addImage(blob, 'image/png', { includeInLibrary: false });
       const now = Date.now();
       
       // Calculate display width based on the scale to ensure it fits well on the whiteboard

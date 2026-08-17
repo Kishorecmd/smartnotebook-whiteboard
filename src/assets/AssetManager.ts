@@ -1,18 +1,28 @@
 import { StorageService } from '../services/StorageService';
+import { MediaManager } from '../media/MediaManager';
 import { generateId } from '../utils';
 
 export class AssetManager {
   /**
    * Saves an image blob to IndexedDB and returns its asset ID.
    */
-  public static async addImage(blob: Blob, mimeType: string): Promise<string> {
-    const assetId = generateId('asset');
-    
+  public static async addImage(
+    blob: Blob,
+    mimeType: string,
+    options: { includeInLibrary?: boolean; fileName?: string } = {}
+  ): Promise<string> {
     // Create a new blob with the correct mime type if necessary
     const storeBlob = new Blob([blob], { type: mimeType });
-    await StorageService.saveMedia(assetId, storeBlob);
-    
-    return assetId;
+    if (options.includeInLibrary === false) {
+      const assetId = generateId('asset');
+      await StorageService.saveMedia(assetId, storeBlob);
+      return assetId;
+    }
+    const asset = await MediaManager.putAsset(storeBlob, 'image', {
+      fileName: options.fileName || (blob instanceof File ? blob.name : undefined),
+      mimeType,
+    });
+    return asset.id;
   }
 
   /**

@@ -13,7 +13,9 @@ import {
   Menu,
   Cloud,
   CloudUpload,
-  RefreshCw
+  RefreshCw,
+  History,
+  LibraryBig,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService, FileService } from '../../services';
@@ -31,6 +33,8 @@ export const HeaderBar: React.FC = () => {
     loadDocumentFromObject,
     setExportModalOpen,
     setSavedDocsModalOpen,
+    setVersionHistoryModalOpen,
+    openLibrary,
     setKeyboardShortcutsOpen,
     setPresenterMode,
     setPdfImportModalOpen,
@@ -190,6 +194,14 @@ export const HeaderBar: React.FC = () => {
         <Smile className="w-4 h-4 text-yellow-400" /> Kids Mode {childFriendlyMode ? '(On)' : '(Off)'}
       </button>
 
+      <button onClick={() => { setIsMoreMenuOpen(false); setVersionHistoryModalOpen(true); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <History className="w-4 h-4 text-cyan-400" /> Version History
+      </button>
+
+      <button onClick={() => { setIsMoreMenuOpen(false); openLibrary(); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <LibraryBig className="w-4 h-4 text-violet-400" /> Lesson Library
+      </button>
+
       <div className="h-px bg-slate-700/50 my-1" />
 
       <button onClick={() => { setIsMoreMenuOpen(false); setKeyboardShortcutsOpen(true); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
@@ -278,6 +290,14 @@ export const HeaderBar: React.FC = () => {
           
           <button onClick={() => setSavedDocsModalOpen(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
             <FolderOpen className="w-3.5 h-3.5 text-amber-400" /> Boards
+          </button>
+
+          <button onClick={() => setVersionHistoryModalOpen(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
+            <History className="w-3.5 h-3.5 text-cyan-400" /> History
+          </button>
+
+          <button onClick={() => openLibrary()} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
+            <LibraryBig className="w-3.5 h-3.5 text-violet-400" /> Library
           </button>
         </div>
 

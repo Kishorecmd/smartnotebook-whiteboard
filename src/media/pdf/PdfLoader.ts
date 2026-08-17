@@ -21,6 +21,7 @@ export class PdfLoader {
       mimeType: file.type || 'application/pdf',
       naturalWidth: probe.pageWidth,
       naturalHeight: probe.pageHeight,
+      pageCount: probe.pageCount,
       thumbnailDataUrl: probe.posterDataUrl,
     });
 

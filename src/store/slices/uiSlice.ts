@@ -11,6 +11,9 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
   isDocTitleEditing: false,
   isPresenterMode: false,
   isTeachingPanelOpen: false,
+  isVersionHistoryModalOpen: false,
+  isLibraryModalOpen: false,
+  libraryInitialTab: 'templates',
   toastMessage: null,
 
   activeOverlayTools: [],
@@ -25,6 +28,9 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
   setDocTitleEditing: (editing) => set({ isDocTitleEditing: editing }),
   setPresenterMode: (active) => set({ isPresenterMode: active }),
   setTeachingPanelOpen: (open) => set({ isTeachingPanelOpen: open }),
+  setVersionHistoryModalOpen: (open) => set({ isVersionHistoryModalOpen: open }),
+  setLibraryModalOpen: (open) => set({ isLibraryModalOpen: open }),
+  openLibrary: (tab = 'templates') => set({ isLibraryModalOpen: true, libraryInitialTab: tab }),
 
   toggleOverlayTool: (toolId) => set((state) => {
     const isActive = state.activeOverlayTools.includes(toolId);

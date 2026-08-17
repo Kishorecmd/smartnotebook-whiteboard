@@ -7,6 +7,8 @@ import {
   PageDrawer,
   ExportModal,
   SavedDocumentsModal,
+  VersionHistoryModal,
+  LibraryModal,
   KeyboardShortcutsModal,
   ClearConfirmModal,
   YouTubeDialog,
@@ -23,7 +25,7 @@ import { StorageService } from './services';
 import { ResponsiveLayoutManager } from './core/responsive';
 
 export const App: React.FC = () => {
-  const { setDocument, isDirty, isPresenterMode, setPresenterMode, childFriendlyMode, setResponsiveState } = useWhiteboardStore();
+  const { setDocument, isDirty, isPresenterMode, setPresenterMode, childFriendlyMode, setResponsiveState, showToast } = useWhiteboardStore();
 
   useEffect(() => {
     initializeTeachingTools();
@@ -45,7 +47,13 @@ export const App: React.FC = () => {
         if (autosave && autosave.pages && autosave.pages.length > 0) {
           setDocument(autosave);
         } else {
-          await StorageService.collectUnusedMedia();
+          const recovery = await StorageService.loadLatestRecoveryCheckpoint();
+          if (recovery) {
+            setDocument(recovery.document);
+            showToast('Recovered the latest available checkpoint');
+          } else {
+            await StorageService.collectUnusedMedia();
+          }
         }
       } catch (err) {
         console.warn('Could not restore autosave:', err);
@@ -53,7 +61,7 @@ export const App: React.FC = () => {
     };
 
     loadSession();
-  }, [setDocument]);
+  }, [setDocument, showToast]);
 
   // Protect against accidental tab closure with unsaved changes
   useEffect(() => {
@@ -109,6 +117,8 @@ export const App: React.FC = () => {
         {/* Modals & Dialogs */}
         <ExportModal />
         <SavedDocumentsModal />
+        <VersionHistoryModal />
+        <LibraryModal />
         <KeyboardShortcutsModal />
         <ClearConfirmModal />
         <YouTubeDialog />

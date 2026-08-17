@@ -22,6 +22,8 @@ export * from './Pages/PageNavigationFooter';
 export * from './Zoom/ZoomControls';
 export * from './Modals/ExportModal';
 export * from './Modals/SavedDocumentsModal';
+export * from './Modals/VersionHistoryModal';
+export * from './Modals/LibraryModal';
 export * from './Modals/KeyboardShortcutsModal';
 export * from './Modals/ClearConfirmModal';
 export * from './Modals/YouTubeDialog';

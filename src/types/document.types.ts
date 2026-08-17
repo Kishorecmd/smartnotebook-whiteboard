@@ -18,6 +18,23 @@ export interface JHWDocument {
 export type WhiteboardDocument = JHWDocument;
 export type WhiteboardPage = Page;
 
+export type RecoveryCheckpointReason =
+  | 'autosave'
+  | 'manual'
+  | 'save'
+  | 'before-new'
+  | 'before-open'
+  | 'before-restore';
+
+export interface RecoveryCheckpoint {
+  id: string;
+  documentId: string;
+  createdAt: number;
+  reason: RecoveryCheckpointReason;
+  label?: string;
+  document: WhiteboardDocument;
+}
+
 export interface DocumentSummary {
   id: string;
   title: string;

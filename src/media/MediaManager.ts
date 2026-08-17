@@ -24,6 +24,7 @@ const indexedDbStore: MediaAssetStore = {
 };
 
 const ASSET_INDEX_KEY = 'jhw_media_assets';
+const HIDDEN_ASSETS_KEY = 'jhw_hidden_media_assets';
 
 /**
  * Owns media assets: the bytes, their metadata, and the object URLs handed to
@@ -62,14 +63,67 @@ export class MediaManager {
     }
   }
 
+  private static readHiddenIds(): Set<string> {
+    try {
+      const raw = localStorage.getItem(HIDDEN_ASSETS_KEY);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  private static writeHiddenIds(ids: Set<string>): void {
+    try {
+      localStorage.setItem(HIDDEN_ASSETS_KEY, JSON.stringify(Array.from(ids)));
+    } catch {}
+  }
+
   public static listAssets(kind?: MediaKind): MediaAssetRecord[] {
     const all = Object.values(this.readIndex());
     const filtered = kind ? all.filter((a) => a.kind === kind) : all;
     return filtered.sort((a, b) => b.createdAt - a.createdAt);
   }
 
+  /** Includes older assets whose blobs predate the metadata index. */
+  public static async listAssetsAsync(kind?: MediaKind): Promise<MediaAssetRecord[]> {
+    const indexed = this.readIndex();
+    const hidden = this.readHiddenIds();
+    for (const stored of await StorageService.listStoredMediaRecords()) {
+      if (indexed[stored.id] || hidden.has(stored.id)) continue;
+      const inferredKind = this.kindFromMimeType(stored.type);
+      if (!inferredKind) continue;
+      indexed[stored.id] = {
+        id: stored.id,
+        kind: inferredKind,
+        mimeType: stored.type,
+        fileName: `${inferredKind}-${stored.id.slice(-6)}`,
+        byteSize: stored.size,
+        createdAt: stored.createdAt,
+      };
+    }
+    this.writeIndex(indexed);
+    const all = Object.values(indexed);
+    return (kind ? all.filter((asset) => asset.kind === kind) : all)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  private static kindFromMimeType(mimeType: string): MediaKind | null {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    if (mimeType === 'application/pdf') return 'pdf';
+    return null;
+  }
+
   public static getAssetRecord(id: string): MediaAssetRecord | undefined {
     return this.readIndex()[id];
+  }
+
+  public static updateAssetRecord(id: string, patch: Partial<MediaAssetRecord>): void {
+    const index = this.readIndex();
+    if (!index[id]) return;
+    index[id] = { ...index[id], ...patch, id };
+    this.writeIndex(index);
   }
 
   /** Stores a file and returns its metadata record. */
@@ -95,6 +149,8 @@ export class MediaManager {
     const index = this.readIndex();
     index[id] = record;
     this.writeIndex(index);
+    const hidden = this.readHiddenIds();
+    if (hidden.delete(id)) this.writeHiddenIds(hidden);
     return record;
   }
 
@@ -136,6 +192,16 @@ export class MediaManager {
     const index = this.readIndex();
     delete index[id];
     this.writeIndex(index);
+  }
+
+  /** Removes an item from search without breaking boards that still reference it. */
+  public static removeFromLibrary(id: string): void {
+    const index = this.readIndex();
+    delete index[id];
+    this.writeIndex(index);
+    const hidden = this.readHiddenIds();
+    hidden.add(id);
+    this.writeHiddenIds(hidden);
   }
 
   public static async renameAsset(id: string, fileName: string): Promise<void> {

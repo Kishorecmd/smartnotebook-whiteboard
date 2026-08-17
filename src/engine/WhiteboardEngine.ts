@@ -154,7 +154,7 @@ export class WhiteboardEngine {
       overlayCanvas: options.overlayCanvas,
       transformer: this.transformer,
       onFloodFillResult: async (result) => {
-        const assetId = await AssetManager.addImage(result.blob, 'image/png');
+        const assetId = await AssetManager.addImage(result.blob, 'image/png', { includeInLibrary: false });
         const now = Date.now();
         const imageObject = {
           id: generateId('fill'),

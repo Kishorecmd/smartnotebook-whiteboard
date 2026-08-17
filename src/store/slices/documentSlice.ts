@@ -12,6 +12,14 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
   isDirty: false,
 
   setDocument: (doc) => {
+    const previous = get();
+    const safetyCheckpoint = previous.isDirty
+      ? StorageService.createRecoveryCheckpoint(
+          { ...previous.document, activePageIndex: previous.activePageIndex },
+          'before-open',
+          'Before opening another board'
+        )
+      : Promise.resolve(null);
     const activePageIndex = activeIndexFor(doc);
     const normalizedDoc = { ...doc, activePageIndex };
     set({
@@ -29,9 +37,9 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
       engine.resetZoom();
       engine.getCommandManager().clear();
     }
-    void StorageService.saveAutosave(normalizedDoc).then(() =>
-      StorageService.collectUnusedMedia([normalizedDoc])
-    );
+    void safetyCheckpoint
+      .then(() => StorageService.saveAutosave(normalizedDoc))
+      .then(() => StorageService.collectUnusedMedia([normalizedDoc]));
   },
 
   setDocumentTitle: (title) => {
@@ -46,6 +54,14 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
   },
 
   newDocument: () => {
+    const previous = get();
+    const safetyCheckpoint = previous.isDirty
+      ? StorageService.createRecoveryCheckpoint(
+          { ...previous.document, activePageIndex: previous.activePageIndex },
+          'before-new',
+          'Before creating a new board'
+        )
+      : Promise.resolve(null);
     const newDoc = createDefaultDocument('Untitled Whiteboard');
     set({
       document: newDoc,
@@ -61,7 +77,9 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
       engine.resetZoom();
       engine.getCommandManager().clear();
     }
-    void StorageService.saveAutosave(newDoc).then(() => StorageService.collectUnusedMedia([newDoc]));
+    void safetyCheckpoint
+      .then(() => StorageService.saveAutosave(newDoc))
+      .then(() => StorageService.collectUnusedMedia([newDoc]));
   },
 
   saveCurrentDocument: async () => {
@@ -76,6 +94,14 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
   },
 
   loadDocumentFromObject: (doc: WhiteboardDocument) => {
+    const previous = get();
+    const safetyCheckpoint = previous.isDirty
+      ? StorageService.createRecoveryCheckpoint(
+          { ...previous.document, activePageIndex: previous.activePageIndex },
+          'before-open',
+          'Before importing another board'
+        )
+      : Promise.resolve(null);
     const activePageIndex = activeIndexFor(doc);
     const normalizedDoc = { ...doc, activePageIndex };
     set({
@@ -93,9 +119,9 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
       engine.resetZoom();
       engine.getCommandManager().clear();
     }
-    void StorageService.saveAutosave(normalizedDoc).then(() =>
-      StorageService.collectUnusedMedia([normalizedDoc])
-    );
+    void safetyCheckpoint
+      .then(() => StorageService.saveAutosave(normalizedDoc))
+      .then(() => StorageService.collectUnusedMedia([normalizedDoc]));
   },
 
   deleteDocumentById: async (id: string) => {
@@ -110,5 +136,81 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
       return;
     }
     get().setDocument(doc);
+  },
+
+  createRecoveryCheckpoint: async () => {
+    const { document, activePageIndex } = get();
+    const checkpoint = await StorageService.createRecoveryCheckpoint(
+      { ...document, activePageIndex, updatedAt: Date.now() },
+      'manual',
+      'Manual checkpoint'
+    );
+    return checkpoint !== null;
+  },
+
+  restoreRecoveryCheckpoint: async (checkpoint) => {
+    const current = get();
+    await StorageService.createRecoveryCheckpoint(
+      { ...current.document, activePageIndex: current.activePageIndex },
+      'before-restore',
+      'Before restoring an older version'
+    );
+
+    const activePageIndex = activeIndexFor(checkpoint.document);
+    const restoredDocument = {
+      ...checkpoint.document,
+      activePageIndex,
+      updatedAt: Date.now(),
+    };
+    set({
+      document: restoredDocument,
+      activePageIndex,
+      isDirty: true,
+      selectedIds: [],
+      editingText: null,
+    });
+
+    const engine = get().engine;
+    if (engine) {
+      const page = restoredDocument.pages[activePageIndex];
+      engine.setObjects(page.objects, false);
+      engine.setBackground(page.background, page.backgroundType);
+      engine.resetZoom();
+      engine.getCommandManager().clear();
+    }
+
+    await StorageService.saveAutosave(restoredDocument);
+    await StorageService.collectUnusedMedia([restoredDocument]);
+  },
+
+  startDocumentFromTemplate: (doc) => {
+    const previous = get();
+    const safetyCheckpoint = previous.isDirty
+      ? StorageService.createRecoveryCheckpoint(
+          { ...previous.document, activePageIndex: previous.activePageIndex },
+          'before-new',
+          'Before starting from a lesson template'
+        )
+      : Promise.resolve(null);
+    const activePageIndex = activeIndexFor(doc);
+    const templateDocument = { ...doc, activePageIndex, updatedAt: Date.now() };
+    set({
+      document: templateDocument,
+      activePageIndex,
+      isDirty: true,
+      selectedIds: [],
+      editingText: null,
+    });
+    const engine = get().engine;
+    if (engine) {
+      const page = templateDocument.pages[activePageIndex];
+      engine.setObjects(page.objects, false);
+      engine.setBackground(page.background, page.backgroundType);
+      engine.resetZoom();
+      engine.getCommandManager().clear();
+    }
+    void safetyCheckpoint
+      .then(() => StorageService.saveAutosave(templateDocument))
+      .then(() => StorageService.collectUnusedMedia([templateDocument]));
   },
 });

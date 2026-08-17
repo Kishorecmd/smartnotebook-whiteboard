@@ -31,6 +31,7 @@ import {
   SplitSquareHorizontal,
   RefreshCw,
   Maximize2,
+  BookmarkPlus,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { StrokeStyle, TextObject, TextAlign, TeachingToolObject, YouTubeVideoObject, WebAppObject, VideoObject, CompassObject, PdfObject } from '../../types';
@@ -72,6 +73,7 @@ export const SelectionActionBar: React.FC = () => {
     startTextEditing,
     recognizeHandwritingForSelected,
     engine,
+    openLibrary,
   } = useWhiteboardStore();
 
   const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'style' | 'order' | 'ruler'>('none');
@@ -787,6 +789,17 @@ export const SelectionActionBar: React.FC = () => {
         >
           <Copy className="w-4 h-4 text-sky-400" />
           <span className="hidden sm:inline">Duplicate</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openLibrary('content')}
+          title="Save selection to content library"
+          aria-label="Save selection to content library"
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+        >
+          <BookmarkPlus className="w-4 h-4 text-violet-400" />
+          <span className="hidden sm:inline">Save</span>
         </button>
 
         {/* Separator */}

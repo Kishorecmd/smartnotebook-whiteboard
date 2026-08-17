@@ -11,6 +11,7 @@ import {
   Point,
   TextAlign,
   ImageObject,
+  RecoveryCheckpoint,
 } from '../types';
 import type { WhiteboardEngine } from '../engine';
 import { StylePatch } from '../engine/commands/ChangeStyleCommand';
@@ -77,6 +78,9 @@ export interface DocumentSlice {
   loadDocumentById: (id: string) => Promise<void>;
   loadDocumentFromObject: (doc: WhiteboardDocument) => void;
   deleteDocumentById: (id: string) => Promise<void>;
+  createRecoveryCheckpoint: () => Promise<boolean>;
+  restoreRecoveryCheckpoint: (checkpoint: RecoveryCheckpoint) => Promise<void>;
+  startDocumentFromTemplate: (doc: WhiteboardDocument) => void;
 }
 
 /** Page management. Operates on `document.pages` from DocumentSlice. */
@@ -188,6 +192,9 @@ export interface UiSlice {
   isDocTitleEditing: boolean;
   isPresenterMode: boolean;
   isTeachingPanelOpen: boolean;
+  isVersionHistoryModalOpen: boolean;
+  isLibraryModalOpen: boolean;
+  libraryInitialTab: 'templates' | 'content' | 'assets';
   toastMessage: string | null;
 
   // Active Teaching Overlay Tools (e.g. Timer, Calculator)
@@ -203,6 +210,9 @@ export interface UiSlice {
   setDocTitleEditing: (editing: boolean) => void;
   setPresenterMode: (enabled: boolean) => void;
   setTeachingPanelOpen: (open: boolean) => void;
+  setVersionHistoryModalOpen: (open: boolean) => void;
+  setLibraryModalOpen: (open: boolean) => void;
+  openLibrary: (tab?: 'templates' | 'content' | 'assets') => void;
   toggleOverlayTool: (toolId: string) => void;
   showToast: (message: string) => void;
 }

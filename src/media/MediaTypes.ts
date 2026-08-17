@@ -78,6 +78,7 @@ export interface MediaAssetRecord {
   durationSeconds?: number;
   naturalWidth?: number;
   naturalHeight?: number;
+  pageCount?: number;
 }
 
 /** What a media kind supports, so UI can be built from data rather than switches. */
