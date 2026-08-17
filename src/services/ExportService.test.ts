@@ -4,7 +4,8 @@ vi.mock('../media/pdf/PdfRenderer', () => ({
   PdfRenderer: { renderForExport: vi.fn() },
 }));
 
-import { buildPdfFromJpegPages, buildStoredZip } from './ExportService';
+import { createPageObject } from '../models';
+import { buildPdfFromJpegPages, buildStoredZip, ExportService } from './ExportService';
 
 describe('ExportService binary document builders', () => {
   it('builds a parseable two-page PDF object tree and cross-reference table', async () => {
@@ -39,5 +40,17 @@ describe('ExportService binary document builders', () => {
     expect(view.getUint32(bytes.length - 22, true)).toBe(0x06054b50);
     expect(text).toContain('01_Page_One.svg');
     expect(text).toContain('02_Page_Two.svg');
+  });
+
+  it('preserves handwriting guide lines in SVG exports', async () => {
+    const page = createPageObject({
+      title: 'Handwriting',
+      background: '#fffdf8',
+      backgroundType: 'handwriting',
+    });
+    const svg = await ExportService.generateSVG(page, { includeBackground: true });
+
+    expect(svg).toContain('id="handwriting-pattern"');
+    expect(svg).toContain('M64 0V1080');
   });
 });

@@ -273,7 +273,7 @@ export const PageSchema = z.object({
   width: z.number().optional(),
   height: z.number().optional(),
   background: z.string().default('#ffffff'),
-  backgroundType: z.enum(['plain', 'grid', 'dots', 'lines', 'chalkboard']).default('plain'),
+  backgroundType: z.enum(['plain', 'grid', 'dots', 'lines', 'handwriting', 'chalkboard']).default('plain'),
   objects: z.array(WhiteboardObjectSchema),
   createdAt: z.number(),
   updatedAt: z.number(),

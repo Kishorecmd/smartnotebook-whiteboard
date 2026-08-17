@@ -39,7 +39,29 @@ function drawPageBackground(
   const dark = background === '#1e293b' || background === '#1e382b';
   const spacing = 40;
   ctx.save();
-  if (page.backgroundType === 'dots') {
+  if (page.backgroundType === 'handwriting') {
+    const guide = 24;
+    const band = guide * 4;
+    ctx.lineWidth = 1;
+    for (let base = 0; base <= height; base += band) {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(59,130,246,.28)';
+      ctx.beginPath();
+      ctx.moveTo(0, base); ctx.lineTo(width, base);
+      ctx.moveTo(0, base + guide * 2); ctx.lineTo(width, base + guide * 2);
+      ctx.stroke();
+      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = 'rgba(96,165,250,.20)';
+      ctx.beginPath();
+      ctx.moveTo(0, base + guide); ctx.lineTo(width, base + guide);
+      ctx.moveTo(0, base + guide * 3); ctx.lineTo(width, base + guide * 3);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(239,68,68,.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(64, 0); ctx.lineTo(64, height); ctx.stroke();
+  } else if (page.backgroundType === 'dots') {
     ctx.fillStyle = dark ? 'rgba(255,255,255,.15)' : 'rgba(0,0,0,.15)';
     for (let x = 0; x <= width; x += spacing) {
       for (let y = 0; y <= height; y += spacing) {
@@ -315,6 +337,9 @@ const svgBackground = (page: WhiteboardPage, width: number, height: number): str
   const dark = page.background === '#1e293b' || page.background === '#1e382b';
   const ink = dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)';
   let mark = '';
+  if (type === 'handwriting') {
+    return `  <defs><pattern id="handwriting-pattern" width="96" height="96" patternUnits="userSpaceOnUse"><path d="M0 .5H96M0 48.5H96" fill="none" stroke="rgba(59,130,246,.28)"/><path d="M0 24.5H96M0 72.5H96" fill="none" stroke="rgba(96,165,250,.20)" stroke-dasharray="5 5"/></pattern></defs>\n  <rect width="${width}" height="${height}" fill="${background}"/>\n  <rect width="${width}" height="${height}" fill="url(#handwriting-pattern)"/>\n  <path d="M64 0V${height}" fill="none" stroke="rgba(239,68,68,.35)" stroke-width="1.5"/>\n`;
+  }
   if (type === 'dots') mark = `<circle cx="1.5" cy="1.5" r="1.5" fill="${ink}"/>`;
   else if (type === 'lines') mark = `<path d="M0 39.5H40" fill="none" stroke="${ink}"/>`;
   else mark = `<path d="M39.5 0V40M0 39.5H40" fill="none" stroke="${ink}"/>`;

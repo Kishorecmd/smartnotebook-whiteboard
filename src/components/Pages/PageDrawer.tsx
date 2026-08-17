@@ -29,6 +29,7 @@ const BACKGROUND_PRESETS: BackgroundPreset[] = [
   { name: 'Grid Paper', color: '#f8fafc', type: 'grid', icon: <Grid className="w-4 h-4 text-blue-500" /> },
   { name: 'Dot Grid', color: '#f8fafc', type: 'dots', icon: <div className="w-4 h-4 flex items-center justify-center font-black text-xs text-blue-500">•</div> },
   { name: 'Lined Paper', color: '#f8fafc', type: 'lines', icon: <FileText className="w-4 h-4 text-blue-500" /> },
+  { name: 'Handwriting', color: '#fffdf8', type: 'handwriting', icon: <FileText className="w-4 h-4 text-rose-500" /> },
 ];
 
 export const PageDrawer: React.FC = () => {
@@ -115,6 +116,7 @@ export const PageDrawer: React.FC = () => {
                     </span>
                     {page.backgroundType === 'grid' && <Grid className="w-4 h-4 text-slate-400 opacity-50" />}
                     {page.backgroundType === 'lines' && <FileText className="w-4 h-4 text-slate-400 opacity-50" />}
+                    {page.backgroundType === 'handwriting' && <FileText className="w-4 h-4 text-rose-400 opacity-60" />}
                     {page.backgroundType === 'dots' && <span className="text-xs font-black text-slate-400 opacity-50">•</span>}
                   </div>
                   <div>

@@ -1191,7 +1191,40 @@ export class CanvasRenderer {
 
     ctx.save();
 
-    if (this.backgroundType === 'grid') {
+    if (this.backgroundType === 'handwriting') {
+      const guide = 24;
+      const band = guide * 4;
+      const firstBand = Math.floor(bounds.minY / band) * band;
+
+      ctx.lineWidth = 1 / zoom;
+      for (let base = firstBand; base <= bounds.maxY; base += band) {
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.28)';
+        ctx.beginPath();
+        ctx.moveTo(bounds.minX, base);
+        ctx.lineTo(bounds.maxX, base);
+        ctx.moveTo(bounds.minX, base + guide * 2);
+        ctx.lineTo(bounds.maxX, base + guide * 2);
+        ctx.stroke();
+
+        ctx.setLineDash([5 / zoom, 5 / zoom]);
+        ctx.strokeStyle = 'rgba(96, 165, 250, 0.20)';
+        ctx.beginPath();
+        ctx.moveTo(bounds.minX, base + guide);
+        ctx.lineTo(bounds.maxX, base + guide);
+        ctx.moveTo(bounds.minX, base + guide * 3);
+        ctx.lineTo(bounds.maxX, base + guide * 3);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.35)';
+      ctx.lineWidth = 1.5 / zoom;
+      ctx.beginPath();
+      ctx.moveTo(64, bounds.minY);
+      ctx.lineTo(64, bounds.maxY);
+      ctx.stroke();
+    } else if (this.backgroundType === 'grid') {
       ctx.strokeStyle = this.background === '#1e293b' || this.background === '#1e382b' 
         ? 'rgba(255, 255, 255, 0.08)' 
         : 'rgba(0, 0, 0, 0.06)';

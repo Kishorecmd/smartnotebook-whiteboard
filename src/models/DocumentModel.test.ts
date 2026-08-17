@@ -32,4 +32,12 @@ describe('whiteboard document validation', () => {
     const document = createDefaultDocument('Legacy page');
     expect(validateDocument({ ...document, activePageIndex: 99 }).activePageIndex).toBe(0);
   });
+
+  it('accepts handwriting-practice page backgrounds', () => {
+    const document = createDefaultDocument('Handwriting Practice');
+    document.pages[0].background = '#fffdf8';
+    document.pages[0].backgroundType = 'handwriting';
+
+    expect(validateDocument(document).pages[0].backgroundType).toBe('handwriting');
+  });
 });

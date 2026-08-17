@@ -10,7 +10,7 @@ export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
 
 export type TextAlign = 'left' | 'center' | 'right';
 
-export type CanvasBackgroundType = 'plain' | 'grid' | 'dots' | 'lines' | 'chalkboard';
+export type CanvasBackgroundType = 'plain' | 'grid' | 'dots' | 'lines' | 'handwriting' | 'chalkboard';
 
 export type HandleType = 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'rotate' | 'body' | 'compass-needle' | 'compass-pencil' | 'compass-body';
 
