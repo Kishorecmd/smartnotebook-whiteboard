@@ -35,7 +35,7 @@ export const PenContextBar: React.FC = () => {
   };
 
   return (
-    <div className="flex w-[min(94vw,560px)] flex-col gap-2 rounded-3xl border border-slate-700/60 bg-slate-900/95 p-3 shadow-2xl backdrop-blur-xl">
+    <div className="pen-context-bar flex flex-col gap-2 rounded-3xl border border-slate-700/60 bg-slate-900/95 p-3 shadow-2xl backdrop-blur-xl">
       <div className="flex items-center gap-2">
         <span className="text-lg leading-none">{preset.icon}</span>
         <span className="text-xs font-bold text-white">{preset.name}</span>
@@ -45,7 +45,7 @@ export const PenContextBar: React.FC = () => {
       </div>
 
       {/* Colour */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="pen-swatch-row scrollbar-none flex items-center gap-1.5 overflow-x-auto py-0.5">
         {Array.from(new Set(swatches)).map((swatch) => (
           <button
             key={swatch}
@@ -53,7 +53,7 @@ export const PenContextBar: React.FC = () => {
             onClick={() => applyColor(swatch)}
             title={swatch}
             aria-label={`Colour ${swatch}`}
-            className={`h-9 w-9 rounded-full border-2 transition-transform ${
+            className={`pen-colour-swatch shrink-0 rounded-full border-2 transition-transform ${
               color.toLowerCase() === swatch.toLowerCase()
                 ? 'scale-110 border-white'
                 : 'border-slate-600 hover:scale-105'
@@ -62,7 +62,7 @@ export const PenContextBar: React.FC = () => {
           />
         ))}
         <label
-          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-slate-600 text-[10px] font-bold text-slate-300"
+          className="pen-colour-swatch flex shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-slate-600 text-[10px] font-bold text-slate-300"
           title="Custom colour"
         >
           +
@@ -78,7 +78,7 @@ export const PenContextBar: React.FC = () => {
       {/* Size */}
       <div className="flex items-center gap-2">
         <span className="w-12 shrink-0 text-[11px] font-semibold text-slate-400">Size</span>
-        <div className="flex flex-wrap gap-1">
+        <div className="pen-size-presets scrollbar-none flex min-w-0 flex-1 gap-1 overflow-x-auto">
           {sizes.map((s) => (
             <button
               key={s}

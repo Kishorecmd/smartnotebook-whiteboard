@@ -22,7 +22,7 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
   onDropdownClick,
   className = '',
 }) => {
-  const baseWrapper = 'flex items-stretch rounded-2xl transition-all duration-200 select-none min-w-[80px] h-[56px] border flex-shrink-0';
+  const baseWrapper = 'flex items-stretch rounded-2xl transition-all duration-200 select-none min-w-[var(--split-tool-width)] w-[var(--split-tool-width)] h-[var(--tool-size)] border flex-shrink-0';
   
   let variantStyles = '';
   if (isDisabled) {
@@ -42,7 +42,7 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
         aria-label={label}
         disabled={isDisabled}
         onClick={onMainClick}
-        className="flex-1 flex items-center justify-center rounded-l-2xl px-3 hover:bg-white/5 active:scale-95 transition-all focus:outline-none"
+        className="flex min-w-0 flex-1 items-center justify-center rounded-l-2xl px-2 hover:bg-white/5 active:scale-95 transition-all focus:outline-none"
       >
         <div className="w-6 h-6 flex items-center justify-center pointer-events-none">
           {icon}
@@ -60,7 +60,7 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
         disabled={isDisabled}
         onClick={onDropdownClick}
         aria-expanded={isDropdownOpen}
-        className={`flex items-center justify-center w-8 rounded-r-2xl hover:bg-white/10 active:scale-95 transition-all focus:outline-none ${isDropdownOpen ? 'bg-white/10 text-white' : ''}`}
+        className={`flex items-center justify-center w-[var(--split-chevron-width)] rounded-r-2xl hover:bg-white/10 active:scale-95 transition-all focus:outline-none ${isDropdownOpen ? 'bg-white/10 text-white' : ''}`}
       >
         <ChevronDown className="w-4 h-4 pointer-events-none" />
       </button>

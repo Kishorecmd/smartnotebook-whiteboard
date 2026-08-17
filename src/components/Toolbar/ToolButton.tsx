@@ -25,7 +25,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   showLabel = false,
 }) => {
   let baseStyles =
-    'relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200 select-none focus:outline-none min-w-[56px] min-h-[56px] w-[56px] h-[56px] flex-shrink-0';
+    'relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200 select-none focus:outline-none min-w-[var(--tool-size)] min-h-[var(--tool-size)] w-[var(--tool-size)] h-[var(--tool-size)] flex-shrink-0';
 
   let variantStyles = '';
 

@@ -307,8 +307,7 @@ export const MainToolbar: React.FC = () => {
     >
       <div
         ref={toolbarRef}
-        className="relative flex flex-col items-center select-none w-fit max-w-[calc(100vw-var(--safe-area-x)*2)] mx-auto pointer-events-auto transition-transform duration-200"
-        style={{ transform: `scale(var(--ui-scale, 1))` }}
+        className="relative flex w-fit max-w-[calc(100vw-var(--safe-area-x)*2)] flex-col items-center select-none mx-auto pointer-events-auto"
       >
         <ContextToolbar 
           activePopover={activePopover} 
@@ -316,7 +315,7 @@ export const MainToolbar: React.FC = () => {
           onMediaInsert={handleMediaInsert}
         />
 
-        <div className="flex flex-row items-center gap-1 bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-[24px] p-2 shadow-2xl overflow-hidden h-[var(--toolbar-height)]">
+        <div className="main-toolbar-strip flex flex-row items-center gap-1 bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-[24px] p-[var(--toolbar-padding)] shadow-2xl overflow-hidden h-[var(--toolbar-height)]">
           
           {visibleItems.map(item => renderItem(item.id))}
 

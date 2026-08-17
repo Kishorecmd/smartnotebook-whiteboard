@@ -1,4 +1,5 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
+import React from 'react';
+import { X } from 'lucide-react';
 import { ColorPalette } from './ColorPalette';
 import { InsertMediaPanel } from './InsertMediaPanel';
 import { MediaKind } from '../../media/MediaTypes';
@@ -17,42 +18,24 @@ interface ContextToolbarProps {
   onMediaInsert: (kind: MediaKind) => void;
 }
 
-export const ContextToolbar: React.FC<ContextToolbarProps> = ({ activePopover, onMediaInsert }) => {
+export const ContextToolbar: React.FC<ContextToolbarProps> = ({ activePopover, onClose, onMediaInsert }) => {
   const { toolSettings, updateToolSettings, setTool } = useWhiteboardStore();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [offsetX, setOffsetX] = useState(0);
-
-  useLayoutEffect(() => {
-    if (activePopover === 'none' || !containerRef.current) return;
-    
-    // Reset offset first to get natural measurement
-    setOffsetX(0);
-    
-    // Need a tiny delay for DOM to update with natural size
-    requestAnimationFrame(() => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const padding = 16;
-      let newOffset = 0;
-
-      if (rect.left < padding) {
-        newOffset = padding - rect.left;
-      } else if (rect.right > window.innerWidth - padding) {
-        newOffset = (window.innerWidth - padding) - rect.right;
-      }
-      
-      setOffsetX(newOffset);
-    });
-  }, [activePopover]);
 
   if (activePopover === 'none') return null;
 
   return (
     <div 
-      ref={containerRef}
-      className="absolute bottom-[calc(100%+16px)] left-1/2 z-40 animate-fade-in pointer-events-auto transition-transform"
-      style={{ transform: `translateX(calc(-50% + ${offsetX}px))` }}
+      className="context-toolbar-popover scrollbar-none fixed left-1/2 z-40 animate-fade-in pointer-events-auto"
     >
+      <button
+        type="button"
+        onClick={onClose}
+        className="context-toolbar-close"
+        aria-label="Close tool options"
+        title="Close tool options"
+      >
+        <X className="h-5 w-5" />
+      </button>
       {activePopover === 'color' && (
         <ColorPalette
           selectedColor={toolSettings.color}
@@ -103,7 +86,7 @@ export const ContextToolbar: React.FC<ContextToolbarProps> = ({ activePopover, o
       )}
 
       {activePopover === 'pens' && (
-        <div className="flex flex-col items-center gap-2">
+        <div className="pen-tools-layout">
           <PenFamilyPicker />
           <PenContextBar />
         </div>
