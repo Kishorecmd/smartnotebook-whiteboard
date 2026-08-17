@@ -49,8 +49,9 @@ export const WebAppNode: React.FC<WebAppNodeProps> = ({ object }) => {
           title={object.title || 'Embedded Web App'}
           src={object.url}
           className="w-full h-full border-none bg-white"
-          allow="camera; microphone; fullscreen; display-capture; geolocation; autoplay; clipboard-write; clipboard-read"
+          allow="fullscreen; autoplay"
           sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+          referrerPolicy="no-referrer"
           onError={() => setError(true)}
           onLoad={() => {
              // Basic heuristic: if it's cross-origin and X-Frame-Options blocks it, it might trigger error

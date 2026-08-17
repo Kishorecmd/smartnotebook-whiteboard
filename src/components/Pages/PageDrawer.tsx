@@ -125,8 +125,16 @@ export const PageDrawer: React.FC = () => {
                         onChange={(e) => setEditingTitle(e.target.value)}
                         onBlur={() => handleRenameSubmit(page.id)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRenameSubmit(page.id);
-                          if (e.key === 'Escape') setEditingPageId(null);
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRenameSubmit(page.id);
+                          }
+                          if (e.key === 'Escape') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditingPageId(null);
+                          }
                         }}
                         autoFocus
                         className="text-xs font-semibold bg-slate-800 text-white border border-primary-500 rounded px-1 py-0.5 w-[110px] outline-none focus:ring-2 focus:ring-primary-500/50"

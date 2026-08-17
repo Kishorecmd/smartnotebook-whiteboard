@@ -41,12 +41,11 @@ export const YouTubeDialog: React.FC = () => {
 
     if (engine) {
       // Calculate center of current viewport
-      const viewport = engine.getViewportTransform();
-      const canvasWidth = engine.getCanvas().width / window.devicePixelRatio;
-      const canvasHeight = engine.getCanvas().height / window.devicePixelRatio;
-      
-      const centerX = viewport.panX + (canvasWidth / 2) / viewport.zoom;
-      const centerY = viewport.panY + (canvasHeight / 2) / viewport.zoom;
+      const canvasRect = engine.getCanvas().getBoundingClientRect();
+      const center = engine.getTransformer().screenToWorld({
+        x: canvasRect.width / 2,
+        y: canvasRect.height / 2,
+      });
 
       // Standard YouTube aspect ratio is 16:9
       const defaultWidth = 480;
@@ -57,8 +56,8 @@ export const YouTubeDialog: React.FC = () => {
         type: 'youtubeVideo',
         videoId,
         originalUrl: url,
-        x: centerX - defaultWidth / 2,
-        y: centerY - defaultHeight / 2,
+        x: center.x - defaultWidth / 2,
+        y: center.y - defaultHeight / 2,
         width: defaultWidth,
         height: defaultHeight,
         rotation: 0,
@@ -84,6 +83,9 @@ export const YouTubeDialog: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in select-none">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add YouTube video"
         className="w-full max-w-md bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden p-6 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -95,6 +97,8 @@ export const YouTubeDialog: React.FC = () => {
             <h2 className="text-xl font-bold text-white">Add YouTube Video</h2>
           </div>
           <button 
+            type="button"
+            aria-label="Close YouTube dialog"
             onClick={handleClose}
             className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
           >

@@ -33,6 +33,15 @@ export interface CanvasRendererOptions {
   canvas: HTMLCanvasElement;
   overlayCanvas?: HTMLCanvasElement;
   transformer: CoordinateTransformer;
+  onFloodFillResult?: (result: {
+    blob: Blob;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    originalWidth: number;
+    originalHeight: number;
+  }) => void | Promise<void>;
 }
 
 export interface ActiveShapeParams {
@@ -97,6 +106,8 @@ export class CanvasRenderer {
   private videoNeedsFrame = false;
 
   private animationFrameId: number | null = null;
+  private onFloodFillResult?: CanvasRendererOptions['onFloodFillResult'];
+  private floodFillWorker: Worker | null = null;
   
   // Teaching tools
   private transientStrokes: FreehandStroke[] = [];
@@ -121,6 +132,7 @@ export class CanvasRenderer {
     }
 
     this.transformer = options.transformer;
+    this.onFloodFillResult = options.onFloodFillResult;
     this.dpr = typeof window !== 'undefined' ? Math.max(1, window.devicePixelRatio || 1) : 1;
 
     // A PDF page finishes rasterising off the main flow, so the renderer needs
@@ -159,6 +171,21 @@ export class CanvasRenderer {
   }
 
   public setObjects(objects: WhiteboardObject[]): void {
+    // A fill result is derived from a specific rendered frame. Discard it if
+    // the page/object set changes before the worker finishes, otherwise an
+    // asynchronous result could be committed onto a different page.
+    this.floodFillWorker?.terminate();
+    this.floodFillWorker = null;
+
+    const retainedIds = new Set(objects.map((object) => object.id));
+    for (const [objectId, url] of this.imageObjectUrls) {
+      if (!retainedIds.has(objectId)) {
+        URL.revokeObjectURL(url);
+        this.imageObjectUrls.delete(objectId);
+        this.imageCache.delete(objectId);
+        this.pendingImageLoads.delete(objectId);
+      }
+    }
     this.objects = objects;
     this.requestRender();
   }
@@ -249,8 +276,133 @@ export class CanvasRenderer {
   }
 
   public dispatchFloodFill(worldPoint: Point, color: string, opacity: number): void {
-    // Stub for FloodFillWorker dispatch
-    console.warn('dispatchFloodFill not implemented yet.', worldPoint, color, opacity);
+    if (!this.onFloodFillResult || this.canvas.width <= 0 || this.canvas.height <= 0) return;
+
+    // Flood-fill the currently visible rendered scene, then keep only pixels
+    // changed by the worker. The transparent result becomes a normal durable
+    // image object, so save/export/undo work exactly like imported artwork.
+    this.renderMainScene();
+    let source: ImageData;
+    try {
+      source = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    } catch (error) {
+      console.warn('The canvas could not be read for filling:', error);
+      return;
+    }
+
+    const screenPoint = this.transformer.worldToScreen(worldPoint);
+    const startX = Math.floor(screenPoint.x * this.dpr);
+    const startY = Math.floor(screenPoint.y * this.dpr);
+    if (startX < 0 || startY < 0 || startX >= source.width || startY >= source.height) return;
+
+    const swatch = document.createElement('canvas');
+    swatch.width = 1;
+    swatch.height = 1;
+    const swatchContext = swatch.getContext('2d');
+    if (!swatchContext) return;
+    swatchContext.clearRect(0, 0, 1, 1);
+    swatchContext.globalAlpha = Math.min(1, Math.max(0, opacity));
+    swatchContext.fillStyle = color;
+    swatchContext.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = swatchContext.getImageData(0, 0, 1, 1).data;
+    const original = new Uint8ClampedArray(source.data);
+
+    this.floodFillWorker?.terminate();
+    const worker = new Worker(new URL('../engine/workers/FloodFillWorker.ts', import.meta.url), {
+      type: 'module',
+    });
+    this.floodFillWorker = worker;
+    const requestId = `fill_${Date.now()}`;
+
+    worker.onmessage = (event: MessageEvent<{
+      id: string;
+      imageData?: ImageData;
+      bounds?: { minX: number; minY: number; maxX: number; maxY: number } | null;
+      error?: string;
+    }>) => {
+      if (event.data.id !== requestId) return;
+      worker.terminate();
+      if (this.floodFillWorker === worker) this.floodFillWorker = null;
+      const { imageData, bounds, error } = event.data;
+      if (error || !imageData || !bounds) {
+        if (error) console.warn('Flood fill failed:', error);
+        return;
+      }
+
+      const pixelWidth = bounds.maxX - bounds.minX + 1;
+      const pixelHeight = bounds.maxY - bounds.minY + 1;
+      const mask = document.createElement('canvas');
+      mask.width = pixelWidth;
+      mask.height = pixelHeight;
+      const maskContext = mask.getContext('2d');
+      if (!maskContext) return;
+      const maskData = maskContext.createImageData(pixelWidth, pixelHeight);
+
+      for (let y = 0; y < pixelHeight; y++) {
+        for (let x = 0; x < pixelWidth; x++) {
+          const sourceIndex = ((bounds.minY + y) * imageData.width + bounds.minX + x) * 4;
+          const changed = original[sourceIndex] !== imageData.data[sourceIndex]
+            || original[sourceIndex + 1] !== imageData.data[sourceIndex + 1]
+            || original[sourceIndex + 2] !== imageData.data[sourceIndex + 2]
+            || original[sourceIndex + 3] !== imageData.data[sourceIndex + 3];
+          if (!changed) continue;
+          const targetIndex = (y * pixelWidth + x) * 4;
+          maskData.data[targetIndex] = r;
+          maskData.data[targetIndex + 1] = g;
+          maskData.data[targetIndex + 2] = b;
+          maskData.data[targetIndex + 3] = a;
+        }
+      }
+      maskContext.putImageData(maskData, 0, 0);
+
+      mask.toBlob((blob) => {
+        if (!blob || this.isDisposed) return;
+        const topLeft = this.transformer.screenToWorld({
+          x: bounds.minX / this.dpr,
+          y: bounds.minY / this.dpr,
+        });
+        const zoom = this.transformer.getZoom();
+        void this.onFloodFillResult?.({
+          blob,
+          x: topLeft.x,
+          y: topLeft.y,
+          width: pixelWidth / this.dpr / zoom,
+          height: pixelHeight / this.dpr / zoom,
+          originalWidth: pixelWidth,
+          originalHeight: pixelHeight,
+        });
+      }, 'image/png');
+    };
+
+    worker.onerror = (event) => {
+      console.warn('Flood fill worker stopped:', event.message);
+      worker.terminate();
+      if (this.floodFillWorker === worker) this.floodFillWorker = null;
+    };
+    worker.postMessage({
+      id: requestId,
+      imageData: source,
+      startX,
+      startY,
+      fillColor: { r, g, b, a },
+      tolerance: 24,
+    });
+  }
+
+  /** Samples the rendered scene, including raster images and page backgrounds. */
+  public sampleColorAt(worldPoint: Point): string | null {
+    this.renderMainScene();
+    const screen = this.transformer.worldToScreen(worldPoint);
+    const x = Math.floor(screen.x * this.dpr);
+    const y = Math.floor(screen.y * this.dpr);
+    if (x < 0 || y < 0 || x >= this.canvas.width || y >= this.canvas.height) return null;
+    try {
+      const [r, g, b, a] = this.ctx.getImageData(x, y, 1, 1).data;
+      if (a === 0) return null;
+      return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+    } catch {
+      return null;
+    }
   }
 
   public requestRender(): void {
@@ -420,8 +572,25 @@ export class CanvasRenderer {
       ctx.translate(-obj.width / 2, -obj.height / 2);
     }
     
-    // Draw the image scaled to the object's width/height
-    ctx.drawImage(img, 0, 0, obj.width, obj.height);
+    if (obj.flipX || obj.flipY) {
+      ctx.translate(obj.flipX ? obj.width : 0, obj.flipY ? obj.height : 0);
+      ctx.scale(obj.flipX ? -1 : 1, obj.flipY ? -1 : 1);
+    }
+    if (obj.crop) {
+      ctx.drawImage(
+        img,
+        obj.crop.x * img.naturalWidth,
+        obj.crop.y * img.naturalHeight,
+        obj.crop.width * img.naturalWidth,
+        obj.crop.height * img.naturalHeight,
+        0,
+        0,
+        obj.width,
+        obj.height,
+      );
+    } else {
+      ctx.drawImage(img, 0, 0, obj.width, obj.height);
+    }
     ctx.restore();
   }
 
@@ -1095,5 +1264,7 @@ export class CanvasRenderer {
     }
     this.imageObjectUrls.clear();
     this.pendingImageLoads.clear();
+    this.floodFillWorker?.terminate();
+    this.floodFillWorker = null;
   }
 }

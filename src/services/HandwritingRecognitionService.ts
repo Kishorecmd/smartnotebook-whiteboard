@@ -6,7 +6,7 @@ export interface HandwritingRecognitionResult {
   text: string;
   confidence: number | null;
   /** Identifies the recognizer that produced this result. */
-  engine: 'gemini' | 'trocr' | 'tesseract' | 'azure';
+  engine: 'gemini' | 'tesseract';
   bbox: BoundingBox;
   previewDataUrl: string;
   suggestedFontSize: number;

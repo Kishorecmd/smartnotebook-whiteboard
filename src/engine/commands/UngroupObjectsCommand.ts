@@ -38,8 +38,9 @@ export class UngroupObjectsCommand implements ICommand {
     // Clear parentGroupId for children
     for (let i = 0; i < list.length; i++) {
       if (list[i].parentGroupId && groupIdsToRemove.has(list[i].parentGroupId as string)) {
-        const { parentGroupId, ...rest } = list[i] as any;
-        list[i] = { ...rest, updatedAt: Date.now() };
+        const ungrouped = { ...list[i], updatedAt: Date.now() };
+        delete ungrouped.parentGroupId;
+        list[i] = ungrouped;
       }
     }
 

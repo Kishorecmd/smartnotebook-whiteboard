@@ -13,4 +13,4 @@ For production, run `npm run build`, set the environment variables on the server
 
 `gemini-3.6-flash` is the default model. Set `GEMINI_HANDWRITING_MODEL` only if you need to choose a different Gemini vision model. The endpoint also includes an in-memory per-IP rate limit; configure it with `HANDWRITING_RATE_LIMIT_MAX` for your deployment.
 
-TrOCR and Tesseract are retained as local, no-cloud fallbacks in the handwriting dialog.
+Tesseract is retained as a lightweight local fallback for printed or block lettering.

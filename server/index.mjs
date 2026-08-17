@@ -12,6 +12,12 @@ const model = process.env.GEMINI_HANDWRITING_MODEL ?? 'gemini-3.6-flash';
 const requestWindowMs = 60_000;
 const requestLimit = Number.parseInt(process.env.HANDWRITING_RATE_LIMIT_MAX ?? '60', 10);
 const requestsByIp = new Map();
+const allowedOrigins = new Set(
+  (process.env.HANDWRITING_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
 
 const transcriptionInstructions = `You are a precise handwriting transcription system for a classroom whiteboard.
 Read every handwritten word in the image and preserve line breaks where they are clear.
@@ -20,6 +26,34 @@ Return only the transcription. Do not add a label, quotes, Markdown, explanation
 If there is no legible writing, return an empty response.`;
 
 app.disable('x-powered-by');
+if (process.env.TRUST_PROXY) {
+  const value = /^\d+$/.test(process.env.TRUST_PROXY)
+    ? Number.parseInt(process.env.TRUST_PROXY, 10)
+    : process.env.TRUST_PROXY;
+  app.set('trust proxy', value);
+}
+app.use((request, response, next) => {
+  response.set({
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+
+  const origin = request.get('origin');
+  if (origin && allowedOrigins.has(origin)) {
+    response.set({
+      'Access-Control-Allow-Origin': origin,
+      Vary: 'Origin',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    });
+  }
+  if (request.method === 'OPTIONS') {
+    response.sendStatus(origin && allowedOrigins.has(origin) ? 204 : 403);
+    return;
+  }
+  next();
+});
 app.use(express.json({ limit: '6mb', type: 'application/json' }));
 
 const validImageDataUrl = (value) =>
@@ -30,17 +64,34 @@ const validImageDataUrl = (value) =>
 const rateLimit = (request, response, next) => {
   const now = Date.now();
   const key = request.ip ?? request.socket.remoteAddress ?? 'unknown';
-  const recent = (requestsByIp.get(key) ?? []).filter((time) => now - time < requestWindowMs);
+  const current = requestsByIp.get(key);
+  const bucket = !current || current.resetAt <= now
+    ? { count: 0, resetAt: now + requestWindowMs }
+    : current;
 
-  if (recent.length >= requestLimit) {
+  if (bucket.count >= requestLimit) {
+    response.set('Retry-After', String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))));
     response.status(429).json({ error: 'Too many handwriting requests. Please try again in a minute.' });
     return;
   }
 
-  recent.push(now);
-  requestsByIp.set(key, recent);
+  bucket.count += 1;
+  requestsByIp.set(key, bucket);
   next();
 };
+
+const cleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of requestsByIp) {
+    if (bucket.resetAt <= now) requestsByIp.delete(key);
+  }
+}, requestWindowMs);
+cleanupTimer.unref();
+
+app.get('/api/health', (_request, response) => {
+  response.set('Cache-Control', 'no-store');
+  response.json({ ok: true, handwritingConfigured: Boolean(process.env.GEMINI_API_KEY) });
+});
 
 app.post('/api/handwriting-recognition', rateLimit, async (request, response) => {
   const { imageDataUrl } = request.body ?? {};

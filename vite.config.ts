@@ -36,9 +36,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,ttf,wasm,worker.mjs}'],
-        // TrOCR's ONNX Runtime uses a 23 MB WebAssembly binary. Caching it keeps
-        // handwriting recognition available after the model's first download.
-        maximumFileSizeToCacheInBytes: 30000000
+        maximumFileSizeToCacheInBytes: 5000000
       }
     })
   ],

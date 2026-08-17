@@ -1,7 +1,6 @@
 import { FreehandStroke } from '../../types';
 import { HandwritingRecognitionService } from '../../services/HandwritingRecognitionService';
 import { GeminiVisionRecognitionService } from '../../services/GeminiVisionRecognitionService';
-import { TrOCRRecognitionService } from '../../services/TrOCRRecognitionService';
 import type { HandwritingSlice, RecognitionEngine, SliceCreator } from '../types';
 
 const ENGINE_KEY = 'jhw_recognition_engine';
@@ -20,7 +19,7 @@ const loadEngine = (): RecognitionEngine => {
     }
 
     const saved = localStorage.getItem(ENGINE_KEY);
-    return saved === 'gemini' || saved === 'trocr' || saved === 'tesseract' ? saved : 'gemini';
+    return saved === 'gemini' || saved === 'tesseract' ? saved : 'gemini';
   } catch {
     return 'gemini';
   }
@@ -79,9 +78,7 @@ export const createHandwritingSlice: SliceCreator<HandwritingSlice> = (set, get)
       const result =
         recognizer === 'gemini'
           ? await GeminiVisionRecognitionService.recognizeStrokes(selectedStrokes, onProgress)
-          : recognizer === 'trocr'
-            ? await TrOCRRecognitionService.recognizeStrokes(selectedStrokes, onProgress)
-            : await HandwritingRecognitionService.recognizeStrokes(selectedStrokes, onProgress);
+          : await HandwritingRecognitionService.recognizeStrokes(selectedStrokes, onProgress);
 
       if (result) {
         set({

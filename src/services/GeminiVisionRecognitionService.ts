@@ -9,6 +9,9 @@ interface HandwritingApiResponse {
   error?: string;
 }
 
+const configuredApiBase = (import.meta.env.VITE_HANDWRITING_API_BASE_URL || '').trim().replace(/\/$/, '');
+const handwritingEndpoint = `${configuredApiBase}/api/handwriting-recognition`;
+
 /**
  * Sends a high-contrast image of the selected ink to the application's own
  * Node endpoint. The Gemini API key remains exclusively on that server.
@@ -28,21 +31,32 @@ export class GeminiVisionRecognitionService {
 
     onProgress?.(25, 'Sending selected ink to Gemini Vision…');
     let httpResponse: Response;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 30_000);
     try {
-      httpResponse = await fetch('/api/handwriting-recognition', {
+      httpResponse = await fetch(handwritingEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
+        signal: controller.signal,
         body: JSON.stringify({ imageDataUrl: rasterized.canvas.toDataURL('image/png') }),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('Gemini handwriting recognition timed out. Please try again.');
+      }
       throw new Error(
         'Could not reach the Gemini handwriting server. Start the Node server and check the connection.'
       );
+    } finally {
+      window.clearTimeout(timeout);
     }
 
     const payload = (await httpResponse.json().catch(() => ({}))) as HandwritingApiResponse;
     if (!httpResponse.ok) {
+      if (httpResponse.status === 404) {
+        throw new Error('The Gemini handwriting API is not deployed on this server. Deploy the Node application, not only the static files.');
+      }
       throw new Error(payload.error ?? 'Gemini handwriting recognition failed. Please try again.');
     }
 

@@ -35,9 +35,9 @@ export class EyedropperTool implements ITool {
         case 'coloringRegion':
           sampledColor = hitObject.fillColor;
           break;
-        // Images are complex to sample from the vector layer without a hit-test canvas
-        // so we skip them for now in this version.
       }
+
+      sampledColor ??= engine.getRenderer().sampleColorAt(worldPoint);
 
       if (sampledColor) {
         // Go through the store so the toolbar reflects the picked colour and the
@@ -46,6 +46,13 @@ export class EyedropperTool implements ITool {
         updateToolSettings({ color: sampledColor });
 
         // Fallback tool
+        setTool('pen');
+      }
+    } else {
+      const sampledColor = engine.getRenderer().sampleColorAt(worldPoint);
+      if (sampledColor) {
+        const { updateToolSettings, setTool } = useWhiteboardStore.getState();
+        updateToolSettings({ color: sampledColor });
         setTool('pen');
       }
     }

@@ -71,8 +71,9 @@ export class GroupObjectsCommand implements ICommand {
       if (this.previousStates.has(list[i].id)) {
         const prevParentId = this.previousStates.get(list[i].id);
         if (prevParentId === undefined) {
-          const { parentGroupId, ...rest } = list[i] as any;
-          list[i] = { ...rest, updatedAt: Date.now() };
+          const restored = { ...list[i], updatedAt: Date.now() };
+          delete restored.parentGroupId;
+          list[i] = restored;
         } else {
           list[i] = { ...list[i], parentGroupId: prevParentId, updatedAt: Date.now() };
         }

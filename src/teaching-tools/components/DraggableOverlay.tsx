@@ -71,6 +71,7 @@ export const DraggableOverlay: React.FC<DraggableOverlayProps> = ({ toolId, titl
         </div>
         <button
           type="button"
+          aria-label={`Close ${title}`}
           className="p-2 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
           onClick={() => toggleOverlayTool(toolId)}
           onPointerDown={(e) => e.stopPropagation()} // Prevent dragging when clicking close

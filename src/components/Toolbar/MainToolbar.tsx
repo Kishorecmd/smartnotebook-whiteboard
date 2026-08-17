@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   MousePointer, Hand, Pen, Highlighter, Eraser, Shapes, Type, Image as ImageIcon,
-  Sliders, Undo2, Redo2, Trash2, GraduationCap, MoreHorizontal
+  Undo2, Redo2, Trash2, GraduationCap, MoreHorizontal
 } from 'lucide-react';
 import { ToolButton } from './ToolButton';
 import { SplitToolButton } from './SplitToolButton';
@@ -13,7 +13,7 @@ import { FileImportService } from '../../services/FileImportService';
 import { visibleWorldBox } from '../../utils';
 import { ToolType } from '../../types';
 
-type ToolbarItemId = 'select' | 'pan' | 'pen' | 'marker' | 'eraser' | 'shape' | 'text' | 'media' | 'teaching' | 'color' | 'properties' | 'undo' | 'redo' | 'delete' | 'divider1' | 'divider2' | 'divider3' | 'divider4';
+type ToolbarItemId = 'select' | 'pan' | 'pen' | 'marker' | 'eraser' | 'shape' | 'text' | 'media' | 'teaching' | 'color' | 'undo' | 'redo' | 'delete' | 'divider1' | 'divider2' | 'divider3' | 'divider4';
 
 interface ToolbarItemDef {
   id: ToolbarItemId;
@@ -37,7 +37,6 @@ const TOOLBAR_CONFIG: ToolbarItemDef[] = [
   { id: 'teaching', priority: 2, minWidth: 60 },
   { id: 'divider4', priority: 4, minWidth: 10, isDivider: true },
   { id: 'color', priority: 4, minWidth: 60 },
-  { id: 'properties', priority: 4, minWidth: 60 },
   { id: 'undo', priority: 3, minWidth: 60 },
   { id: 'redo', priority: 4, minWidth: 60 },
   { id: 'delete', priority: 3, minWidth: 60 },
@@ -113,7 +112,7 @@ export const MainToolbar: React.FC = () => {
         file, centerPoint, visibleWorldBox(transformer.getTransform().zoom, rect.width, rect.height)
       );
       engine.addObject(imageObject);
-    } catch (err) {
+    } catch {
       alert('That image could not be opened. Try a PNG or JPEG.');
     }
   };
@@ -128,7 +127,7 @@ export const MainToolbar: React.FC = () => {
         file, centerPoint, visibleWorldBox(transformer.getTransform().zoom, rect.width, rect.height)
       );
       engine.addObject(videoObject);
-    } catch (err) {
+    } catch {
       alert('That video could not be added.');
     }
   };
@@ -168,7 +167,7 @@ export const MainToolbar: React.FC = () => {
     try {
       const { AudioLoader } = await import('../../media/audio/AudioLoader');
       engine.addObject(await AudioLoader.importAudio(file, placement().centre));
-    } catch (err) {
+    } catch {
       alert('That audio file could not be added.');
     }
   };
@@ -214,7 +213,7 @@ export const MainToolbar: React.FC = () => {
       const { PdfLoader } = await import('../../media/pdf/PdfLoader');
       const { centre, box } = placement();
       engine.addObject(await PdfLoader.importPdf(file, centre, box));
-    } catch (err) {
+    } catch {
       alert('That PDF could not be opened.');
     }
   };
@@ -288,8 +287,6 @@ export const MainToolbar: React.FC = () => {
             <div className="w-6 h-6 rounded-full border-2 border-slate-600 shadow-inner" style={{ backgroundColor: toolSettings.color }} />
           </button>
         );
-      case 'properties':
-        return <ToolButton key={id} icon={<Sliders className="w-6 h-6" />} label="Properties" isActive={false} onClick={() => alert("Object Properties coming soon")} />;
       case 'undo':
         return <ToolButton key={id} icon={<Undo2 className="w-6 h-6" />} label="Undo" onClick={undo} isDisabled={!history.canUndo} />;
       case 'redo':

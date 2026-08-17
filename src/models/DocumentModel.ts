@@ -284,14 +284,22 @@ export const JHWDocumentSchema = z.object({
   id: z.string(),
   title: z.string(),
   pages: z.array(PageSchema).min(1),
-  activePageIndex: z.number().nonnegative().default(0),
+  activePageIndex: z.number().int().nonnegative().default(0),
   createdAt: z.number(),
   updatedAt: z.number(),
   metadata: z.object({
     author: z.string().optional(),
     appVersion: z.string().optional(),
     description: z.string().optional(),
-  }).optional(),
+}).optional(),
+}).superRefine((document, context) => {
+  if (document.activePageIndex >= document.pages.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['activePageIndex'],
+      message: 'Active page index must refer to an existing page',
+    });
+  }
 });
 
 export function createDefaultPage(name: string = 'Page 1'): Page {
@@ -505,7 +513,21 @@ export function createTextObject(params: {
 }
 
 export function validateDocument(data: unknown): JHWDocument {
-  const result = JHWDocumentSchema.safeParse(data);
+  // Older builds could leave this field stale when pages were deleted. Repair
+  // that one known legacy defect before applying strict schema validation.
+  let normalizedData = data;
+  if (typeof data === 'object' && data !== null && 'pages' in data && Array.isArray(data.pages) && data.pages.length > 0) {
+    const candidate = data as Record<string, unknown>;
+    const rawIndex = typeof candidate.activePageIndex === 'number' && Number.isFinite(candidate.activePageIndex)
+      ? Math.trunc(candidate.activePageIndex)
+      : 0;
+    normalizedData = {
+      ...candidate,
+      activePageIndex: Math.min(Math.max(0, rawIndex), data.pages.length - 1),
+    };
+  }
+
+  const result = JHWDocumentSchema.safeParse(normalizedData);
   if (result.success) {
     return result.data as JHWDocument;
   }

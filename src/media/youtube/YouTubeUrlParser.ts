@@ -13,7 +13,7 @@ export class YouTubeUrlParser {
     // - youtube.com/embed/ID
     // - youtube.com/shorts/ID
     // - youtube.com/v/ID
-    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
 
     if (match && match[2].length === 11) {

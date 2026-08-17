@@ -3,27 +3,35 @@ import { createDefaultDocument } from '../../models';
 import { StorageService } from '../../services';
 import type { DocumentSlice, SliceCreator } from '../types';
 
+const activeIndexFor = (doc: WhiteboardDocument): number =>
+  Math.min(Math.max(0, Math.trunc(doc.activePageIndex || 0)), Math.max(0, doc.pages.length - 1));
+
 export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
   document: createDefaultDocument('Untitled Whiteboard'),
   activePageIndex: 0,
   isDirty: false,
 
   setDocument: (doc) => {
+    const activePageIndex = activeIndexFor(doc);
+    const normalizedDoc = { ...doc, activePageIndex };
     set({
-      document: doc,
-      activePageIndex: 0,
+      document: normalizedDoc,
+      activePageIndex,
       isDirty: false,
       selectedIds: [],
       editingText: null,
     });
     const { engine } = get();
-    if (engine && doc.pages.length > 0) {
-      const page = doc.pages[0];
-      engine.setObjects(page.objects);
+    if (engine && normalizedDoc.pages.length > 0) {
+      const page = normalizedDoc.pages[activePageIndex];
+      engine.setObjects(page.objects, false);
       engine.setBackground(page.background, page.backgroundType);
       engine.resetZoom();
+      engine.getCommandManager().clear();
     }
-    StorageService.saveAutosave(doc);
+    void StorageService.saveAutosave(normalizedDoc).then(() =>
+      StorageService.collectUnusedMedia([normalizedDoc])
+    );
   },
 
   setDocumentTitle: (title) => {
@@ -48,17 +56,19 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
     });
     const { engine } = get();
     if (engine) {
-      engine.setObjects([]);
+      engine.setObjects([], false);
       engine.setBackground('#ffffff', 'plain');
       engine.resetZoom();
+      engine.getCommandManager().clear();
     }
-    StorageService.saveAutosave(newDoc);
+    void StorageService.saveAutosave(newDoc).then(() => StorageService.collectUnusedMedia([newDoc]));
   },
 
   saveCurrentDocument: async () => {
-    const { document } = get();
+    const { document, activePageIndex } = get();
     const updatedDoc = {
       ...document,
+      activePageIndex,
       updatedAt: Date.now(),
     };
     await StorageService.saveDocument(updatedDoc);
@@ -66,22 +76,31 @@ export const createDocumentSlice: SliceCreator<DocumentSlice> = (set, get) => ({
   },
 
   loadDocumentFromObject: (doc: WhiteboardDocument) => {
+    const activePageIndex = activeIndexFor(doc);
+    const normalizedDoc = { ...doc, activePageIndex };
     set({
-      document: doc,
-      activePageIndex: doc.activePageIndex || 0,
+      document: normalizedDoc,
+      activePageIndex,
       isDirty: false,
+      selectedIds: [],
+      editingText: null,
     });
     const engine = get().engine;
     if (engine) {
-      const page = doc.pages[doc.activePageIndex || 0];
+      const page = normalizedDoc.pages[activePageIndex];
       engine.setObjects(page.objects, false);
       engine.setBackground(page.background, page.backgroundType);
+      engine.resetZoom();
       engine.getCommandManager().clear();
     }
+    void StorageService.saveAutosave(normalizedDoc).then(() =>
+      StorageService.collectUnusedMedia([normalizedDoc])
+    );
   },
 
   deleteDocumentById: async (id: string) => {
     await StorageService.deleteDocument(id);
+    await StorageService.collectUnusedMedia([get().document]);
   },
 
   loadDocumentById: async (id: string) => {

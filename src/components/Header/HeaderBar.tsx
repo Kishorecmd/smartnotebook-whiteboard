@@ -136,10 +136,10 @@ export const HeaderBar: React.FC = () => {
     }
     if (saveStatus === 'unsaved') {
       return (
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 rounded-md text-xs text-amber-400 cursor-pointer hover:bg-amber-500/20" onClick={handleSave}>
+        <button type="button" aria-label="Save whiteboard locally" className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 rounded-md text-xs text-amber-400 cursor-pointer hover:bg-amber-500/20" onClick={handleSave}>
           <CloudUpload className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Unsaved</span>
-        </div>
+        </button>
       );
     }
     return (
@@ -162,7 +162,7 @@ export const HeaderBar: React.FC = () => {
         try {
           const doc = await FileService.importFromJHW();
           loadDocumentFromObject(doc);
-        } catch (err) {}
+        } catch {}
       }} className="lg:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
         <FolderOpen className="w-4 h-4 text-purple-400" /> Load .JHW
       </button>
@@ -205,7 +205,7 @@ export const HeaderBar: React.FC = () => {
       <div className="flex items-center gap-2 sm:gap-4 shrink-0 overflow-hidden">
         
         {/* Mobile Hamburger */}
-        <button className="sm:hidden p-2 text-slate-400 hover:text-white" onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}>
+        <button type="button" aria-label="Open application menu" className="sm:hidden p-2 text-slate-400 hover:text-white" onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}>
           <Menu className="w-5 h-5" />
         </button>
 
@@ -222,6 +222,7 @@ export const HeaderBar: React.FC = () => {
             <div className="flex items-center gap-1">
               <input
                 type="text"
+                aria-label="Whiteboard title"
                 value={titleInput}
                 onChange={(e) => setTitleInput(e.target.value)}
                 onBlur={handleSaveTitle}
@@ -237,6 +238,7 @@ export const HeaderBar: React.FC = () => {
               />
               <button
                 type="button"
+                aria-label="Confirm whiteboard title"
                 onClick={handleSaveTitle}
                 className="p-1 text-emerald-400 hover:text-emerald-300"
               >
@@ -298,6 +300,8 @@ export const HeaderBar: React.FC = () => {
         {/* Mobile/Tablet More Dropdown */}
         <div className="relative" ref={moreMenuRef}>
           <button 
+            type="button"
+            aria-label="Open more actions"
             className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all" 
             onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
           >

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   X, MousePointer, Hand, Pen, Highlighter, Eraser, Shapes, Type, Image as ImageIcon,
-  Sliders, Undo2, Redo2, Trash2, GraduationCap
+  Undo2, Redo2, Trash2, GraduationCap
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { ToolButton } from './ToolButton';
@@ -60,8 +60,6 @@ export const MoreToolbarModal: React.FC<MoreToolbarModalProps> = ({
             <span className="text-[10px] font-medium text-slate-300">Color</span>
           </button>
         );
-      case 'properties':
-        return <ToolButton key={id} showLabel icon={<Sliders className="w-6 h-6" />} label="Props" isActive={false} onClick={() => handleTool(() => alert("Object Properties coming soon"))} className="w-full flex-1" />;
       case 'undo':
         return <ToolButton key={id} showLabel icon={<Undo2 className="w-6 h-6" />} label="Undo" onClick={() => handleTool(undo)} isDisabled={!history.canUndo} className="w-full flex-1" />;
       case 'redo':
@@ -92,6 +90,8 @@ export const MoreToolbarModal: React.FC<MoreToolbarModalProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-100">More Tools</h2>
           <button 
+            type="button"
+            aria-label="Close more tools"
             onClick={onClose}
             className="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
           >

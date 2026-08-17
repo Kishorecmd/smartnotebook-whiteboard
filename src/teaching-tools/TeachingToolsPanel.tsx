@@ -101,6 +101,7 @@ export const TeachingToolsPanel: React.FC = () => {
           <h2 className="text-xl md:text-3xl font-bold text-white tracking-tight">Teaching Tools</h2>
           <button
             type="button"
+            aria-label="Close teaching tools"
             className="p-3 rounded-full bg-slate-800 text-slate-300 hover:bg-rose-500 hover:text-white transition-colors"
             onClick={() => setTeachingPanelOpen(false)}
           >

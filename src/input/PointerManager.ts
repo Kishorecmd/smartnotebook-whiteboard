@@ -96,7 +96,7 @@ export class PointerManager {
 
     try {
       this.element.setPointerCapture(e.pointerId);
-    } catch (err) {
+      } catch {
       // Ignore if capture fails (e.g., testing environments)
     }
 
@@ -147,7 +147,7 @@ export class PointerManager {
 
     try {
       this.element.releasePointerCapture(e.pointerId);
-    } catch (err) {
+      } catch {
       // Ignore
     }
 

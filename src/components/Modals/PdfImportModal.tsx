@@ -18,6 +18,8 @@ export const PdfImportModal: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-slate-800">Import PDF</h2>
             <button
+              type="button"
+              aria-label="Close PDF import"
               onClick={() => setPdfImportModalOpen(false)}
               className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >

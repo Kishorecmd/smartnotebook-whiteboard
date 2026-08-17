@@ -65,7 +65,7 @@ export const RandomPickerTool: React.FC = () => {
       
       oscillator.start(now);
       oscillator.stop(now + 0.5);
-    } catch (e) {
+    } catch {
       // Audio context might be blocked
     }
   };

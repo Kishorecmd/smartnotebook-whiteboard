@@ -1,7 +1,21 @@
-import { WhiteboardPage } from '../../types';
+import { WhiteboardObject, WhiteboardPage } from '../../types';
 import { createPageObject } from '../../models';
 import { StorageService } from '../../services';
+import { generateId } from '../../utils';
 import type { PageSlice, SliceCreator } from '../types';
+
+function clonePageObjects(objects: WhiteboardObject[]): WhiteboardObject[] {
+  const ids = new Map(objects.map((object) => [object.id, generateId(object.type)]));
+  return objects.map((object) => {
+    const clone = JSON.parse(JSON.stringify(object)) as WhiteboardObject;
+    clone.id = ids.get(object.id)!;
+    if (clone.parentGroupId) clone.parentGroupId = ids.get(clone.parentGroupId);
+    if (clone.type === 'group') {
+      clone.children = clone.children.map((id) => ids.get(id)).filter((id): id is string => !!id);
+    }
+    return clone;
+  });
+}
 
 export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
   setActivePageIndex: (index) => {
@@ -10,14 +24,21 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
       return;
     }
 
-    set({ activePageIndex: index, selectedIds: [], editingText: null });
+    const updatedDoc = {
+      ...document,
+      activePageIndex: index,
+      updatedAt: Date.now(),
+    };
+    set({ document: updatedDoc, activePageIndex: index, selectedIds: [], editingText: null, isDirty: true });
 
     if (engine) {
       const targetPage = document.pages[index];
-      engine.setObjects(targetPage.objects);
+      engine.setObjects(targetPage.objects, false);
       engine.setBackground(targetPage.background, targetPage.backgroundType);
       engine.resetZoom();
+      engine.getCommandManager().clear();
     }
+    void StorageService.saveAutosave(updatedDoc);
   },
 
   addPage: (background = '#ffffff', backgroundType = 'plain') => {
@@ -29,6 +50,7 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
     const updatedDoc = {
       ...document,
       pages: updatedPages,
+      activePageIndex: newIndex,
       updatedAt: Date.now(),
     };
 
@@ -41,12 +63,15 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
     });
 
     if (engine) {
-      engine.setObjects([]);
+      engine.setObjects([], false);
       engine.setBackground(background, backgroundType);
       engine.resetZoom();
+      engine.getCommandManager().clear();
     }
 
-    StorageService.saveAutosave(updatedDoc);
+    void StorageService.saveAutosave(updatedDoc).then(() =>
+      StorageService.collectUnusedMedia([updatedDoc])
+    );
   },
 
   deletePage: (pageId) => {
@@ -70,6 +95,7 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
     const updatedDoc = {
       ...document,
       pages: updatedPages,
+      activePageIndex: newActiveIndex,
       updatedAt: Date.now(),
     };
 
@@ -83,12 +109,15 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
 
     if (engine) {
       const activePage = updatedPages[newActiveIndex];
-      engine.setObjects(activePage.objects);
+      engine.setObjects(activePage.objects, false);
       engine.setBackground(activePage.background, activePage.backgroundType);
       engine.resetZoom();
+      engine.getCommandManager().clear();
     }
 
-    StorageService.saveAutosave(updatedDoc);
+    void StorageService.saveAutosave(updatedDoc).then(() =>
+      StorageService.collectUnusedMedia([updatedDoc])
+    );
   },
 
   renamePage: (pageId: string, newTitle: string) => {
@@ -105,7 +134,7 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
       document: updatedDoc,
       isDirty: true,
     });
-    StorageService.saveAutosave(updatedDoc);
+    void StorageService.saveAutosave(updatedDoc);
   },
 
   duplicatePage: (pageId) => {
@@ -116,7 +145,8 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
     const pageIndex = document.pages.findIndex((p) => p.id === pageId);
     const clonedPage: WhiteboardPage = {
       ...JSON.parse(JSON.stringify(pageToDup)),
-      id: `page_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: generateId('page'),
+      objects: clonePageObjects(pageToDup.objects),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -129,6 +159,7 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
     const updatedDoc = {
       ...document,
       pages: reindexedPages,
+      activePageIndex: pageIndex + 1,
       updatedAt: Date.now(),
     };
 
@@ -142,9 +173,10 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
 
     const { engine } = get();
     if (engine) {
-      engine.setObjects(clonedPage.objects);
+      engine.setObjects(clonedPage.objects, false);
       engine.setBackground(clonedPage.background, clonedPage.backgroundType);
       engine.resetZoom();
+      engine.getCommandManager().clear();
     }
 
     StorageService.saveAutosave(updatedDoc);
@@ -180,6 +212,7 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
     const updatedDoc = {
       ...document,
       pages: reordered,
+      activePageIndex: newActiveIndex,
       updatedAt: Date.now(),
     };
 
@@ -192,8 +225,9 @@ export const createPageSlice: SliceCreator<PageSlice> = (set, get) => ({
 
     if (engine) {
       const activePage = reordered[newActiveIndex];
-      engine.setObjects(activePage.objects);
+      engine.setObjects(activePage.objects, false);
       engine.setBackground(activePage.background, activePage.backgroundType);
+      engine.getCommandManager().clear();
     }
 
     StorageService.saveAutosave(updatedDoc);

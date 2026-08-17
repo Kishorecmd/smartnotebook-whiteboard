@@ -44,6 +44,8 @@ export const App: React.FC = () => {
         const autosave = await StorageService.loadAutosave();
         if (autosave && autosave.pages && autosave.pages.length > 0) {
           setDocument(autosave);
+        } else {
+          await StorageService.collectUnusedMedia();
         }
       } catch (err) {
         console.warn('Could not restore autosave:', err);

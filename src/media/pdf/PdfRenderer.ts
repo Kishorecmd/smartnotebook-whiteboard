@@ -156,6 +156,32 @@ export class PdfRenderer {
     return result;
   }
 
+  /** Renders the object's selected page for image/print export. */
+  public static async renderForExport(obj: PdfObject): Promise<string | null> {
+    const cached = this.docs.get(obj.id)?.pages.get(obj.currentPage);
+    if (cached) return cached.toDataURL('image/png');
+
+    const blob = await MediaManager.getBlob(obj.assetId);
+    if (!blob) return obj.posterDataUrl || null;
+    const task = pdfjsLib.getDocument({ data: await blob.arrayBuffer() });
+    try {
+      const doc = await task.promise;
+      const page = await doc.getPage(obj.currentPage);
+      const viewport = page.getViewport({ scale: RENDER_SCALE });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.floor(viewport.width));
+      canvas.height = Math.max(1, Math.floor(viewport.height));
+      const context = canvas.getContext('2d');
+      if (!context) return obj.posterDataUrl || null;
+      await page.render({ canvas, canvasContext: context, viewport } as any).promise;
+      return canvas.toDataURL('image/png');
+    } catch {
+      return obj.posterDataUrl || null;
+    } finally {
+      await task.destroy();
+    }
+  }
+
   /** Frees everything held for an object, e.g. when it is deleted. */
   public static release(objectId: string): void {
     const entry = this.docs.get(objectId);

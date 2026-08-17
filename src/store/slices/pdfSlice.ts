@@ -40,14 +40,14 @@ export const createPdfSlice: SliceCreator<PdfSlice> = (set, get) => ({
     const updatedPages = [...doc.pages];
     updatedPages.splice(insertAt, replacesActivePage ? 1 : 0, ...importedPages);
 
+    // Land on the last imported slide.
+    const newActiveIndex = insertAt + importedPages.length - 1;
     const updatedDoc = {
       ...doc,
       pages: updatedPages.map((p, idx) => ({ ...p, order: idx })),
+      activePageIndex: newActiveIndex,
       updatedAt: Date.now(),
     };
-
-    // Land on the last imported slide.
-    const newActiveIndex = insertAt + importedPages.length - 1;
 
     set({
       document: updatedDoc,

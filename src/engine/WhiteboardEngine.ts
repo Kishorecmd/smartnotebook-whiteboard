@@ -7,6 +7,7 @@ import { TouchActionManager } from '../input/TouchActionManager';
 import { RulerSnapper } from './RulerSnapper';
 import { StorageService } from '../services/StorageService';
 import { MediaManager } from '../media/MediaManager';
+import { AssetManager } from '../assets/AssetManager';
 import { ObjectManager } from '../objects/ObjectManager';
 import { GroupManager } from '../objects/GroupManager';
 import { TransformObjectsCommand } from './commands/TransformObjectsCommand';
@@ -152,6 +153,34 @@ export class WhiteboardEngine {
       canvas: options.canvas,
       overlayCanvas: options.overlayCanvas,
       transformer: this.transformer,
+      onFloodFillResult: async (result) => {
+        const assetId = await AssetManager.addImage(result.blob, 'image/png');
+        const now = Date.now();
+        const imageObject = {
+          id: generateId('fill'),
+          type: 'image' as const,
+          x: result.x,
+          y: result.y,
+          width: result.width,
+          height: result.height,
+          rotation: 0,
+          zIndex: 0,
+          visible: true,
+          locked: false,
+          assetId,
+          mimeType: 'image/png',
+          originalWidth: result.originalWidth,
+          originalHeight: result.originalHeight,
+          createdAt: now,
+          updatedAt: now,
+        };
+        this.commandManager.execute(new AddObjectCommand(
+          imageObject,
+          () => this.getObjects(),
+          (objects) => this.setObjects(objects),
+          'Flood Fill',
+        ));
+      },
     });
     this.renderer.setObjects(this.objects);
 
@@ -448,6 +477,17 @@ export class WhiteboardEngine {
   }
 
   public setObjects(objects: WhiteboardObject[], notify: boolean = true): void {
+    const nextIds = new Set(objects.map((object) => object.id));
+    for (const previous of this.objects) {
+      if (nextIds.has(previous.id)) continue;
+      if (previous.type === 'video') {
+        this.disposeVideoObject(previous.id);
+      } else if (previous.type === 'audio' || previous.type === 'image-audio') {
+        const assetId = previous.type === 'audio' ? previous.mediaId : previous.audioMediaId;
+        this.disposeAudioObject(previous.id);
+        MediaManager.releaseObjectUrl(assetId);
+      }
+    }
     this.objects = [...objects];
     
     // Prune selected IDs that no longer exist

@@ -1,5 +1,4 @@
 import puppeteer from 'puppeteer';
-import fs from 'fs';
 
 async function analyze() {
   const browser = await puppeteer.launch();

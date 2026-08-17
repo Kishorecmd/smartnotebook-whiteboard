@@ -69,6 +69,9 @@ export const SavedDocumentsModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in select-none">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Saved whiteboards"
         className="w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -87,6 +90,7 @@ export const SavedDocumentsModal: React.FC = () => {
           </div>
           <button
             type="button"
+            aria-label="Close saved whiteboards"
             onClick={() => setSavedDocsModalOpen(false)}
             className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
           >

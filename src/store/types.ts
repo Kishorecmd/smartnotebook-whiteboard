@@ -149,8 +149,8 @@ export interface SelectionSlice {
   cancelTextEdit: () => void;
 }
 
-/** Gemini Vision is the default; local engines remain available as fallbacks. */
-export type RecognitionEngine = 'gemini' | 'trocr' | 'tesseract';
+/** Gemini Vision is the default; Tesseract is the lightweight local fallback. */
+export type RecognitionEngine = 'gemini' | 'tesseract';
 
 export interface HandwritingSlice {
   isHandwritingModalOpen: boolean;

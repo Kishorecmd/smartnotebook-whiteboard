@@ -48,7 +48,7 @@ export const BottomDock: React.FC = () => {
           <div className="relative bg-slate-900 border-t border-slate-700/80 rounded-t-3xl p-4 shadow-2xl w-full h-[60vh] flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-white font-bold">Tools</h3>
-              <button onClick={() => setIsMobileSheetOpen(false)} className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800">
+              <button type="button" aria-label="Close tools" onClick={() => setIsMobileSheetOpen(false)} className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800">
                 <X className="w-5 h-5" />
               </button>
             </div>

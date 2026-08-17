@@ -104,6 +104,9 @@ export const HandwritingRecognitionModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Handwriting to text"
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -124,6 +127,8 @@ export const HandwritingRecognitionModal: React.FC = () => {
           </div>
 
           <button
+            type="button"
+            aria-label="Close handwriting recognition"
             onClick={handleClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
@@ -194,7 +199,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">
                       {handwritingResult.confidence === null
-                        ? 'TrOCR on-device AI'
+                        ? 'Gemini Vision AI'
                         : `${handwritingResult.confidence}% confidence`}
                     </span>
                   </div>
@@ -236,9 +241,7 @@ export const HandwritingRecognitionModal: React.FC = () => {
                     <span className="font-medium">
                       {displayedRecognitionEngine === 'gemini'
                         ? 'Gemini Vision (cloud AI)'
-                        : displayedRecognitionEngine === 'trocr'
-                          ? 'TrOCR handwriting AI (on-device)'
-                          : 'Tesseract (printed / block letters)'}
+                        : 'Tesseract (printed / block letters)'}
                     </span>
                   </div>
                   <button
@@ -259,8 +262,8 @@ export const HandwritingRecognitionModal: React.FC = () => {
 
                 {showSettings && (
                   <div className="space-y-3 border-t border-slate-200 dark:border-slate-800 px-3 py-3">
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {(['gemini', 'trocr', 'tesseract'] as const).map((eng) => (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(['gemini', 'tesseract'] as const).map((eng) => (
                         <button
                           key={eng}
                           type="button"
@@ -273,17 +276,15 @@ export const HandwritingRecognitionModal: React.FC = () => {
                         >
                           {eng === 'gemini'
                             ? 'Gemini Vision (recommended)'
-                            : eng === 'trocr'
-                              ? 'TrOCR (handwriting; on-device)'
-                              : 'Tesseract (printed / block letters)'}
+                            : 'Tesseract (printed / block letters)'}
                         </button>
                       ))}
                     </div>
 
                     <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
                       Gemini Vision sends the selected handwriting image to your configured Node
-                      server and Gemini; the API key stays on the server. TrOCR and Tesseract run
-                      locally in the browser and do not send the ink to a recognition service.
+                      server and Gemini; the API key stays on the server. Tesseract runs locally
+                      in the browser and does not send the ink to a recognition service.
                     </p>
                     <button
                       type="button"

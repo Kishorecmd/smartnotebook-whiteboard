@@ -56,7 +56,7 @@ export const TimerTool: React.FC = () => {
       
       oscillator.start(audioCtx.currentTime);
       oscillator.stop(audioCtx.currentTime + 1);
-    } catch (e) {
+    } catch {
       console.log('Audio playback failed');
     }
   };

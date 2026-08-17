@@ -1,4 +1,4 @@
-import { PenTool, Focus } from 'lucide-react';
+import { PenTool, Focus, ZoomIn } from 'lucide-react';
 import { TeachingToolRegistry } from './TeachingToolRegistry';
 import { useWhiteboardStore } from '../store';
 
@@ -31,12 +31,14 @@ export const registerCoreTeachingTools = () => {
   TeachingToolRegistry.register({
     id: 'magnifying-glass',
     name: 'Magnifying Glass',
-    icon: Focus, // Placeholder icon
+    icon: ZoomIn,
     category: 'UTILITIES',
     type: 'pointer-tool',
-    description: 'Magnify parts of the canvas (Coming Soon).',
+    description: 'Drag a movable magnifying glass over the canvas.',
     onActivate: () => {
-      alert('Magnifying Glass is under construction.');
+      const store = useWhiteboardStore.getState();
+      store.updateToolSettings({ magicPenMode: 'magnifier' });
+      store.setTool('magic_pen');
     }
   });
 };

@@ -89,7 +89,7 @@ export class FileImportService {
     try {
       // Intentionally avoiding mode: 'no-cors' so we get readable image data or fail with a clear CORS error.
       response = await fetch(url);
-    } catch (err) {
+    } catch {
       throw new Error('This website prevents direct image import. Try Copy image or download the image first.');
     }
 
