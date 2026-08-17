@@ -16,6 +16,7 @@ import {
   CompassObject,
   TeachingToolObject,
   WhiteboardDocument,
+  WhiteboardObject,
 } from '../types';
 import { StrokeRenderer, ShapeRenderer, TextRenderer } from '../canvas';
 import { AudioCardRenderer } from '../media/audio/AudioCardRenderer';
@@ -23,6 +24,73 @@ import { GeometryRenderer } from '../drawing/shapes/GeometryRenderer';
 import { CompassRenderer } from '../teaching-tools/compass/CompassRenderer';
 import { TeachingToolRegistry } from '../teaching-tools/TeachingToolRegistry';
 import { PdfRenderer } from '../media/pdf/PdfRenderer';
+
+function drawPageBackground(
+  ctx: CanvasRenderingContext2D,
+  page: WhiteboardPage,
+  width: number,
+  height: number,
+): void {
+  const background = page.background || '#ffffff';
+  ctx.fillStyle = background;
+  ctx.fillRect(0, 0, width, height);
+  if (!page.backgroundType || page.backgroundType === 'plain' || page.backgroundType === 'chalkboard') return;
+
+  const dark = background === '#1e293b' || background === '#1e382b';
+  const spacing = 40;
+  ctx.save();
+  if (page.backgroundType === 'dots') {
+    ctx.fillStyle = dark ? 'rgba(255,255,255,.15)' : 'rgba(0,0,0,.15)';
+    for (let x = 0; x <= width; x += spacing) {
+      for (let y = 0; y <= height; y += spacing) {
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  } else {
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.07)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (page.backgroundType === 'grid') {
+      for (let x = 0; x <= width; x += spacing) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+    }
+    for (let y = 0; y <= height; y += spacing) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawMediaPlaceholder(
+  ctx: CanvasRenderingContext2D,
+  obj: { x: number; y: number; width: number; height: number; rotation?: number },
+  title: string,
+  detail = '',
+): void {
+  ctx.save();
+  ctx.translate(obj.x, obj.y);
+  if (obj.rotation) {
+    ctx.translate(obj.width / 2, obj.height / 2);
+    ctx.rotate(obj.rotation);
+    ctx.translate(-obj.width / 2, -obj.height / 2);
+  }
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, 0, obj.width, obj.height);
+  ctx.strokeStyle = '#475569';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, 0, obj.width, obj.height);
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = `600 ${Math.max(12, Math.min(24, obj.height * 0.12))}px Inter, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(title, obj.width / 2, obj.height / 2 - (detail ? 12 : 0), obj.width - 24);
+  if (detail) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = `400 ${Math.max(10, Math.min(14, obj.height * 0.08))}px Inter, sans-serif`;
+    ctx.fillText(detail, obj.width / 2, obj.height / 2 + 18, obj.width - 24);
+  }
+  ctx.restore();
+}
 
 /**
  * Draws an image-like object (image or YouTube poster) once it has decoded.
@@ -200,6 +268,28 @@ export interface ExportImageOptions {
   download?: boolean;
 }
 
+export interface ExportSVGOptions {
+  includeBackground?: boolean;
+  filename?: string;
+  download?: boolean;
+}
+
+export interface ExportPdfOptions {
+  scale?: number;
+  quality?: number;
+  filename?: string;
+  download?: boolean;
+}
+
+export interface ExportArchiveOptions {
+  format?: 'png' | 'jpeg' | 'svg';
+  scale?: number;
+  quality?: number;
+  includeBackground?: boolean;
+  filename?: string;
+  download?: boolean;
+}
+
 const escapeXml = (value: unknown): string => String(value)
   .replaceAll('&', '&amp;')
   .replaceAll('<', '&lt;')
@@ -207,7 +297,162 @@ const escapeXml = (value: unknown): string => String(value)
   .replaceAll('"', '&quot;')
   .replaceAll("'", '&apos;');
 
+const svgKeepsVector = (object: WhiteboardObject): boolean => {
+  if (object.type === 'stroke') {
+    const mode = object.penSettings?.renderMode;
+    return !mode || mode === 'solid';
+  }
+  if (object.type === 'text' && (object.backgroundColor && object.backgroundColor !== 'transparent' || object.underline)) {
+    return false;
+  }
+  return ['shape', 'text', 'coloringRegion', 'circle', 'arc', 'group'].includes(object.type);
+};
+
+const svgBackground = (page: WhiteboardPage, width: number, height: number): string => {
+  const background = escapeXml(page.background || '#ffffff');
+  const type = page.backgroundType || 'plain';
+  if (type === 'plain' || type === 'chalkboard') return `  <rect width="100%" height="100%" fill="${background}"/>\n`;
+  const dark = page.background === '#1e293b' || page.background === '#1e382b';
+  const ink = dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)';
+  let mark = '';
+  if (type === 'dots') mark = `<circle cx="1.5" cy="1.5" r="1.5" fill="${ink}"/>`;
+  else if (type === 'lines') mark = `<path d="M0 39.5H40" fill="none" stroke="${ink}"/>`;
+  else mark = `<path d="M39.5 0V40M0 39.5H40" fill="none" stroke="${ink}"/>`;
+  return `  <defs><pattern id="page-pattern" width="40" height="40" patternUnits="userSpaceOnUse">${mark}</pattern></defs>\n  <rect width="${width}" height="${height}" fill="${background}"/>\n  <rect width="${width}" height="${height}" fill="url(#page-pattern)"/>\n`;
+};
+
+const concatBytes = (...parts: Uint8Array[]): Uint8Array => {
+  const output = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
+  let offset = 0;
+  for (const part of parts) { output.set(part, offset); offset += part.length; }
+  return output;
+};
+
+const textBytes = (value: string): Uint8Array => new TextEncoder().encode(value);
+const uint16 = (value: number): Uint8Array => new Uint8Array([value & 0xff, (value >>> 8) & 0xff]);
+const uint32 = (value: number): Uint8Array => new Uint8Array([
+  value & 0xff,
+  (value >>> 8) & 0xff,
+  (value >>> 16) & 0xff,
+  (value >>> 24) & 0xff,
+]);
+
+const dataUrlBytes = (dataUrl: string): Uint8Array => {
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const binary = atob(base64);
+  const output = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) output[index] = binary.charCodeAt(index);
+  return output;
+};
+
+const crcTable = new Uint32Array(256).map((_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit++) value = (value & 1) ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  return value >>> 0;
+});
+
+const crc32 = (bytes: Uint8Array): number => {
+  let crc = 0xffffffff;
+  for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+export interface ArchiveFile { name: string; bytes: Uint8Array; }
+
+/** Creates a standards-compliant, uncompressed ZIP without adding a large runtime dependency. */
+export const buildStoredZip = (files: ArchiveFile[]): Blob => {
+  const localParts: Uint8Array[] = [];
+  const centralParts: Uint8Array[] = [];
+  let localOffset = 0;
+  for (const file of files) {
+    const name = textBytes(file.name);
+    const crc = crc32(file.bytes);
+    const localHeader = concatBytes(
+      uint32(0x04034b50), uint16(20), uint16(0x0800), uint16(0), uint16(0), uint16(0),
+      uint32(crc), uint32(file.bytes.length), uint32(file.bytes.length), uint16(name.length), uint16(0), name,
+    );
+    localParts.push(localHeader, file.bytes);
+    centralParts.push(concatBytes(
+      uint32(0x02014b50), uint16(20), uint16(20), uint16(0x0800), uint16(0), uint16(0), uint16(0),
+      uint32(crc), uint32(file.bytes.length), uint32(file.bytes.length), uint16(name.length), uint16(0), uint16(0),
+      uint16(0), uint16(0), uint32(0), uint32(localOffset), name,
+    ));
+    localOffset += localHeader.length + file.bytes.length;
+  }
+  const central = concatBytes(...centralParts);
+  const end = concatBytes(
+    uint32(0x06054b50), uint16(0), uint16(0), uint16(files.length), uint16(files.length),
+    uint32(central.length), uint32(localOffset), uint16(0),
+  );
+  const zipBytes = concatBytes(...localParts, central, end);
+  return new Blob([zipBytes.buffer as ArrayBuffer], { type: 'application/zip' });
+};
+
+export interface PdfJpegPage {
+  jpeg: Uint8Array;
+  pixelWidth: number;
+  pixelHeight: number;
+  pageWidth: number;
+  pageHeight: number;
+}
+
+/** Builds a real multi-page PDF with one high-quality JPEG XObject per lesson page. */
+export const buildPdfFromJpegPages = (pages: PdfJpegPage[]): Blob => {
+  if (pages.length === 0) throw new Error('A PDF needs at least one page.');
+  const objects = new Map<number, Uint8Array>();
+  objects.set(1, textBytes('<< /Type /Catalog /Pages 2 0 R >>'));
+  const pageObjectIds = pages.map((_, index) => 3 + index * 3);
+  objects.set(2, textBytes(`<< /Type /Pages /Count ${pages.length} /Kids [${pageObjectIds.map((id) => `${id} 0 R`).join(' ')}] >>`));
+
+  pages.forEach((page, index) => {
+    const pageId = 3 + index * 3;
+    const contentId = pageId + 1;
+    const imageId = pageId + 2;
+    const content = textBytes(`q\n${page.pageWidth} 0 0 ${page.pageHeight} 0 0 cm\n/Im0 Do\nQ`);
+    objects.set(pageId, textBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${page.pageWidth} ${page.pageHeight}] /Resources << /XObject << /Im0 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`));
+    objects.set(contentId, concatBytes(textBytes(`<< /Length ${content.length} >>\nstream\n`), content, textBytes('\nendstream')));
+    objects.set(imageId, concatBytes(
+      textBytes(`<< /Type /XObject /Subtype /Image /Width ${page.pixelWidth} /Height ${page.pixelHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${page.jpeg.length} >>\nstream\n`),
+      page.jpeg,
+      textBytes('\nendstream'),
+    ));
+  });
+
+  const header = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]);
+  const body: Uint8Array[] = [header];
+  const offsets: number[] = [0];
+  let offset = header.length;
+  const count = 2 + pages.length * 3;
+  for (let id = 1; id <= count; id++) {
+    const wrapped = concatBytes(textBytes(`${id} 0 obj\n`), objects.get(id)!, textBytes('\nendobj\n'));
+    offsets[id] = offset;
+    body.push(wrapped);
+    offset += wrapped.length;
+  }
+  const xrefOffset = offset;
+  let xref = `xref\n0 ${count + 1}\n0000000000 65535 f \n`;
+  for (let id = 1; id <= count; id++) xref += `${String(offsets[id]).padStart(10, '0')} 00000 n \n`;
+  const trailer = `${xref}trailer\n<< /Size ${count + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  const pdfBytes = concatBytes(...body, textBytes(trailer));
+  return new Blob([pdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+};
+
 export class ExportService {
+  private static safeName(value: string): string {
+    return value.trim().replace(/[^a-zA-Z0-9_-]/g, '_') || 'whiteboard';
+  }
+
+  private static downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   /**
    * Exports a Whiteboard Page to PNG or JPEG format.
    */
@@ -239,8 +484,7 @@ export class ExportService {
 
     // 1. Draw Background
     if (includeBackground) {
-      ctx.fillStyle = page.background || '#ffffff';
-      ctx.fillRect(0, 0, width, height);
+      drawPageBackground(ctx, page, width, height);
     }
 
     // 2. Draw all page objects (sorted by zIndex). Previously only strokes were
@@ -262,12 +506,18 @@ export class ExportService {
           const imageSource = sourceByObjectId.get(imgObj.id) || '';
           const image = imageCache.get(imageSource);
           if (image?.complete && image.naturalWidth > 0) drawImageContent(ctx, image, imgObj);
+          else drawMediaPlaceholder(ctx, imgObj, 'Image unavailable');
         } else if (obj.type === 'youtubeVideo') {
           const v = obj as YouTubeVideoObject;
-          drawLoadedImage(ctx, v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`, obj, imageCache);
+          const source = v.thumbnail || `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`;
+          const image = imageCache.get(source);
+          if (image?.complete && image.naturalWidth > 0) drawLoadedImage(ctx, source, obj, imageCache);
+          else drawMediaPlaceholder(ctx, obj, 'YouTube Video', v.title || v.videoId);
         } else if (obj.type === 'video') {
           const v = obj as VideoObject;
-          if (v.posterDataUrl) drawLoadedImage(ctx, v.posterDataUrl, obj, imageCache);
+          const image = v.posterDataUrl ? imageCache.get(v.posterDataUrl) : undefined;
+          if (v.posterDataUrl && image?.complete && image.naturalWidth > 0) drawLoadedImage(ctx, v.posterDataUrl, obj, imageCache);
+          else drawMediaPlaceholder(ctx, obj, 'Video', v.fileName || 'Local video');
         } else if (obj.type === 'audio') {
           AudioCardRenderer.renderAudioCard(ctx, obj as AudioObject, {
             playing: false,
@@ -302,6 +552,14 @@ export class ExportService {
             } else {
               ctx.drawImage(image, 0, 0, media.width, pictureHeight);
             }
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, media.width, pictureHeight);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '600 18px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Image unavailable', media.width / 2, pictureHeight / 2, media.width - 24);
           }
           AudioCardRenderer.renderImageAudioStrip(ctx, media, {
             playing: false,
@@ -314,6 +572,7 @@ export class ExportService {
           const source = sourceByObjectId.get(pdf.id) || '';
           const image = imageCache.get(source);
           if (image?.complete && image.naturalWidth > 0) drawPdfImage(ctx, image, pdf);
+          else drawMediaPlaceholder(ctx, pdf, 'PDF page unavailable', pdf.fileName || `Page ${pdf.currentPage}`);
         } else if (obj.type === 'coloringRegion') {
           const region = obj as ColoringRegion;
           if (region.points.length > 0) {
@@ -385,19 +644,45 @@ export class ExportService {
   /**
    * Generates SVG XML text representation of a page.
    */
-  public static generateSVG(page: WhiteboardPage): string {
+  public static async generateSVG(page: WhiteboardPage, options: ExportSVGOptions = {}): Promise<string> {
     const width = page.width || 1920;
     const height = page.height || 1080;
-    const bg = page.background || '#ffffff';
 
     let svg = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     svg += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">\n`;
-    svg += `  <rect width="100%" height="100%" fill="${bg}"/>\n`;
+    if (options.includeBackground !== false) svg += svgBackground(page, width, height);
 
     const objects = [...page.objects].sort((a, b) => a.zIndex - b.zIndex);
 
+    // Unsupported vector types are rendered in consecutive transparent raster
+    // layers. Grouping adjacent items preserves z-order without creating one
+    // full-page bitmap for every media object.
+    const rasterLayers = new Map<string, string>();
+    const rasterLayerMembers = new Set<string>();
+    for (let index = 0; index < objects.length;) {
+      if (svgKeepsVector(objects[index])) { index += 1; continue; }
+      const run = [];
+      while (index < objects.length && !svgKeepsVector(objects[index])) {
+        if (objects[index].visible !== false) run.push(objects[index]);
+        index += 1;
+      }
+      if (run.length === 0) continue;
+      const dataUrl = await this.exportPageToImage(
+        { ...page, objects: run },
+        { format: 'png', scale: 1, includeBackground: false, download: false },
+      );
+      rasterLayers.set(run[0].id, dataUrl);
+      run.slice(1).forEach((object) => rasterLayerMembers.add(object.id));
+    }
+
     for (const obj of objects) {
       if (obj.visible === false) continue;
+      if (rasterLayerMembers.has(obj.id)) continue;
+      const rasterLayer = rasterLayers.get(obj.id);
+      if (rasterLayer) {
+        svg += `  <image x="0" y="0" width="${width}" height="${height}" href="${escapeXml(rasterLayer)}"/>\n`;
+        continue;
+      }
       if (obj.type === 'stroke' && obj.points.length > 0) {
         const stroke = obj as FreehandStroke;
         const pts = stroke.points;
@@ -508,25 +793,81 @@ export class ExportService {
   /**
    * Exports a Whiteboard Page to SVG vector file.
    */
-  public static exportPageToSVG(page: WhiteboardPage, filename?: string): void {
-    const svgContent = this.generateSVG(page);
+  public static async exportPageToSVG(page: WhiteboardPage, options: ExportSVGOptions | string = {}): Promise<string> {
+    const resolved = typeof options === 'string' ? { filename: options } : options;
+    const svgContent = await this.generateSVG(page, resolved);
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
 
-    const safeName = (filename || page.title || 'whiteboard_page')
+    const safeName = (resolved.filename || page.title || 'whiteboard_page')
       .trim()
       .replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${safeName}.svg`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+    if (resolved.download !== false) this.downloadBlob(blob, `${safeName}.svg`);
+    return svgContent;
+  }
 
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 1000);
+  /** Downloads a real PDF file containing every whiteboard page in document order. */
+  public static async exportDocumentToPDF(
+    documentModel: WhiteboardDocument,
+    options: ExportPdfOptions = {},
+  ): Promise<Blob> {
+    if (documentModel.pages.length === 0) throw new Error('This whiteboard has no pages to export.');
+    const scale = Math.max(0.5, Math.min(3, options.scale ?? 1.5));
+    const quality = Math.max(0.5, Math.min(1, options.quality ?? 0.92));
+    const pages: PdfJpegPage[] = [];
+    for (const page of documentModel.pages) {
+      const width = page.width || 1920;
+      const height = page.height || 1080;
+      const dataUrl = await this.exportPageToImage(page, {
+        format: 'jpeg', quality, scale, includeBackground: true, download: false,
+      });
+      pages.push({
+        jpeg: dataUrlBytes(dataUrl),
+        pixelWidth: Math.round(width * scale),
+        pixelHeight: Math.round(height * scale),
+        // CSS pixels are 96dpi; PDF points are 72dpi.
+        pageWidth: Math.round(width * 0.75 * 100) / 100,
+        pageHeight: Math.round(height * 0.75 * 100) / 100,
+      });
+    }
+    const blob = buildPdfFromJpegPages(pages);
+    if (options.download !== false) {
+      this.downloadBlob(blob, `${this.safeName(options.filename || documentModel.title || 'whiteboard')}.pdf`);
+    }
+    return blob;
+  }
+
+  /** Packages every page as PNG, JPEG, or portable SVG in one ZIP download. */
+  public static async exportDocumentArchive(
+    documentModel: WhiteboardDocument,
+    options: ExportArchiveOptions = {},
+  ): Promise<Blob> {
+    if (documentModel.pages.length === 0) throw new Error('This whiteboard has no pages to export.');
+    const format = options.format || 'png';
+    const files: ArchiveFile[] = [];
+    for (let index = 0; index < documentModel.pages.length; index++) {
+      const page = documentModel.pages[index];
+      const pageName = this.safeName(page.title || page.name || `page_${index + 1}`);
+      const prefix = `${String(index + 1).padStart(2, '0')}_${pageName}`;
+      if (format === 'svg') {
+        const svg = await this.generateSVG(page, { includeBackground: options.includeBackground });
+        files.push({ name: `${prefix}.svg`, bytes: textBytes(svg) });
+      } else {
+        const dataUrl = await this.exportPageToImage(page, {
+          format,
+          quality: options.quality,
+          scale: options.scale,
+          includeBackground: format === 'jpeg' ? true : options.includeBackground,
+          download: false,
+        });
+        files.push({ name: `${prefix}.${format}`, bytes: dataUrlBytes(dataUrl) });
+      }
+    }
+    const blob = buildStoredZip(files);
+    if (options.download !== false) {
+      this.downloadBlob(blob, `${this.safeName(options.filename || documentModel.title || 'whiteboard')}_${format}_pages.zip`);
+    }
+    return blob;
   }
 
   /**

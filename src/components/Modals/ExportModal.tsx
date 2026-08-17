@@ -6,6 +6,7 @@ import {
   Printer,
   FileJson,
   Download,
+  FileDown,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { ExportService, FileService } from '../../services';
@@ -22,6 +23,7 @@ export const ExportModal: React.FC = () => {
   const [scale, setScale] = useState<number>(2);
   const [includeBackground, setIncludeBackground] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [scope, setScope] = useState<'page' | 'document'>('page');
 
   if (!isExportModalOpen) return null;
 
@@ -30,13 +32,16 @@ export const ExportModal: React.FC = () => {
   const handleExportPNG = async () => {
     setIsExporting(true);
     try {
-      await ExportService.exportPageToImage(activePage, {
-        format: 'png',
-        scale,
-        includeBackground,
-        filename: `${doc.title}_${activePage.title}`,
-      });
+      if (scope === 'document') {
+        await ExportService.exportDocumentArchive(doc, { format: 'png', scale, includeBackground, filename: doc.title });
+      } else {
+        await ExportService.exportPageToImage(activePage, {
+          format: 'png', scale, includeBackground, filename: `${doc.title}_${activePage.title}`,
+        });
+      }
       setExportModalOpen(false);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not export PNG images.');
     } finally {
       setIsExporting(false);
     }
@@ -45,22 +50,47 @@ export const ExportModal: React.FC = () => {
   const handleExportJPEG = async () => {
     setIsExporting(true);
     try {
-      await ExportService.exportPageToImage(activePage, {
-        format: 'jpeg',
-        scale,
-        quality: 0.95,
-        includeBackground: true,
-        filename: `${doc.title}_${activePage.title}`,
-      });
+      if (scope === 'document') {
+        await ExportService.exportDocumentArchive(doc, { format: 'jpeg', scale, quality: 0.95, includeBackground: true, filename: doc.title });
+      } else {
+        await ExportService.exportPageToImage(activePage, {
+          format: 'jpeg', scale, quality: 0.95, includeBackground: true, filename: `${doc.title}_${activePage.title}`,
+        });
+      }
       setExportModalOpen(false);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not export JPEG images.');
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleExportSVG = () => {
-    ExportService.exportPageToSVG(activePage, `${doc.title}_${activePage.title}`);
-    setExportModalOpen(false);
+  const handleExportSVG = async () => {
+    setIsExporting(true);
+    try {
+      if (scope === 'document') {
+        await ExportService.exportDocumentArchive(doc, { format: 'svg', includeBackground, filename: doc.title });
+      } else {
+        await ExportService.exportPageToSVG(activePage, { filename: `${doc.title}_${activePage.title}`, includeBackground });
+      }
+      setExportModalOpen(false);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not export SVG files.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      await ExportService.exportDocumentToPDF(doc, { scale: Math.min(scale, 2), filename: doc.title });
+      setExportModalOpen(false);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not generate the PDF.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleExportJHW = async () => {
@@ -160,6 +190,7 @@ export const ExportModal: React.FC = () => {
             <button
               type="button"
               onClick={handleExportSVG}
+              disabled={isExporting}
               className="flex items-start gap-3 p-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 rounded-2xl transition-all text-left group active:scale-95"
             >
               <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
@@ -169,25 +200,36 @@ export const ExportModal: React.FC = () => {
                 <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white">
                   SVG Vector
                 </h3>
-                <p className="text-xs text-slate-400">Vector ink, shapes and text</p>
+                <p className="text-xs text-slate-400">Portable vectors with embedded media</p>
               </div>
             </button>
 
-            {/* Print / PDF Export */}
+            {/* Real multi-page PDF export */}
             <button
               type="button"
-              onClick={handlePrint}
+              onClick={handleExportPDF}
+              disabled={isExporting}
               className="flex items-start gap-3 p-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 rounded-2xl transition-all text-left group active:scale-95"
             >
               <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform">
-                <Printer className="w-5 h-5" />
+                <FileDown className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white">
-                  Print / PDF
+                  Multi-page PDF
                 </h3>
-                <p className="text-xs text-slate-400">Print or save as PDF</p>
+                <p className="text-xs text-slate-400">One downloadable PDF with every page</p>
               </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrint}
+              disabled={isExporting}
+              className="flex items-start gap-3 p-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 rounded-2xl transition-all text-left group active:scale-95 sm:col-span-2"
+            >
+              <div className="p-2.5 rounded-xl bg-slate-500/20 text-slate-300 group-hover:scale-110 transition-transform"><Printer className="w-5 h-5" /></div>
+              <div><h3 className="text-sm font-semibold text-slate-200 group-hover:text-white">Print</h3><p className="text-xs text-slate-400">Open the browser print dialog for all pages</p></div>
             </button>
           </div>
 
@@ -217,6 +259,14 @@ export const ExportModal: React.FC = () => {
           </div>
 
           {/* Export Settings */}
+          <div className="p-3 bg-slate-950/40 rounded-2xl border border-slate-800 flex items-center justify-between text-xs text-slate-300">
+            <span className="font-medium text-slate-400">PNG, JPEG and SVG:</span>
+            <div className="flex rounded-lg bg-slate-800 p-1">
+              <button type="button" onClick={() => setScope('page')} className={`px-3 py-1 rounded-md ${scope === 'page' ? 'bg-primary-600 text-white' : 'text-slate-400'}`}>Current page</button>
+              <button type="button" onClick={() => setScope('document')} className={`px-3 py-1 rounded-md ${scope === 'document' ? 'bg-primary-600 text-white' : 'text-slate-400'}`}>All pages (.zip)</button>
+            </div>
+          </div>
+
           <div className="p-3 bg-slate-950/40 rounded-2xl border border-slate-800 flex items-center justify-between text-xs text-slate-300">
             <div className="flex items-center gap-2">
               <span className="font-medium text-slate-400">Image Scale:</span>

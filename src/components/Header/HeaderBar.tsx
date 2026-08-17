@@ -17,6 +17,7 @@ import {
   History,
   LibraryBig,
   Settings2,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService, FileService } from '../../services';
@@ -203,6 +204,10 @@ export const HeaderBar: React.FC = () => {
         <LibraryBig className="w-4 h-4 text-violet-400" /> Lesson Library
       </button>
 
+      <button onClick={() => { setIsMoreMenuOpen(false); window.dispatchEvent(new Event('jhw-open-assessments')); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+        <ClipboardCheck className="w-4 h-4 text-sky-400" /> Polls & Quizzes
+      </button>
+
       <button onClick={() => { setIsMoreMenuOpen(false); window.dispatchEvent(new Event('jhw-open-input-settings')); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
         <Settings2 className="w-4 h-4 text-emerald-400" /> Input & Gestures
       </button>
@@ -303,6 +308,10 @@ export const HeaderBar: React.FC = () => {
 
           <button onClick={() => openLibrary()} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
             <LibraryBig className="w-3.5 h-3.5 text-violet-400" /> Library
+          </button>
+
+          <button onClick={() => window.dispatchEvent(new Event('jhw-open-assessments'))} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
+            <ClipboardCheck className="w-3.5 h-3.5 text-sky-400" /> Assess
           </button>
         </div>
 

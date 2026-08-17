@@ -31,3 +31,5 @@ export * from './Modals/WebAppDialog';
 export * from './Modals/HandwritingRecognitionModal';
 export * from './Modals/PdfImportModal';
 export * from './Modals/InputSettingsModal';
+export * from './Modals/AssessmentModal';
+export * from './Assessment/StudentResponseView';

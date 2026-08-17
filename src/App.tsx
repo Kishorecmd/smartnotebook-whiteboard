@@ -19,13 +19,15 @@ import {
   PenNameToast,
   GlobalToast,
   InputSettingsModal,
+  AssessmentModal,
+  StudentResponseView,
 } from './components';
 import { TeachingToolsPanel, TeachingToolsOverlay, initializeTeachingTools } from './teaching-tools';
 import { useWhiteboardStore } from './store';
 import { StorageService } from './services';
 import { ResponsiveLayoutManager } from './core/responsive';
 
-export const App: React.FC = () => {
+const WhiteboardApp: React.FC = () => {
   const { setDocument, isDirty, isPresenterMode, setPresenterMode, childFriendlyMode, setResponsiveState, showToast } = useWhiteboardStore();
 
   useEffect(() => {
@@ -127,12 +129,18 @@ export const App: React.FC = () => {
         <HandwritingRecognitionModal />
         <PdfImportModal />
         <InputSettingsModal />
+        <AssessmentModal />
         <TeachingToolsPanel />
         <TeachingToolsOverlay />
         <GlobalToast />
       </main>
     </div>
   );
+};
+
+export const App: React.FC = () => {
+  const joinCode = new URLSearchParams(window.location.search).get('join')?.trim().toUpperCase();
+  return joinCode ? <StudentResponseView code={joinCode} /> : <WhiteboardApp />;
 };
 
 export default App;
