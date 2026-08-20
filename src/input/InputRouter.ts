@@ -6,7 +6,7 @@ import { useWhiteboardStore } from '../store';
 import { GestureEngine } from './GestureEngine';
 import { GestureState } from './GestureState';
 import { GestureStateMachine } from './GestureStateMachine';
-import type { InputSettings } from './InputSettings';
+import { shouldFingerDraw, type InputSettings } from './InputSettings';
 import type { PointerAction, PointerState } from './PointerState';
 import { StylusManager } from './StylusManager';
 import { TouchManager } from './TouchManager';
@@ -55,6 +55,12 @@ export class InputRouter {
           tool: this.engine.getTool(selectedTool) || this.engine.getTool('eraser'),
           started: false,
         };
+      }
+      // Stylus-less hardware has no other way to reach a drawing tool. Select
+      // still selects, and a second finger still promotes to pan/zoom.
+      if (selectedTool !== 'select' && shouldFingerDraw(this.getSettings())) {
+        const tool = this.engine.getActiveTool();
+        if (tool) return { action: 'DRAW', tool, started: false };
       }
       return { action: 'SELECT', tool: this.engine.getTool('select'), started: false };
     }
@@ -172,7 +178,9 @@ export class InputRouter {
       this.startRoute(pointer, event, route);
       this.stateMachine.transition(route.action === 'ERASE'
         ? GestureState.FINGER_ERASING
-        : GestureState.FINGER_SELECTING);
+        : route.action === 'DRAW'
+          ? GestureState.FINGER_DRAWING
+          : GestureState.FINGER_SELECTING);
       if (route.action === 'SELECT' && this.touchManager.hitObject(pointer, this.engine)) {
         this.scheduleLongPress(pointer, event);
       }

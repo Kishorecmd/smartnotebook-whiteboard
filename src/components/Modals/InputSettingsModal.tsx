@@ -4,6 +4,8 @@ import {
   calibratePalmThreshold,
   loadInputSettings,
   saveInputSettings,
+  shouldFingerDraw,
+  type FingerDrawMode,
   type InputSettings,
   type PalmSensitivity,
 } from '../../input/InputSettings';
@@ -41,6 +43,8 @@ export const InputSettingsModal: React.FC = () => {
     setCalibrationStep('idle');
   };
 
+  const fingerDraws = shouldFingerDraw(settings);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4" onPointerDown={(event) => event.stopPropagation()}>
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl">
@@ -53,11 +57,17 @@ export const InputSettingsModal: React.FC = () => {
           <section>
             <h3 className="mb-2 text-sm font-semibold">Automatic routing</h3>
             <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-              {['Stylus → Write', 'Finger → Select / Move', 'Two fingers → Pan / Zoom', 'Moving palm → Erase ink'].map((label) => <div key={label} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-center text-slate-300">{label}</div>)}
+              {['Stylus → Write', fingerDraws ? 'Finger → Write' : 'Finger → Select / Move', 'Two fingers → Pan / Zoom', 'Moving palm → Erase ink'].map((label) => <div key={label} className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-center text-slate-300">{label}</div>)}
             </div>
           </section>
 
           <section className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">Draw with finger
+              <select value={settings.fingerDraw} onChange={(event) => update('fingerDraw', event.target.value as FingerDrawMode)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 p-2">
+                <option value="auto">Automatic (on without a stylus)</option><option value="on">Always</option><option value="off">Never</option>
+              </select>
+              <span className="mt-1 block text-xs text-slate-400">{fingerDraws ? 'A finger writes with the selected tool on this device. Use two fingers to pan and zoom, or pick Select to move objects.' : 'A finger selects and moves on this device. The stylus writes.'}</span>
+            </label>
             <label className="text-sm">Palm detection
               <select value={settings.palmSensitivity} onChange={(event) => update('palmSensitivity', event.target.value as PalmSensitivity)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 p-2">
                 <option value="automatic">Automatic</option><option value="low">Low sensitivity</option><option value="medium">Medium sensitivity</option><option value="high">High sensitivity</option><option value="off">Off</option>

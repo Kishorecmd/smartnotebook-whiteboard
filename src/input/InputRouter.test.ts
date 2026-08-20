@@ -69,6 +69,69 @@ describe('InputRouter physical-device routing', () => {
       .toMatchObject({ action: 'ERASE', tool: eraser });
   });
 
+  it('routes a finger to the selected drawing tool on stylus-less hardware', () => {
+    const pen = tool('pen');
+    const select = tool('select');
+    const shape = tool('shape');
+    const transformer = new CoordinateTransformer();
+    const tools: Record<string, ITool> = { pen, select, shape };
+    const engine = {
+      getActiveToolType: () => 'shape',
+      getActiveTool: () => shape,
+      getTool: (name: string) => tools[name],
+      getTransformer: () => transformer,
+      getObjects: () => [],
+      isSpacePressed: () => false,
+    } as unknown as WhiteboardEngine;
+    const gesture = new GestureEngine({ transformer, getSettings: () => DEFAULT_INPUT_SETTINGS, onPanZoom: vi.fn() });
+    const settings = { ...DEFAULT_INPUT_SETTINGS, fingerDraw: 'on' as const };
+    const router = new InputRouter(engine, gesture, () => settings);
+
+    expect(router.route(sample('FINGER'), { button: 0, buttons: 1 } as PointerEvent))
+      .toMatchObject({ action: 'DRAW', tool: shape });
+  });
+
+  it('keeps a finger on select when the toolbar tool is select', () => {
+    const select = tool('select');
+    const transformer = new CoordinateTransformer();
+    const tools: Record<string, ITool> = { select };
+    const engine = {
+      getActiveToolType: () => 'select',
+      getActiveTool: () => select,
+      getTool: (name: string) => tools[name],
+      getTransformer: () => transformer,
+      getObjects: () => [],
+      isSpacePressed: () => false,
+    } as unknown as WhiteboardEngine;
+    const gesture = new GestureEngine({ transformer, getSettings: () => DEFAULT_INPUT_SETTINGS, onPanZoom: vi.fn() });
+    const settings = { ...DEFAULT_INPUT_SETTINGS, fingerDraw: 'on' as const };
+    const router = new InputRouter(engine, gesture, () => settings);
+
+    expect(router.route(sample('FINGER'), { button: 0, buttons: 1 } as PointerEvent))
+      .toMatchObject({ action: 'SELECT', tool: select });
+  });
+
+  it('leaves a stylus board selecting with a finger when finger drawing is off', () => {
+    const select = tool('select');
+    const shape = tool('shape');
+    const transformer = new CoordinateTransformer();
+    const tools: Record<string, ITool> = { select, shape };
+    const engine = {
+      getActiveToolType: () => 'shape',
+      getActiveTool: () => shape,
+      getTool: (name: string) => tools[name],
+      getTransformer: () => transformer,
+      getObjects: () => [],
+      isSpacePressed: () => false,
+    } as unknown as WhiteboardEngine;
+    const gesture = new GestureEngine({ transformer, getSettings: () => DEFAULT_INPUT_SETTINGS, onPanZoom: vi.fn() });
+    const settings = { ...DEFAULT_INPUT_SETTINGS, fingerDraw: 'off' as const };
+    const router = new InputRouter(engine, gesture, () => settings);
+
+    expect(router.route(sample('FINGER'), { button: 0, buttons: 1 } as PointerEvent))
+      .toMatchObject({ action: 'SELECT', tool: select });
+  });
+
   it('promotes a moving palm candidate and starts its pointer-local eraser', () => {
     const palm = tool('palm');
     const transformer = new CoordinateTransformer();

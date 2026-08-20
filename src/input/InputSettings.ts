@@ -1,10 +1,12 @@
 import type { ToolType } from '../types';
 
 export type PalmSensitivity = 'automatic' | 'low' | 'medium' | 'high' | 'off';
+export type FingerDrawMode = 'auto' | 'on' | 'off';
 export type PalmEraserSize = 'auto' | 'small' | 'medium' | 'large';
 export type PalmEraserTarget = 'ink' | 'ink-shapes' | 'all';
 
 export interface InputSettings {
+  fingerDraw: FingerDrawMode;
   palmSensitivity: PalmSensitivity;
   palmContactThreshold: number;
   palmMovementThreshold: number;
@@ -27,6 +29,7 @@ export interface InputSettings {
 export const INPUT_SETTINGS_STORAGE_KEY = 'jhw_input_settings_v1';
 
 export const DEFAULT_INPUT_SETTINGS: InputSettings = {
+  fingerDraw: 'auto',
   palmSensitivity: 'automatic',
   palmContactThreshold: 48,
   palmMovementThreshold: 10,
@@ -62,6 +65,19 @@ const sensitivityThreshold = (settings: InputSettings): number => {
 };
 
 export const getPalmThreshold = (settings: InputSettings): number => sensitivityThreshold(settings);
+
+/**
+ * A Smartboard pairs a stylus with finger-to-select, but a phone or tablet has
+ * no stylus at all, so there a finger that only selects can never write. In
+ * 'auto' the finger reaches the toolbar tool exactly on hardware that reports
+ * no fine pointer, which leaves stylus boards on the original routing.
+ */
+export const shouldFingerDraw = (settings: InputSettings): boolean => {
+  if (settings.fingerDraw === 'on') return true;
+  if (settings.fingerDraw === 'off') return false;
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  return !window.matchMedia('(any-pointer: fine)').matches;
+};
 
 export const loadInputSettings = (): InputSettings => {
   try {
