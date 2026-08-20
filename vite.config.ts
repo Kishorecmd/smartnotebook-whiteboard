@@ -35,8 +35,32 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,ttf,wasm,worker.mjs}'],
-        maximumFileSizeToCacheInBytes: 5000000
+        // The HTML shell is deliberately absent: precaching it serves a document
+        // that keeps naming the hashed bundles of whichever build installed it,
+        // and those 404 once a later deploy replaces them.
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff2,ttf,wasm,worker.mjs}'],
+        maximumFileSizeToCacheInBytes: 5000000,
+        cleanupOutdatedCaches: true,
+        // vite-plugin-pwa otherwise registers a cache-first NavigationRoute
+        // ahead of runtimeCaching, which would shadow the handler below.
+        navigateFallback: undefined,
+        runtimeCaching: [
+          {
+            // Serving the precached shell first pins a client to whichever build
+            // installed it. When a later deploy removes that build's hashed
+            // bundles the shell 404s and the board never opens, so navigations
+            // ask the network first and fall back to the last good copy only
+            // when the network is unavailable.
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'jhw-app-shell',
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 2 },
+              cacheableResponse: { statuses: [200] }
+            }
+          }
+        ]
       }
     })
   ],

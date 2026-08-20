@@ -13,6 +13,54 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      // A precached HTML shell can outlive the hashed bundles it points at. That
+      // leaves a blank page which cannot repair itself: the app never loads, so
+      // the code that would update the service worker never runs. Detect the
+      // dead shell, drop the worker and its caches once per tab, and reload from
+      // the network. IndexedDB is untouched, so saved boards survive recovery.
+      (function () {
+        var KEY = 'jhw_boot_recovery';
+        var recovering = false;
+        var read = function () { try { return sessionStorage.getItem(KEY); } catch (error) { return null; } };
+        var write = function () { try { sessionStorage.setItem(KEY, '1'); } catch (error) { /* private mode */ } };
+        var forget = function () { try { sessionStorage.removeItem(KEY); } catch (error) { /* private mode */ } };
+        var mounted = function () {
+          var root = document.getElementById('root');
+          return !!root && root.childElementCount > 0;
+        };
+        var recover = function () {
+          // Recovering while offline would trade a stale shell for no shell.
+          if (recovering || mounted() || read() || navigator.onLine === false) return;
+          recovering = true;
+          write();
+          var jobs = [];
+          if (navigator.serviceWorker) {
+            jobs.push(navigator.serviceWorker.getRegistrations().then(function (registrations) {
+              return Promise.all(registrations.map(function (registration) { return registration.unregister(); }));
+            }));
+          }
+          if (window.caches) {
+            jobs.push(caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+            }));
+          }
+          Promise.all(jobs)['catch'](function () { /* recovery is best effort */ })
+            .then(function () { location.reload(); });
+        };
+        // A same-origin script or stylesheet that 404s is the fast signal. Font
+        // and other cross-origin failures are ignored; they do not break boot.
+        window.addEventListener('error', function (event) {
+          var target = event.target;
+          if (!target || target === window) return;
+          if (target.tagName !== 'SCRIPT' && target.tagName !== 'LINK') return;
+          var url = target.src || target.href || '';
+          if (url.indexOf(location.origin) === 0) recover();
+        }, true);
+        // Failures that throw nothing still leave an empty root, so keep a watchdog.
+        window.setTimeout(function () { if (mounted()) forget(); else recover(); }, 10000);
+      })();
+    </script>
   </head>
   <body class="h-full w-full m-0 p-0 overflow-hidden bg-slate-900 text-slate-100 font-sans antialiased touch-none">
     <div id="root" class="h-full w-full overflow-hidden"></div>
