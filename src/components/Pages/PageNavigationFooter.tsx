@@ -16,29 +16,31 @@ export const PageNavigationFooter: React.FC = () => {
   const hasNext = activePageIndex < totalPages - 1;
 
   return (
-    <div className="flex items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/60 rounded-2xl shadow-2xl select-none ring-1 ring-white/10">
+    <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/60 rounded-2xl shadow-2xl select-none ring-1 ring-white/10">
       {/* Pages Drawer Toggle */}
       <button
         type="button"
         onClick={togglePageDrawer}
-        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-xl transition-all"
+        className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-xl transition-all"
         title="Open Pages Drawer"
       >
         <Layers className="w-4 h-4 text-primary-400" />
         <span className="hidden sm:inline">Pages</span>
-        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-primary-500 text-white font-bold">
+        {/* The page indicator beside this button already shows the total, so the
+            badge only costs width on the row that can least afford it. */}
+        <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-primary-500 text-white font-bold">
           {totalPages}
         </span>
       </button>
 
-      <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+      <div className="w-[1px] h-6 bg-slate-700/60 mx-0 sm:mx-0.5" />
 
       {/* Previous Page */}
       <button
         type="button"
         disabled={!hasPrev}
         onClick={() => setActivePageIndex(activePageIndex - 1)}
-        className={`p-2 rounded-xl transition-colors ${
+        className={`p-1.5 sm:p-2 rounded-xl transition-colors ${
           hasPrev
             ? 'text-slate-200 hover:text-white hover:bg-slate-800 active:scale-95'
             : 'text-slate-600 cursor-not-allowed'
@@ -50,7 +52,9 @@ export const PageNavigationFooter: React.FC = () => {
       </button>
 
       {/* Page indicator */}
-      <span className="px-2 text-xs font-bold text-slate-300 font-mono">
+      {/* Narrow phone rows squeeze this flex item until "1 / 1" wraps onto
+          three lines and the whole dock grows, so it never wraps. */}
+      <span className="shrink-0 whitespace-nowrap px-1 sm:px-2 text-xs font-bold text-slate-300 font-mono">
         {activePageIndex + 1} / {totalPages}
       </span>
 
@@ -59,7 +63,7 @@ export const PageNavigationFooter: React.FC = () => {
         type="button"
         disabled={!hasNext}
         onClick={() => setActivePageIndex(activePageIndex + 1)}
-        className={`p-2 rounded-xl transition-colors ${
+        className={`p-1.5 sm:p-2 rounded-xl transition-colors ${
           hasNext
             ? 'text-slate-200 hover:text-white hover:bg-slate-800 active:scale-95'
             : 'text-slate-600 cursor-not-allowed'
@@ -74,7 +78,7 @@ export const PageNavigationFooter: React.FC = () => {
       <button
         type="button"
         onClick={() => addPage()}
-        className="p-2 text-primary-400 hover:text-white hover:bg-primary-600/30 rounded-xl transition-all active:scale-95"
+        className="p-1.5 sm:p-2 text-primary-400 hover:text-white hover:bg-primary-600/30 rounded-xl transition-all active:scale-95"
         title="Add Blank Page"
         aria-label="Add Blank Page"
       >

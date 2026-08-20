@@ -18,7 +18,7 @@ export const BottomDock: React.FC = () => {
             page and zoom controls take a row of their own rather than being
             dropped; anywhere wider they sit alongside, which keeps the dock
             short enough for a landscape phone. */}
-        <div className="pointer-events-auto flex justify-center items-end gap-2 sm:hidden">
+        <div className="pointer-events-auto flex flex-wrap justify-center items-end gap-2 sm:hidden">
           <PageNavigationFooter />
           <ZoomControls />
         </div>
