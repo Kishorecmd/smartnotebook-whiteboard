@@ -11,7 +11,7 @@ export const ZoomControls: React.FC = () => {
       <button
         type="button"
         onClick={zoomOut}
-        className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-all active:scale-95"
+        className="hidden lg:block p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-all active:scale-95"
         title="Zoom Out (Ctrl -)"
         aria-label="Zoom Out"
       >
@@ -32,14 +32,14 @@ export const ZoomControls: React.FC = () => {
       <button
         type="button"
         onClick={zoomIn}
-        className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-all active:scale-95"
+        className="hidden lg:block p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-all active:scale-95"
         title="Zoom In (Ctrl +)"
         aria-label="Zoom In"
       >
         <ZoomIn className="w-5 h-5" />
       </button>
 
-      <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+      <div className="hidden lg:block w-[1px] h-6 bg-slate-700/60 mx-0.5" />
 
       {/* Zoom to Fit */}
       <button
