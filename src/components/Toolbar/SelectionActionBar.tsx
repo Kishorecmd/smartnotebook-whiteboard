@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  SquareDashedMousePointer,
   Copy,
   Trash2,
   BringToFront,
@@ -73,7 +74,13 @@ export const SelectionActionBar: React.FC = () => {
     recognizeHandwritingForSelected,
     engine,
     openLibrary,
+    additiveSelection,
+    setAdditiveSelection,
   } = useWhiteboardStore();
+
+  // The mode only makes sense while a selection exists, and this bar is only
+  // mounted then, so it retires with the selection rather than lingering.
+  useEffect(() => () => setAdditiveSelection(false), [setAdditiveSelection]);
 
   const [activeMenu, setActiveMenu] = useState<'none' | 'color' | 'style' | 'order' | 'ruler'>('none');
   // Playback lives on the <video> element, not in the store, so nudge a re-render
@@ -805,6 +812,24 @@ export const SelectionActionBar: React.FC = () => {
 
         {/* Separator */}
         <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
+
+        {/* Touch has no Shift key, so without this a tap always replaces the
+            selection and a second object can never be added -- which puts Group
+            out of reach on a phone or tablet. */}
+        <button
+          type="button"
+          onClick={() => setAdditiveSelection(!additiveSelection)}
+          title={additiveSelection ? 'Tap objects to add them (on)' : 'Select more objects'}
+          aria-label="Select more objects"
+          aria-pressed={additiveSelection}
+          className={`p-2 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium ${
+            additiveSelection
+              ? 'bg-primary-500/25 text-primary-200 ring-1 ring-primary-400/50'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+          }`}
+        >
+          <SquareDashedMousePointer className="w-4 h-4" />
+        </button>
 
         {/* Group / Ungroup Buttons */}
         {selectedIds.length > 1 && (

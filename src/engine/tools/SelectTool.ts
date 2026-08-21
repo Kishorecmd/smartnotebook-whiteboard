@@ -132,7 +132,7 @@ export class SelectTool implements ITool {
       this.lastClickTime = now;
       this.lastClickObjId = hitObj.id;
 
-      const isShift = e.shiftKey || e.ctrlKey || e.metaKey;
+      const isShift = e.shiftKey || e.ctrlKey || e.metaKey || engine.isAdditiveSelection();
       let newSelection = new Set(engine.getSelectedIds());
       
       if (isShift) {
@@ -174,7 +174,7 @@ export class SelectTool implements ITool {
       }
     } else {
       // 3. Clicked empty canvas -> Start Marquee selection or deselect
-      if (!e.shiftKey && !e.ctrlKey) {
+      if (!e.shiftKey && !e.ctrlKey && !engine.isAdditiveSelection()) {
         engine.clearSelection();
       }
       this.dragMode = 'marquee';

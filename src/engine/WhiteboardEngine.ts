@@ -126,6 +126,7 @@ export class WhiteboardEngine {
   private magnifierRadius: number = 150;
   
   // Keyboard State
+  private additiveSelection = false;
   private spacePressed: boolean = false;
 
   // Callbacks to UI
@@ -265,6 +266,16 @@ export class WhiteboardEngine {
 
   public getObjectManager(): ObjectManager {
     return this.objectManager;
+  }
+
+  /** While set, a tap adds to the selection instead of replacing it. Touch has
+   *  no Shift key, so this is the only way to build a multi-object selection. */
+  public setAdditiveSelection(active: boolean): void {
+    this.additiveSelection = active;
+  }
+
+  public isAdditiveSelection(): boolean {
+    return this.additiveSelection;
   }
 
   public isSpacePressed(): boolean {

@@ -1,6 +1,6 @@
 import type { SliceCreator, UiSlice } from '../types';
 
-export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
+export const createUiSlice: SliceCreator<UiSlice> = (set, get) => ({
   isPageDrawerOpen: false,
   isExportModalOpen: false,
   isSavedDocsModalOpen: false,
@@ -10,6 +10,7 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
   isWebAppDialogOpen: false,
   isDocTitleEditing: false,
   isPresenterMode: false,
+  additiveSelection: false,
   isTeachingPanelOpen: false,
   isVersionHistoryModalOpen: false,
   isLibraryModalOpen: false,
@@ -27,6 +28,11 @@ export const createUiSlice: SliceCreator<UiSlice> = (set) => ({
   setWebAppDialogOpen: (open) => set({ isWebAppDialogOpen: open }),
   setDocTitleEditing: (editing) => set({ isDocTitleEditing: editing }),
   setPresenterMode: (active) => set({ isPresenterMode: active }),
+  setAdditiveSelection: (active) => {
+    // The tool reads this off the engine, the same way it reads the space key.
+    get().engine?.setAdditiveSelection(active);
+    set({ additiveSelection: active });
+  },
   setTeachingPanelOpen: (open) => set({ isTeachingPanelOpen: open }),
   setVersionHistoryModalOpen: (open) => set({ isVersionHistoryModalOpen: open }),
   setLibraryModalOpen: (open) => set({ isLibraryModalOpen: open }),

@@ -191,6 +191,7 @@ export interface UiSlice {
   isWebAppDialogOpen: boolean;
   isDocTitleEditing: boolean;
   isPresenterMode: boolean;
+  additiveSelection: boolean;
   isTeachingPanelOpen: boolean;
   isVersionHistoryModalOpen: boolean;
   isLibraryModalOpen: boolean;
@@ -209,6 +210,7 @@ export interface UiSlice {
   setWebAppDialogOpen: (open: boolean) => void;
   setDocTitleEditing: (editing: boolean) => void;
   setPresenterMode: (enabled: boolean) => void;
+  setAdditiveSelection: (enabled: boolean) => void;
   setTeachingPanelOpen: (open: boolean) => void;
   setVersionHistoryModalOpen: (open: boolean) => void;
   setLibraryModalOpen: (open: boolean) => void;
