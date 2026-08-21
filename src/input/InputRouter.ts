@@ -6,7 +6,7 @@ import { useWhiteboardStore } from '../store';
 import { GestureEngine } from './GestureEngine';
 import { GestureState } from './GestureState';
 import { GestureStateMachine } from './GestureStateMachine';
-import { shouldFingerDraw, type InputSettings } from './InputSettings';
+import { saveInputSettings, shouldFingerDraw, type InputSettings } from './InputSettings';
 import type { PointerAction, PointerState } from './PointerState';
 import { StylusManager } from './StylusManager';
 import { TouchManager } from './TouchManager';
@@ -41,6 +41,8 @@ export class InputRouter {
   /** Deterministically maps a physical input sample without changing the global toolbar tool. */
   public route(pointer: PointerState, event: PointerEvent): PointerRoute {
     if (pointer.classification === 'STYLUS') {
+      // Proof this device has a stylus, which retires finger drawing under 'auto'.
+      if (!this.getSettings().stylusSeen) saveInputSettings({ stylusSeen: true });
       const route = this.stylusManager.route(pointer, event, this.engine, this.getSettings());
       return { ...route, started: false };
     }

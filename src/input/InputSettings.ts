@@ -7,6 +7,8 @@ export type PalmEraserTarget = 'ink' | 'ink-shapes' | 'all';
 
 export interface InputSettings {
   fingerDraw: FingerDrawMode;
+  /** Set once this device has actually produced a stylus pointer. */
+  stylusSeen: boolean;
   palmSensitivity: PalmSensitivity;
   palmContactThreshold: number;
   palmMovementThreshold: number;
@@ -30,6 +32,7 @@ export const INPUT_SETTINGS_STORAGE_KEY = 'jhw_input_settings_v1';
 
 export const DEFAULT_INPUT_SETTINGS: InputSettings = {
   fingerDraw: 'auto',
+  stylusSeen: false,
   palmSensitivity: 'automatic',
   palmContactThreshold: 48,
   palmMovementThreshold: 10,
@@ -68,15 +71,21 @@ export const getPalmThreshold = (settings: InputSettings): number => sensitivity
 
 /**
  * A Smartboard pairs a stylus with finger-to-select, but a phone or tablet has
- * no stylus at all, so there a finger that only selects can never write. In
- * 'auto' the finger reaches the toolbar tool exactly on hardware that reports
- * no fine pointer, which leaves stylus boards on the original routing.
+ * no stylus at all, so there a finger that only selects can never write.
+ *
+ * '(any-pointer: fine)' looked like the way to tell those apart and is not: an
+ * HONOR tablet with no stylus reports it true while a OnePlus phone reports it
+ * false, so it disabled finger drawing on exactly the hardware that needed it.
+ * The only dependable evidence that a stylus exists is a stylus event, so
+ * 'auto' lets a finger draw on a touch-first device until one arrives, then
+ * hands writing back to the pen for good.
  */
 export const shouldFingerDraw = (settings: InputSettings): boolean => {
   if (settings.fingerDraw === 'on') return true;
   if (settings.fingerDraw === 'off') return false;
+  if (settings.stylusSeen) return false;
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  return !window.matchMedia('(any-pointer: fine)').matches;
+  return window.matchMedia('(pointer: coarse)').matches;
 };
 
 export const loadInputSettings = (): InputSettings => {
