@@ -180,7 +180,7 @@ export const SelectionActionBar: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 flex flex-col items-center select-none animate-fade-in" style={{ zIndex: 200 }}>
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[calc(100vw-16px)] lg:w-auto max-w-[calc(100vw-16px)] flex flex-col items-center select-none animate-fade-in" style={{ zIndex: 200 }}>
       {/* Floating Submenus */}
       {activeMenu === 'ruler' && selectedGuideObj && (
         <div
@@ -455,7 +455,9 @@ export const SelectionActionBar: React.FC = () => {
       )}
 
       {/* Main Glass Action Bar */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/70 rounded-2xl shadow-2xl ring-1 ring-white/10">
+      {/* Centred with -translate-x-1/2, so an intrinsically wide row spills off
+          both screen edges on a phone. It wraps instead of overflowing. */}
+      <div className="flex flex-wrap lg:flex-nowrap justify-center items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-2xl border border-slate-700/70 rounded-2xl shadow-2xl ring-1 ring-white/10">
         {/* Selection Count Pill */}
         <div className="px-3 py-1 bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5">
           <span>{selectedIds.length}</span>
