@@ -484,7 +484,7 @@ export const SelectionActionBar: React.FC = () => {
               onClick={handleEditText}
               title="Edit Text (Double click object)"
               aria-label="Edit text content"
-              className="p-2 text-indigo-300 hover:text-indigo-100 hover:bg-indigo-600/30 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+              className="p-2 text-indigo-300 hover:text-indigo-100 hover:bg-indigo-600/30 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
             >
               <Edit3 className="w-4 h-4 text-indigo-400" />
               <span>Edit Text</span>
@@ -581,8 +581,8 @@ export const SelectionActionBar: React.FC = () => {
               className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-emerald-400 border border-emerald-900/50 hover:bg-emerald-900/40"
             >
               {engine && engine.isAudioPlaying(selectedAudio.id)
-                ? (<><Pause className="w-4 h-4" /><span className="hidden sm:inline">Pause</span></>)
-                : (<><PlaySquare className="w-4 h-4" /><span className="hidden sm:inline">Play</span></>)}
+                ? (<><Pause className="w-4 h-4" /><span className="inline">Pause</span></>)
+                : (<><PlaySquare className="w-4 h-4" /><span className="inline">Play</span></>)}
             </button>
             <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
           </>
@@ -601,6 +601,7 @@ export const SelectionActionBar: React.FC = () => {
                 className="rounded-lg px-2 py-1.5 text-slate-200 disabled:opacity-40 hover:bg-slate-700"
               >
                 <ArrowLeft className="w-4 h-4" />
+                <span className="sm:hidden">Prev</span>
               </button>
               <span className="min-w-[52px] text-center text-[11px] font-bold text-slate-200">
                 {selectedPdf.currentPage} / {selectedPdf.pageCount}
@@ -614,6 +615,7 @@ export const SelectionActionBar: React.FC = () => {
                 className="rounded-lg px-2 py-1.5 text-slate-200 disabled:opacity-40 hover:bg-slate-700"
               >
                 <ArrowRight className="w-4 h-4" />
+                <span className="sm:hidden">Next</span>
               </button>
               <button
                 type="button"
@@ -623,6 +625,7 @@ export const SelectionActionBar: React.FC = () => {
                 className="rounded-lg px-2 py-1.5 text-slate-200 hover:bg-slate-700"
               >
                 <RotateCw className="w-4 h-4" />
+                <span className="sm:hidden">Rotate</span>
               </button>
             </div>
             <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
@@ -655,7 +658,7 @@ export const SelectionActionBar: React.FC = () => {
               ) : (
                 <>
                   <PlaySquare className="w-4 h-4" />
-                  <span className="hidden sm:inline">Interact</span>
+                  <span className="inline">Interact</span>
                 </>
               )}
             </button>
@@ -672,6 +675,7 @@ export const SelectionActionBar: React.FC = () => {
               className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700/50 hover:bg-slate-700 hover:text-white"
             >
               <RefreshCw className="w-4 h-4" />
+              <span className="sm:hidden">Refresh</span>
             </button>
             <button
               type="button"
@@ -688,6 +692,7 @@ export const SelectionActionBar: React.FC = () => {
               className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700/50 hover:bg-slate-700 hover:text-white"
             >
               <Maximize2 className="w-4 h-4" />
+              <span className="sm:hidden">Full</span>
             </button>
             <div className="w-[1px] h-6 bg-slate-700/60 mx-0.5" />
           </>
@@ -713,12 +718,12 @@ export const SelectionActionBar: React.FC = () => {
               {engine && engine.isVideoPlaying(selectedLocalVideo.id) ? (
                 <>
                   <Pause className="w-4 h-4" />
-                  <span className="hidden sm:inline">Pause</span>
+                  <span className="inline">Pause</span>
                 </>
               ) : (
                 <>
                   <PlaySquare className="w-4 h-4" />
-                  <span className="hidden sm:inline">Play</span>
+                  <span className="inline">Play</span>
                 </>
               )}
             </button>
@@ -752,7 +757,7 @@ export const SelectionActionBar: React.FC = () => {
               ) : (
                 <>
                   <PlaySquare className="w-4 h-4" />
-                  <span className="hidden sm:inline">Play</span>
+                  <span className="inline">Play</span>
                 </>
               )}
             </button>
@@ -771,9 +776,10 @@ export const SelectionActionBar: React.FC = () => {
           onClick={() => engine?.getObjectManager()?.cut(selectedIds)}
           title="Cut (Ctrl+X)"
           aria-label="Cut selected"
-          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
         >
           <Scissors className="w-4 h-4 text-pink-400" />
+          <span className="sm:hidden">Cut</span>
         </button>
         
         {/* Copy Button */}
@@ -782,9 +788,10 @@ export const SelectionActionBar: React.FC = () => {
           onClick={() => engine?.getObjectManager()?.copy(selectedIds)}
           title="Copy (Ctrl+C)"
           aria-label="Copy selected"
-          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
         >
           <Copy className="w-4 h-4 text-teal-400" />
+          <span className="sm:hidden">Copy</span>
         </button>
 
         {/* Duplicate Button */}
@@ -793,10 +800,10 @@ export const SelectionActionBar: React.FC = () => {
           onClick={() => engine?.getObjectManager()?.duplicate(selectedIds)}
           title="Duplicate (Ctrl+D)"
           aria-label="Duplicate selected"
-          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
         >
           <Copy className="w-4 h-4 text-sky-400" />
-          <span className="hidden sm:inline">Duplicate</span>
+          <span className="inline">Duplicate</span>
         </button>
 
         <button
@@ -804,10 +811,10 @@ export const SelectionActionBar: React.FC = () => {
           onClick={() => openLibrary('content')}
           title="Save selection to content library"
           aria-label="Save selection to content library"
-          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
         >
           <BookmarkPlus className="w-4 h-4 text-violet-400" />
-          <span className="hidden sm:inline">Save</span>
+          <span className="inline">Save</span>
         </button>
 
         {/* Separator */}
@@ -822,13 +829,14 @@ export const SelectionActionBar: React.FC = () => {
           title={additiveSelection ? 'Tap objects to add them (on)' : 'Select more objects'}
           aria-label="Select more objects"
           aria-pressed={additiveSelection}
-          className={`p-2 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium ${
+          className={`p-2 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium ${
             additiveSelection
               ? 'bg-primary-500/25 text-primary-200 ring-1 ring-primary-400/50'
               : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
           }`}
         >
           <SquareDashedMousePointer className="w-4 h-4" />
+          <span className="sm:hidden">Add</span>
         </button>
 
         {/* Group / Ungroup Buttons */}
@@ -838,9 +846,10 @@ export const SelectionActionBar: React.FC = () => {
             onClick={() => engine?.getObjectManager()?.groupObjects(selectedIds)}
             title="Group Objects (Ctrl+G)"
             aria-label="Group objects"
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
           >
             <Combine className="w-4 h-4 text-amber-400" />
+            <span className="sm:hidden">Group</span>
           </button>
         )}
         {selectedObjects.some(obj => obj.type === 'group') && (
@@ -849,9 +858,10 @@ export const SelectionActionBar: React.FC = () => {
             onClick={() => engine?.getObjectManager()?.ungroupObjects(selectedIds)}
             title="Ungroup Objects (Ctrl+Shift+G)"
             aria-label="Ungroup objects"
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
           >
             <SplitSquareHorizontal className="w-4 h-4 text-orange-400" />
+            <span className="sm:hidden">Ungroup</span>
           </button>
         )}
 
@@ -862,9 +872,10 @@ export const SelectionActionBar: React.FC = () => {
             onClick={() => engine?.getObjectManager()?.lockObjects(selectedIds)}
             title="Lock Objects (Ctrl+Shift+L)"
             aria-label="Lock objects"
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
           >
             <Lock className="w-4 h-4 text-slate-400" />
+            <span className="sm:hidden">Lock</span>
           </button>
         ) : (
           <button
@@ -872,9 +883,10 @@ export const SelectionActionBar: React.FC = () => {
             onClick={() => engine?.getObjectManager()?.unlockObjects(selectedIds)}
             title="Unlock Objects (Ctrl+Shift+L)"
             aria-label="Unlock objects"
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
           >
             <Unlock className="w-4 h-4 text-slate-400" />
+            <span className="sm:hidden">Unlock</span>
           </button>
         )}
 
@@ -884,10 +896,10 @@ export const SelectionActionBar: React.FC = () => {
           onClick={deleteSelected}
           title="Delete (Delete / Backspace)"
           aria-label="Delete selected"
-          className="p-2 text-red-300 hover:text-red-100 hover:bg-red-500/20 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+          className="p-2 text-red-300 hover:text-red-100 hover:bg-red-500/20 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
         >
           <Trash2 className="w-4 h-4 text-red-400" />
-          <span className="hidden sm:inline">Delete</span>
+          <span className="inline">Delete</span>
         </button>
 
         {/* Separator */}
@@ -899,14 +911,14 @@ export const SelectionActionBar: React.FC = () => {
           onClick={() => setActiveMenu((prev) => (prev === 'color' ? 'none' : 'color'))}
           title="Change Color"
           aria-label="Change Color"
-          className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+          className={`p-2 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs ${
             activeMenu === 'color'
               ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
               : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
           }`}
         >
           <Palette className="w-4 h-4" />
-          <span className="hidden md:inline">Color</span>
+          <span className="inline">Color</span>
         </button>
 
         {/* Quick Style */}
@@ -916,14 +928,14 @@ export const SelectionActionBar: React.FC = () => {
             onClick={() => setActiveMenu((prev) => (prev === 'style' ? 'none' : 'style'))}
             title={isSingleTextSelected ? 'Text Styling' : 'Change Stroke Style / Width'}
             aria-label="Change Style"
-            className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+            className={`p-2 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs ${
               activeMenu === 'style'
                 ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
             }`}
           >
             <Sliders className="w-4 h-4" />
-            <span className="hidden md:inline">{isSingleTextSelected ? 'Size' : 'Style'}</span>
+            <span className="inline">{isSingleTextSelected ? 'Size' : 'Style'}</span>
           </button>
         )}
 
@@ -934,14 +946,14 @@ export const SelectionActionBar: React.FC = () => {
             onClick={() => setActiveMenu((prev) => (prev === 'ruler' ? 'none' : 'ruler'))}
             title="Ruler Settings"
             aria-label="Ruler Settings"
-            className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+            className={`p-2 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs ${
               activeMenu === 'ruler'
                 ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
             }`}
           >
             <Ruler className="w-4 h-4" />
-            <span className="hidden md:inline">Ruler Settings</span>
+            <span className="inline">Ruler Settings</span>
           </button>
         )}
 
@@ -951,14 +963,14 @@ export const SelectionActionBar: React.FC = () => {
           onClick={() => setActiveMenu((prev) => (prev === 'order' ? 'none' : 'order'))}
           title="Layer Order"
           aria-label="Layer Order"
-          className={`p-2 rounded-xl transition-colors flex items-center gap-1 text-xs ${
+          className={`p-2 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs ${
             activeMenu === 'order'
               ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
               : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
           }`}
         >
           <BringToFront className="w-4 h-4" />
-          <span className="hidden md:inline">Order</span>
+          <span className="inline">Order</span>
         </button>
 
         {/* Separator */}
@@ -973,6 +985,7 @@ export const SelectionActionBar: React.FC = () => {
           className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors"
         >
           <X className="w-4 h-4" />
+          <span className="sm:hidden">Done</span>
         </button>
       </div>
     </div>
