@@ -49,3 +49,11 @@ Completed 25 September 2026. Tested the local production build in the in-app bro
 ## Scope and limits
 
 These results cover the listed workflows, not every possible device or interaction. Physical stylus pressure, multi-touch hardware and audible alarm output were not verified. The periodic table currently contains the first 18 elements. Sticky notes are saved in browser storage for each board; they are not included in exported board files. Grid and Graph Paper currently use the same square-grid background preset.
+
+## Production layout review — 25 September 2026
+
+Inspected https://whiteboard.jaihind.school/ in the browser. Reproduced the screenshot's dark Pages panel with low-contrast green text and truncated background labels. The live phone header, More Tools sheet and pen options were also inspected.
+
+The local fix gives the entire Pages panel consistent light surfaces, readable text, a clear active-page outline, larger page actions, keyboard-accessible page selection and full background labels in two columns. The panel fits narrow screens; short landscape screens scroll the background choices while keeping Add Page visible.
+
+Verified the correction at desktop 1280 × 720, phone 375 × 812, small phone 320 × 568 and landscape 812 × 375. Page switching, all seven background choices, adding a page and renaming a page passed. Production build and whitespace checks passed. This layout correction is packaged locally and has not been published to the live website.

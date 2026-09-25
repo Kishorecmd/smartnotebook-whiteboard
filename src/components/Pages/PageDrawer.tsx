@@ -67,7 +67,7 @@ export const PageDrawer: React.FC = () => {
       className="wb-ui wb-page-drawer fixed top-14 left-0 bottom-0 w-80 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800/80 z-40 flex flex-col shadow-2xl animate-fade-in select-none"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-800">
+      <div className="wb-pages-header flex items-center justify-between p-4 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <Layers className="w-5 h-5 text-primary-400" />
           <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
@@ -79,13 +79,14 @@ export const PageDrawer: React.FC = () => {
           onClick={togglePageDrawer}
           className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
           title="Close Drawer"
+          aria-label="Close Pages panel"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Pages List */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
+      <div className="wb-pages-list flex-1 overflow-y-auto p-3.5 space-y-3">
         {doc.pages.map((page: Page, idx: number) => {
           const isActive = idx === activePageIndex;
           const strokeCount = page.objects.length;
@@ -93,15 +94,16 @@ export const PageDrawer: React.FC = () => {
           return (
             <div
               key={page.id}
+              data-active={isActive}
               onClick={() => setActivePageIndex(idx)}
-              className={`group relative p-3 rounded-2xl border transition-all cursor-pointer ${
+              className={`wb-page-card group relative p-3 rounded-2xl border transition-all cursor-pointer ${
                 isActive
                   ? 'bg-primary-950/40 border-primary-500/80 ring-2 ring-primary-500/30'
                   : 'bg-slate-800/60 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
+              <div className="wb-page-card-top flex items-start justify-between gap-2">
+                <div className="wb-page-summary flex items-center gap-2.5">
                   <div 
                     className={`flex-shrink-0 w-12 h-10 rounded-lg overflow-hidden border-2 flex items-center justify-center relative ${
                       isActive ? 'border-primary-500' : 'border-slate-700'
@@ -109,7 +111,7 @@ export const PageDrawer: React.FC = () => {
                     style={{ backgroundColor: page.background }}
                     title="Page Thumbnail"
                   >
-                    <span className={`absolute top-1 left-1 text-[8px] font-bold px-1 rounded-sm ${
+                    <span className={`wb-page-number absolute top-1 left-1 text-[8px] font-bold px-1 rounded-sm ${
                       isActive ? 'bg-primary-500 text-white' : 'bg-slate-800/80 text-slate-300'
                     }`}>
                       {idx + 1}
@@ -123,6 +125,7 @@ export const PageDrawer: React.FC = () => {
                     {editingPageId === page.id ? (
                       <input
                         type="text"
+                        aria-label="Page name"
                         value={editingTitle}
                         onChange={(e) => setEditingTitle(e.target.value)}
                         onBlur={() => handleRenameSubmit(page.id)}
@@ -143,8 +146,10 @@ export const PageDrawer: React.FC = () => {
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
-                      <h3 className="text-xs font-semibold text-slate-200 truncate max-w-[120px]">
-                        {page.title}
+                      <h3 className="text-xs font-semibold text-slate-200">
+                        <button type="button" className="wb-page-select" aria-current={isActive ? 'page' : undefined} onClick={(event) => { event.stopPropagation(); setActivePageIndex(idx); }} title={page.title}>
+                          {page.title}
+                        </button>
                       </h3>
                     )}
                     <span className="text-[10px] text-slate-400">
@@ -154,7 +159,7 @@ export const PageDrawer: React.FC = () => {
                 </div>
 
                 {/* Page Action Buttons */}
-                <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity flex-wrap justify-end max-w-[80px]">
+                <div className="wb-page-actions flex items-center gap-1 flex-wrap justify-end">
                   {/* Rename */}
                   <button
                     type="button"
@@ -242,11 +247,11 @@ export const PageDrawer: React.FC = () => {
       </div>
 
       {/* Background Picker for Active Page */}
-      <div className="p-3.5 border-t border-slate-800 bg-slate-950/40">
+      <div className="wb-pages-background p-3.5 border-t border-slate-800 bg-slate-950/40">
         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
           Page Background
         </span>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="wb-background-presets grid grid-cols-2 gap-2">
           {BACKGROUND_PRESETS.map((preset) => {
             const isSelected =
               activePage.background === preset.color &&
@@ -256,6 +261,7 @@ export const PageDrawer: React.FC = () => {
               <button
                 key={`${preset.name}-${preset.type}`}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => updateActivePageBackground(preset.color, preset.type)}
                 className={`flex items-center gap-1.5 p-2 rounded-xl text-xs font-medium border transition-all ${
                   isSelected
@@ -264,7 +270,7 @@ export const PageDrawer: React.FC = () => {
                 }`}
               >
                 {preset.icon}
-                <span className="truncate">{preset.name}</span>
+                <span>{preset.name}</span>
               </button>
             );
           })}
@@ -272,7 +278,7 @@ export const PageDrawer: React.FC = () => {
       </div>
 
       {/* Add Page Footer Button */}
-      <div className="p-3.5 border-t border-slate-800 bg-slate-900">
+      <div className="wb-pages-footer p-3.5 border-t border-slate-800 bg-slate-900">
         <button
           type="button"
           onClick={() => addPage()}
