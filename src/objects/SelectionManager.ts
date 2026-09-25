@@ -13,15 +13,19 @@ export class SelectionManager {
     const objMap = new Map(objects.map(o => [o.id, o]));
     
     for (const id of selectedIds) {
+      if (!objMap.has(id)) continue;
       let currentId = id;
       let topLevelId = id;
+      const visited = new Set<string>([id]);
       
       // Traverse up to find the highest parent group
       while (currentId) {
         const obj = objMap.get(currentId);
-        if (obj && obj.parentGroupId) {
-          currentId = obj.parentGroupId;
-          topLevelId = obj.parentGroupId;
+        const parent = obj?.parentGroupId ? objMap.get(obj.parentGroupId) : undefined;
+        if (parent?.type === 'group' && !visited.has(parent.id)) {
+          currentId = parent.id;
+          topLevelId = parent.id;
+          visited.add(parent.id);
         } else {
           break;
         }

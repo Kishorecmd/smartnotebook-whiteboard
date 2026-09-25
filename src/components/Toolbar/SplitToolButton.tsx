@@ -34,19 +34,20 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
   }
 
   return (
-    <div className={`${baseWrapper} ${variantStyles} ${className}`}>
+    <div data-active={isActive} className={`wb-split-tool ${baseWrapper} ${variantStyles} ${className}`}>
       {/* Main Button */}
       <button
         type="button"
         title={label}
-        aria-label={label}
+        aria-label={label} aria-pressed={isActive}
         disabled={isDisabled}
         onClick={onMainClick}
-        className="flex min-w-0 flex-1 items-center justify-center rounded-l-2xl px-2 hover:bg-white/5 active:scale-95 transition-all focus:outline-none"
+        className="wb-split-main flex min-w-0 flex-1 items-center justify-center rounded-l-2xl px-2 hover:bg-white/5 active:scale-95 transition-all focus:outline-none"
       >
         <div className="w-6 h-6 flex items-center justify-center pointer-events-none">
           {icon}
         </div>
+        <span className="wb-split-label">{label}</span>
       </button>
 
       {/* Divider */}
@@ -63,6 +64,7 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
         className={`flex items-center justify-center w-[var(--split-chevron-width)] rounded-r-2xl hover:bg-white/10 active:scale-95 transition-all focus:outline-none ${isDropdownOpen ? 'bg-white/10 text-white' : ''}`}
       >
         <ChevronDown className="w-4 h-4 pointer-events-none" />
+
       </button>
     </div>
   );

@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { ClassroomWorkspace } from './classroom/ClassroomWorkspace';
+import './whiteboard.css';
 import {
   WhiteboardCanvas,
   HeaderBar,
@@ -28,7 +30,28 @@ import { StorageService } from './services';
 import { ResponsiveLayoutManager } from './core/responsive';
 
 const WhiteboardApp: React.FC = () => {
+  const [classroomMode, setClassroomMode] = useState(() => {
+    try { return localStorage.getItem('jhw_workspace_mode') !== 'whiteboard'; } catch { return true; }
+  });
+  const switchWorkspace = (classroom: boolean) => {
+    setClassroomMode(classroom);
+    try { localStorage.setItem('jhw_workspace_mode', classroom ? 'classroom' : 'whiteboard'); } catch { /* The workspace can still be used without preferences. */ }
+  };
   const { setDocument, isDirty, isPresenterMode, setPresenterMode, childFriendlyMode, setResponsiveState, showToast } = useWhiteboardStore();
+
+  useEffect(() => {
+    const openClassroom = async () => {
+      try {
+        await useWhiteboardStore.getState().saveCurrentDocument();
+        await StorageService.saveAutosave(useWhiteboardStore.getState().document);
+        switchWorkspace(true);
+      } catch {
+        useWhiteboardStore.getState().showToast('Could not save your board. Please try again before switching.');
+      }
+    };
+    window.addEventListener('jhw-open-classroom', openClassroom);
+    return () => window.removeEventListener('jhw-open-classroom', openClassroom);
+  }, []);
 
   useEffect(() => {
     initializeTeachingTools();
@@ -91,13 +114,15 @@ const WhiteboardApp: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [setPresenterMode]);
 
+  if (classroomMode) return <ClassroomWorkspace onWhiteboard={() => switchWorkspace(false)} />;
+
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col select-none touch-none">
+    <div className="wb-workspace relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col select-none touch-none">
       {/* Top Application Header */}
       {!isPresenterMode && <HeaderBar />}
 
       {/* Main Canvas Workspace */}
-      <main className={`relative flex-1 w-full h-full ${!isPresenterMode ? 'pt-14' : ''}`}>
+      <main className={`relative flex-1 w-full h-full ${!isPresenterMode ? 'wb-canvas-shell' : ''}`}>
         <WhiteboardCanvas />
 
         {/* Floating Controls Layer */}

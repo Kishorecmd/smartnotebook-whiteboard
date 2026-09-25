@@ -57,25 +57,25 @@ export const FractionTool: React.FC = () => {
     <DraggableOverlay toolId="fraction-tool" title="Fractions">
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#ffffff' }}>
         
-        <svg width="200" height="200" viewBox="0 0 200 200" style={{ marginBottom: '30px' }}>
+        <svg role="img" aria-label={`${numerator} of ${denominator} parts shaded`} width="200" height="200" viewBox="0 0 200 200" style={{ marginBottom: '30px' }}>
           {getSlices()}
         </svg>
         
         <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
           {/* Numerator */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <button onClick={() => handleNumeratorChange(1)} style={btnStyle}><Plus size={16} /></button>
+            <button aria-label="Increase numerator" disabled={numerator === denominator} onClick={() => handleNumeratorChange(1)} style={btnStyle}><Plus size={16} /></button>
             <div style={{ fontSize: '32px', fontWeight: 'bold', width: '40px', textAlign: 'center' }}>{numerator}</div>
-            <button onClick={() => handleNumeratorChange(-1)} style={btnStyle}><Minus size={16} /></button>
+            <button aria-label="Decrease numerator" disabled={numerator === 0} onClick={() => handleNumeratorChange(-1)} style={btnStyle}><Minus size={16} /></button>
           </div>
           
           <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#94a3b8' }}>/</div>
           
           {/* Denominator */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <button onClick={() => handleDenominatorChange(1)} style={btnStyle}><Plus size={16} /></button>
+            <button aria-label="Increase denominator" disabled={denominator === 24} onClick={() => handleDenominatorChange(1)} style={btnStyle}><Plus size={16} /></button>
             <div style={{ fontSize: '32px', fontWeight: 'bold', width: '40px', textAlign: 'center' }}>{denominator}</div>
-            <button onClick={() => handleDenominatorChange(-1)} style={btnStyle}><Minus size={16} /></button>
+            <button aria-label="Decrease denominator" disabled={denominator === 1} onClick={() => handleDenominatorChange(-1)} style={btnStyle}><Minus size={16} /></button>
           </div>
         </div>
         

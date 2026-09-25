@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StickyNote, Plus, Trash2 } from 'lucide-react';
 import { TeachingToolRegistry } from '../TeachingToolRegistry';
 import { DraggableOverlay } from '../components/DraggableOverlay';
+import { useWhiteboardStore } from '../../store';
 
 interface Note {
   id: string;
@@ -11,16 +12,28 @@ interface Note {
 
 const COLORS = ['#fef08a', '#fbcfe8', '#bfdbfe', '#bbf7d0'];
 
-export const StickyNoteBoardTool: React.FC = () => {
-  const [notes, setNotes] = useState<Note[]>([]);
+const NotesForBoard: React.FC<{ documentId: string }> = ({ documentId }) => {
+  const storageKey = `jhw_teaching_notes_${documentId}`;
+  const [notes, setNotes] = useState<Note[]>(() => {
+    try {
+      const saved: unknown = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      return Array.isArray(saved) ? saved.filter((note): note is Note => note && typeof note.id === 'string' && typeof note.text === 'string' && COLORS.includes(note.color)) : [];
+    } catch { return []; }
+  });
+  const [removedNote, setRemovedNote] = useState<Note | null>(null);
+  const [saveError, setSaveError] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify(notes)); setSaveError(false); }
+    catch { setSaveError(true); }
+  }, [notes, storageKey]);
 
   const addNote = () => {
     const newNote: Note = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       text: '',
       color: COLORS[Math.floor(Math.random() * COLORS.length)]
     };
-    setNotes([...notes, newNote]);
+    setNotes(previous => [...previous, newNote]);
   };
 
   const updateNote = (id: string, text: string) => {
@@ -28,6 +41,7 @@ export const StickyNoteBoardTool: React.FC = () => {
   };
 
   const deleteNote = (id: string) => {
+    setRemovedNote(notes.find(note => note.id === id) || null);
     setNotes(notes.filter(n => n.id !== id));
   };
 
@@ -55,6 +69,9 @@ export const StickyNoteBoardTool: React.FC = () => {
           </button>
         </div>
 
+        <p role="status" style={{ fontSize: 11, color: saveError ? '#b91c1c' : '#64748b', marginBottom: 12 }}>{saveError ? 'Notes could not be saved on this device.' : 'Saved on this device for this board.'}</p>
+        {removedNote && <button onClick={() => { setNotes(previous => [...previous, removedNote]); setRemovedNote(null); }} style={{ marginBottom: 12, color: '#365f4c' }}>Undo note deletion</button>}
+
         <div style={{ 
           flex: 1, 
           overflowY: 'auto', 
@@ -75,6 +92,7 @@ export const StickyNoteBoardTool: React.FC = () => {
               flexDirection: 'column'
             }}>
               <textarea
+                aria-label="Sticky note text"
                 value={note.text}
                 onChange={(e) => updateNote(note.id, e.target.value)}
                 placeholder="Type a note..."
@@ -87,10 +105,12 @@ export const StickyNoteBoardTool: React.FC = () => {
                   outline: 'none',
                   fontFamily: 'inherit',
                   fontSize: '14px',
+                  paddingRight: '24px',
                   color: '#334155'
                 }}
               />
               <button 
+                aria-label="Delete note"
                 onClick={() => deleteNote(note.id)}
                 style={{
                   position: 'absolute',
@@ -122,6 +142,11 @@ export const StickyNoteBoardTool: React.FC = () => {
       </div>
     </DraggableOverlay>
   );
+};
+
+export const StickyNoteBoardTool: React.FC = () => {
+  const documentId = useWhiteboardStore(state => state.document.id);
+  return <NotesForBoard key={documentId} documentId={documentId} />;
 };
 
 export const registerStickyNoteTool = () => {

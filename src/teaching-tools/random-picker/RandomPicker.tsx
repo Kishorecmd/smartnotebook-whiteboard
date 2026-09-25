@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Users, Shuffle, UserMinus } from 'lucide-react';
 import { DraggableOverlay } from '../components/DraggableOverlay';
 import { TeachingToolRegistry } from '../TeachingToolRegistry';
@@ -9,6 +9,8 @@ export const RandomPickerTool: React.FC = () => {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [isPicking, setIsPicking] = useState(false);
   const [mode, setMode] = useState<'edit' | 'pick'>('pick');
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
   const handleUpdateNames = () => {
     const newNames = namesText.split('\n').map(n => n.trim()).filter(n => n.length > 0);
@@ -18,7 +20,7 @@ export const RandomPickerTool: React.FC = () => {
   };
 
   const pickRandom = () => {
-    if (names.length === 0) return;
+    if (names.length === 0 || isPicking) return;
     
     setIsPicking(true);
     setSelectedName(null);
@@ -41,6 +43,7 @@ export const RandomPickerTool: React.FC = () => {
         playTada();
       }
     }, 100);
+    intervalRef.current = interval;
   };
 
   const playTada = () => {
@@ -65,6 +68,7 @@ export const RandomPickerTool: React.FC = () => {
       
       oscillator.start(now);
       oscillator.stop(now + 0.5);
+      oscillator.onended = () => { void audioCtx.close(); };
     } catch {
       // Audio context might be blocked
     }
@@ -72,14 +76,19 @@ export const RandomPickerTool: React.FC = () => {
 
   const removeSelected = () => {
     if (!selectedName) return;
-    const newNames = names.filter(n => n !== selectedName);
+    const index = names.indexOf(selectedName);
+    const newNames = names.filter((_, i) => i !== index);
     setNames(newNames);
     setNamesText(newNames.join('\n'));
     setSelectedName(null);
   };
 
   const shuffle = () => {
-    const newNames = [...names].sort(() => Math.random() - 0.5);
+    const newNames = [...names];
+    for (let i = newNames.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newNames[i], newNames[j]] = [newNames[j], newNames[i]];
+    }
     setNames(newNames);
     setNamesText(newNames.join('\n'));
   };
@@ -97,6 +106,7 @@ export const RandomPickerTool: React.FC = () => {
             Pick Student
           </button>
           <button
+            disabled={isPicking}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${mode === 'edit' ? 'bg-indigo-500 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
             onClick={() => setMode('edit')}
           >
@@ -108,6 +118,7 @@ export const RandomPickerTool: React.FC = () => {
           <div className="flex flex-col gap-3">
             <p className="text-sm text-slate-400">Enter names, one per line:</p>
             <textarea
+              aria-label="Student names, one per line"
               className="w-full h-64 bg-slate-950 border border-slate-700 rounded-xl p-4 text-white resize-none focus:outline-none focus:border-indigo-500"
               value={namesText}
               onChange={(e) => setNamesText(e.target.value)}
@@ -129,7 +140,7 @@ export const RandomPickerTool: React.FC = () => {
                   {selectedName}
                 </span>
               ) : (
-                <span className="text-2xl text-slate-500 font-medium">Ready to pick...</span>
+                <span className="text-2xl text-slate-500 font-medium">{names.length ? 'Ready to pick...' : 'Add names in Edit List'}</span>
               )}
             </div>
 

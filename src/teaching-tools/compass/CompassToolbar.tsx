@@ -34,13 +34,7 @@ export const CompassToolbar: React.FC<CompassToolbarProps> = ({ compass }) => {
       updatedAt: Date.now()
     };
     
-    engine.getCommandManager().execute({
-      id: `cmd_${Date.now()}`,
-      name: 'Draw Circle',
-      execute: () => engine.addObject(circle),
-      undo: () => engine.deleteObject(circle.id),
-      redo: () => engine.addObject(circle)
-    });
+    engine.addObject(circle);
   };
 
   const handleDrawArc = () => {
@@ -73,13 +67,7 @@ export const CompassToolbar: React.FC<CompassToolbarProps> = ({ compass }) => {
       updatedAt: Date.now()
     };
     
-    engine.getCommandManager().execute({
-      id: `cmd_${Date.now()}`,
-      name: 'Draw Arc',
-      execute: () => engine.addObject(arc),
-      undo: () => engine.deleteObject(arc.id),
-      redo: () => engine.addObject(arc)
-    });
+    engine.addObject(arc);
   };
 
   return (

@@ -1,5 +1,5 @@
 import { WhiteboardObject, BoundingBox } from '../types';
-import { calculateBoundingBox } from '../utils';
+import { getCombinedBoundingBox } from '../utils';
 
 export class GroupManager {
   /**
@@ -50,6 +50,7 @@ export class GroupManager {
       return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
     }
     
-    return calculateBoundingBox(renderableDescendants);
+    return getCombinedBoundingBox(renderableDescendants)
+      ?? { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
   }
 }

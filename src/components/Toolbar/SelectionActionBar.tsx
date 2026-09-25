@@ -93,6 +93,7 @@ export const SelectionActionBar: React.FC = () => {
 
   const activePage = doc.pages[activePageIndex] || doc.pages[0];
   const selectedObjects = activePage?.objects.filter((obj) => selectedIds.includes(obj.id)) || [];
+  if (selectedObjects.length === 0) return null;
   const isSingleTextSelected = selectedObjects.length === 1 && selectedObjects[0].type === 'text';
   const selectedTextObj = isSingleTextSelected ? (selectedObjects[0] as TextObject) : null;
   const selectedStrokes = selectedObjects.filter((obj) => obj.type === 'stroke');
@@ -187,7 +188,7 @@ export const SelectionActionBar: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[calc(100vw-16px)] lg:w-auto max-w-[calc(100vw-16px)] flex flex-col items-center select-none animate-fade-in" style={{ zIndex: 200 }}>
+    <div className="wb-ui wb-selection-bar fixed top-20 left-1/2 -translate-x-1/2 w-[calc(100vw-16px)] lg:w-auto max-w-[calc(100vw-16px)] flex flex-col items-center select-none animate-fade-in" style={{ zIndex: 200 }}>
       {/* Floating Submenus */}
       {activeMenu === 'ruler' && selectedGuideObj && (
         <div
@@ -849,7 +850,7 @@ export const SelectionActionBar: React.FC = () => {
             className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
           >
             <Combine className="w-4 h-4 text-amber-400" />
-            <span className="sm:hidden">Group</span>
+            <span>Group</span>
           </button>
         )}
         {selectedObjects.some(obj => obj.type === 'group') && (
@@ -861,7 +862,7 @@ export const SelectionActionBar: React.FC = () => {
             className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-medium"
           >
             <SplitSquareHorizontal className="w-4 h-4 text-orange-400" />
-            <span className="sm:hidden">Ungroup</span>
+            <span>Ungroup</span>
           </button>
         )}
 
@@ -944,8 +945,8 @@ export const SelectionActionBar: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveMenu((prev) => (prev === 'ruler' ? 'none' : 'ruler'))}
-            title="Ruler Settings"
-            aria-label="Ruler Settings"
+            title="Guide Settings"
+            aria-label="Guide Settings"
             className={`p-2 rounded-xl transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs ${
               activeMenu === 'ruler'
                 ? 'bg-slate-800 text-primary-400 ring-1 ring-primary-500'
@@ -953,7 +954,7 @@ export const SelectionActionBar: React.FC = () => {
             }`}
           >
             <Ruler className="w-4 h-4" />
-            <span className="inline">Ruler Settings</span>
+            <span className="inline">Guide Settings</span>
           </button>
         )}
 

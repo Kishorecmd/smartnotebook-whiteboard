@@ -1,5 +1,6 @@
 import { CoordinateTransformer, CanvasRenderer, TextRenderer } from '../canvas';
 import { CommandManager } from './CommandManager';
+import { HandwritingGrouping } from './HandwritingGrouping';
 import { InputManager } from '../input/InputManager';
 import type { PointerManager } from '../input/PointerManager';
 import type { InputRouter } from '../input/InputRouter';
@@ -79,6 +80,7 @@ export class WhiteboardEngine {
 
   // Tool settings
   private settings: ToolSettings = {
+    autoGrouping: 'words',
     tool: 'pen',
     activePenId: 'fine',
     color: '#1e293b',
@@ -112,6 +114,7 @@ export class WhiteboardEngine {
 
   // Document objects in current page
   private objects: WhiteboardObject[] = [];
+  private handwritingGrouping = new HandwritingGrouping();
   private background: string = '#ffffff';
   private backgroundType: CanvasBackgroundType = 'plain';
 
@@ -304,6 +307,7 @@ export class WhiteboardEngine {
 
   public setActiveTool(toolType: ToolType): void {
     if (this.activeToolType === toolType) return;
+    this.handwritingGrouping.reset();
 
     const oldTool = this.getActiveTool();
     if (oldTool && oldTool.onDeactivate) {
@@ -335,6 +339,7 @@ export class WhiteboardEngine {
   }
 
   public updateToolSettings(newSettings: Partial<ToolSettings>): void {
+    this.handwritingGrouping.reset();
     this.settings = { ...this.settings, ...newSettings };
     if (newSettings.tool) {
       this.setActiveTool(newSettings.tool);
@@ -392,7 +397,7 @@ export class WhiteboardEngine {
     const selectableObjects = this.objects.filter(o => !o.locked);
     if (selectableObjects.length === 0) return;
 
-    this.selectedIds = new Set(selectableObjects.map(o => o.id));
+    this.selectedIds = this.objectManager.getEffectiveSelection(new Set(selectableObjects.map(o => o.id)));
     this.updateSelectionVisuals();
     if (this.callbacks.onSelectionChange) {
       this.callbacks.onSelectionChange(this.getSelectedIds());
@@ -454,13 +459,22 @@ export class WhiteboardEngine {
   public updateSelectionVisuals(): void {
     const selected = this.getSelectedObjects();
     const zoom = this.transformer.getZoom();
-    const box = getCombinedBoundingBox(selected, 4 / zoom);
+    const box = getCombinedBoundingBox(selected, 4 / zoom, this.objects);
     this.renderer.setSelectionBox(box);
   }
 
   // --- Object Lifecycle & Mutation ---
 
+  public commitHandwritingStroke(stroke: FreehandStroke, source: string, startedAt: number): void {
+    const mode = this.settings.autoGrouping ?? 'words';
+    const command = this.handwritingGrouping.command(stroke, source, startedAt, mode,
+      () => this.getObjects(), (objects) => this.setObjects(objects));
+    this.commandManager.execute(command);
+    this.handwritingGrouping.remember(stroke, source, mode);
+  }
+
   public addObject(obj: WhiteboardObject): void {
+    this.handwritingGrouping.reset();
     const command = new AddObjectCommand(
       obj,
       () => this.getObjects(),
@@ -482,6 +496,7 @@ export class WhiteboardEngine {
   }
 
   public setObjects(objects: WhiteboardObject[], notify: boolean = true): void {
+    this.handwritingGrouping.reset();
     const nextIds = new Set(objects.map((object) => object.id));
     for (const previous of this.objects) {
       if (nextIds.has(previous.id)) continue;

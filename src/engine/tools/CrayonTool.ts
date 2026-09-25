@@ -1,7 +1,7 @@
 import { ITool } from './ITool';
 import { Point } from '../../types';
 import { createStrokeObject, createShapeObject } from '../../models';
-import { AddStrokeCommand } from '../commands/AddStrokeCommand';
+
 import { AddObjectCommand } from '../commands/AddObjectCommand';
 import type { WhiteboardEngine } from '../WhiteboardEngine';
 
@@ -20,7 +20,7 @@ export class CrayonTool implements ITool {
     }
 
     const snappedPoint = engine.getRulerSnapper().snapPoint(worldPoint, _e.pointerId, _e.shiftKey);
-    const points = [snappedPoint];
+    const points = [{ ...snappedPoint, time: Date.now() }];
     this.activeStrokes.set(_e.pointerId, points);
 
     const settings = engine.getToolSettings();
@@ -115,12 +115,7 @@ export class CrayonTool implements ITool {
           opacity: settings.opacity,
         });
 
-        const command = new AddStrokeCommand(
-          stroke,
-          () => engine.getObjects(),
-          (objects) => engine.setObjects(objects)
-        );
-        engine.getCommandManager().execute(command);
+        engine.commitHandwritingStroke(stroke, _e.pointerType, points[0].time ?? Date.now());
       }
     } else {
       engine.getRenderer().setActiveStroke(_e.pointerId, null);

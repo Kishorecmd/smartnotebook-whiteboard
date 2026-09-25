@@ -77,6 +77,16 @@ export class StrokeRenderer {
 
     const points = stroke.points;
 
+    // Polygon tools explicitly disable smoothing to preserve their vertices.
+    if (stroke.smooth === false && points.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (const point of points.slice(1)) ctx.lineTo(point.x, point.y);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
     // Single point -> draw a filled circle dot
     if (points.length === 1) {
       const pt = points[0];

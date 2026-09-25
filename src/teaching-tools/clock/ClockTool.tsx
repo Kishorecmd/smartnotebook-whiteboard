@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Clock as ClockIcon, Play, Pause } from 'lucide-react';
 import { TeachingToolRegistry } from '../TeachingToolRegistry';
 import { DraggableOverlay } from '../components/DraggableOverlay';
@@ -6,6 +6,8 @@ import { DraggableOverlay } from '../components/DraggableOverlay';
 export const ClockTool: React.FC = () => {
   const [time, setTime] = useState(new Date());
   const [isRealtime, setIsRealtime] = useState(true);
+  const dragCleanup = useRef<(() => void) | null>(null);
+  useEffect(() => () => dragCleanup.current?.(), []);
   
   useEffect(() => {
     if (isRealtime) {
@@ -20,6 +22,7 @@ export const ClockTool: React.FC = () => {
     const newTime = new Date(time);
     newTime.setHours(hours);
     newTime.setMinutes(minutes);
+    newTime.setSeconds(0);
     setTime(newTime);
   };
 
@@ -28,6 +31,7 @@ export const ClockTool: React.FC = () => {
     
     e.preventDefault();
     e.stopPropagation();
+    dragCleanup.current?.();
     
     const target = e.currentTarget as HTMLElement;
     const rect = target.parentElement!.getBoundingClientRect();
@@ -41,10 +45,10 @@ export const ClockTool: React.FC = () => {
       if (angle < 0) angle += 360;
       
       if (type === 'minute') {
-        const minutes = Math.floor(angle / 6);
+        const minutes = Math.round(angle / 6) % 60;
         setManualTime(time.getHours(), minutes);
       } else {
-        const hours = Math.floor(angle / 30);
+        const hours = (Math.round(angle / 30) % 12) + (time.getHours() >= 12 ? 12 : 0);
         setManualTime(hours, time.getMinutes());
       }
     };
@@ -52,10 +56,13 @@ export const ClockTool: React.FC = () => {
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
     };
     
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    dragCleanup.current = onUp;
   };
 
   const hours = time.getHours();
@@ -73,6 +80,7 @@ export const ClockTool: React.FC = () => {
         {/* Clock Face */}
         <div style={{
           position: 'relative',
+          touchAction: 'none',
           width: '200px',
           height: '200px',
           borderRadius: '50%',
@@ -89,8 +97,8 @@ export const ClockTool: React.FC = () => {
             return (
               <div key={num} style={{
                 position: 'absolute',
-                left: x,
-                top: y,
+                left: `${x / 2}%`,
+                top: `${y / 2}%`,
                 transform: 'translate(-50%, -50%)',
                 fontSize: '18px',
                 fontWeight: 'bold',
@@ -164,12 +172,12 @@ export const ClockTool: React.FC = () => {
         </div>
 
         {/* Controls */}
-        <div style={{ marginTop: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ marginTop: '18px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px', alignItems: 'center' }}>
           <div style={{ fontSize: '24px', fontWeight: 'bold', fontFamily: 'monospace', width: '120px', textAlign: 'center' }}>
             {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
           </div>
           <button
-            onClick={() => setIsRealtime(!isRealtime)}
+            onClick={() => { if (!isRealtime) setTime(new Date()); else { const manual = new Date(time); manual.setSeconds(0); setTime(manual); } setIsRealtime(!isRealtime); }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -186,6 +194,10 @@ export const ClockTool: React.FC = () => {
             {isRealtime ? 'Realtime' : 'Interactive'}
           </button>
         </div>
+        {!isRealtime && <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
+          <label>Hours <input aria-label="Clock hours" type="number" min={0} max={23} value={hours} onChange={event => setManualTime(Math.max(0, Math.min(23, Number(event.target.value))), minutes)} style={{ width: 52, border: '1px solid #b8c9af', borderRadius: 6, padding: 5 }} /></label>
+          <label>Minutes <input aria-label="Clock minutes" type="number" min={0} max={59} value={minutes} onChange={event => setManualTime(hours, Math.max(0, Math.min(59, Number(event.target.value))))} style={{ width: 52, border: '1px solid #b8c9af', borderRadius: 6, padding: 5 }} /></label>
+        </div>}
       </div>
     </DraggableOverlay>
   );

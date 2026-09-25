@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, GripHorizontal } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 
@@ -11,77 +11,56 @@ interface DraggableOverlayProps {
 
 export const DraggableOverlay: React.FC<DraggableOverlayProps> = ({ toolId, title, children, defaultPosition }) => {
   const { toggleOverlayTool } = useWhiteboardStore();
-  const [position, setPosition] = useState(defaultPosition || { x: window.innerWidth / 2 - 200, y: window.innerHeight / 2 - 200 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef({ x: 0, y: 0 });
-  const positionStartRef = useRef({ x: 0, y: 0 });
-
+  const [position, setPosition] = useState(defaultPosition || { x: Math.max(8, window.innerWidth / 2 - 200), y: Math.max(84, window.innerHeight / 2 - 220) });
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const constrain = useCallback((point: { x: number; y: number }) => {
+    const rect = overlayRef.current?.getBoundingClientRect();
+    return {
+      x: Math.max(8, Math.min(point.x, window.innerWidth - (rect?.width || 300) - 8)),
+      y: Math.max(84, Math.min(point.y, window.innerHeight - (rect?.height || 200) - 8)),
+    };
+  }, []);
   useEffect(() => {
-    const handlePointerMove = (e: PointerEvent) => {
-      if (!isDragging) return;
-      
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
-      
-      setPosition({
-        x: positionStartRef.current.x + dx,
-        y: positionStartRef.current.y + dy,
-      });
-    };
-
-    const handlePointerUp = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
-    }
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    };
-  }, [isDragging]);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-    positionStartRef.current = { ...position };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
+    const fit = () => setPosition(previous => {
+      const next = constrain(previous);
+      return next.x === previous.x && next.y === previous.y ? previous : next;
+    });
+    const observer = new ResizeObserver(fit);
+    if (overlayRef.current) observer.observe(overlayRef.current);
+    window.addEventListener('resize', fit);
+    fit();
+    return () => { observer.disconnect(); window.removeEventListener('resize', fit); };
+  }, [constrain]);
 
   return (
-    <div
-      className="absolute bg-slate-900 border border-slate-700/60 rounded-3xl shadow-2xl flex flex-col overflow-hidden pointer-events-auto"
-      style={{
-        left: position.x,
-        top: position.y,
-        minWidth: 300,
-        zIndex: 40, // Above canvas, below modals
-      }}
-    >
-      <div
-        className="flex items-center justify-between p-3 bg-slate-800/80 cursor-grab active:cursor-grabbing border-b border-slate-700"
-        onPointerDown={handlePointerDown}
-      >
-        <div className="flex items-center gap-2 text-slate-300">
-          <GripHorizontal className="w-5 h-5 text-slate-500" />
-          <span className="font-medium">{title}</span>
-        </div>
-        <button
-          type="button"
-          aria-label={`Close ${title}`}
-          className="p-2 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-          onClick={() => toggleOverlayTool(toolId)}
-          onPointerDown={(e) => e.stopPropagation()} // Prevent dragging when clicking close
-        >
-          <X className="w-5 h-5" />
+    <div ref={overlayRef} className="wb-ui tt-overlay" role="region" aria-label={title}
+      style={{ left: position.x, top: position.y }} onKeyDown={event => event.stopPropagation()}>
+      <header className="tt-overlay-header">
+        <button className="tt-overlay-handle" aria-label={'Move ' + title} title="Drag to move · Arrow keys to reposition"
+          onPointerDown={event => {
+            if (event.button !== 0) return;
+            dragRef.current = { x: event.clientX, y: event.clientY, left: position.x, top: position.y };
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={event => {
+            const start = dragRef.current;
+            if (start) setPosition(constrain({ x: start.left + event.clientX - start.x, y: start.top + event.clientY - start.y }));
+          }}
+          onPointerUp={() => { dragRef.current = null; }}
+          onPointerCancel={() => { dragRef.current = null; }}
+          onLostPointerCapture={() => { dragRef.current = null; }}
+          onKeyDown={event => {
+            const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+            if (!direction) return;
+            event.preventDefault();
+            setPosition(previous => constrain({ x: previous.x + direction[0] * 20, y: previous.y + direction[1] * 20 }));
+          }}>
+          <GripHorizontal size={18} /><span>{title}</span>
         </button>
-      </div>
-      <div className="p-4 flex-1">
-        {children}
-      </div>
+        <button className="tt-overlay-close" aria-label={'Close ' + title} onClick={() => toggleOverlayTool(toolId)}><X size={20} /></button>
+      </header>
+      <div className="tt-overlay-content">{children}</div>
     </div>
   );
 };

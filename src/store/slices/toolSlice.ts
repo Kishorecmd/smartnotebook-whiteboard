@@ -4,6 +4,13 @@ import type { PenOverrides, SliceCreator, ToolSlice } from '../types';
 
 const ACTIVE_PEN_KEY = 'jhw_active_pen';
 const PEN_OVERRIDES_KEY = 'jhw_pen_overrides';
+const AUTO_GROUPING_KEY = 'jhw_auto_grouping';
+const loadAutoGrouping = (): 'off' | 'words' | 'sentences' => {
+  try {
+    const saved = localStorage.getItem(AUTO_GROUPING_KEY);
+    return saved === 'off' || saved === 'sentences' ? saved : 'words';
+  } catch { return 'words'; }
+};
 
 /**
  * The pen in hand and each pen's tweaks persist, so a teacher who writes with a
@@ -37,6 +44,7 @@ const persist = (key: string, value: unknown) => {
 
 export const createToolSlice: SliceCreator<ToolSlice> = (set, get) => ({
   toolSettings: {
+    autoGrouping: loadAutoGrouping(),
     tool: 'pen',
     color: '#0f172a',
     penWidth: 4,
@@ -169,6 +177,7 @@ export const createToolSlice: SliceCreator<ToolSlice> = (set, get) => ({
   },
 
   updateToolSettings: (settings) => {
+    if (settings.autoGrouping) persist(AUTO_GROUPING_KEY, settings.autoGrouping);
     const { engine, toolSettings } = get();
     const updated = { ...toolSettings, ...settings };
     set({ toolSettings: updated });

@@ -7,7 +7,7 @@ import { ToolButton } from './ToolButton';
 import { SplitToolButton } from './SplitToolButton';
 import { ContextToolbar, PopoverType } from './ContextToolbar';
 import { MoreToolbarModal } from './MoreToolbarModal';
-import { PenRegistry } from '../../drawing/pens';
+
 import { useWhiteboardStore } from '../../store';
 import { FileImportService } from '../../services/FileImportService';
 import { visibleWorldBox } from '../../utils';
@@ -34,10 +34,10 @@ const TOOLBAR_CONFIG: ToolbarItemDef[] = [
   { id: 'text', priority: 2, minWidth: 60 },
   { id: 'media', priority: 3, minWidth: 60 },
   { id: 'divider3', priority: 3, minWidth: 10, isDivider: true },
-  { id: 'teaching', priority: 2, minWidth: 60 },
+  { id: 'teaching', priority: 2, minWidth: 74 },
   { id: 'divider4', priority: 4, minWidth: 10, isDivider: true },
-  { id: 'color', priority: 4, minWidth: 60 },
-  { id: 'undo', priority: 3, minWidth: 60 },
+  { id: 'color', priority: 2, minWidth: 60 },
+  { id: 'undo', priority: 1, minWidth: 60 },
   { id: 'redo', priority: 4, minWidth: 60 },
   { id: 'delete', priority: 3, minWidth: 60 },
 ];
@@ -63,7 +63,7 @@ export const MainToolbar: React.FC = () => {
   const [pendingImageAudioImage, setPendingImageAudioImage] = useState<File | null>(null);
   const [isImageAudioDialogOpen, setIsImageAudioDialogOpen] = useState(false);
   const [imageAudioError, setImageAudioError] = useState<string | null>(null);
-  const activePen = PenRegistry.getOrDefault(toolSettings.activePenId);
+
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [availableWidth, setAvailableWidth] = useState(window.innerWidth - 48);
@@ -243,15 +243,16 @@ export const MainToolbar: React.FC = () => {
 
   // Calculate visible items
   const visibleItems = useMemo(() => {
-    let widthRemaining = availableWidth - 80; // reserve 80px for "More" button & padding
+    const compact = availableWidth < 450; let widthRemaining = availableWidth - (compact ? 64 : 80); // reserve 80px for "More" button & padding
     const visibleIds = new Set<ToolbarItemId>();
     
     // Sort by priority, then by original index
     const sortedConfig = [...TOOLBAR_CONFIG].sort((a, b) => a.priority - b.priority);
 
     for (const item of sortedConfig) {
-      if (widthRemaining >= item.minWidth) {
-        widthRemaining -= item.minWidth;
+      const itemWidth = compact && !item.isDivider ? (['pen', 'marker', 'eraser'].includes(item.id) ? 70 : 52) : item.minWidth;
+      if (widthRemaining >= itemWidth) {
+        widthRemaining -= itemWidth;
         visibleIds.add(item.id);
       }
     }
@@ -268,11 +269,11 @@ export const MainToolbar: React.FC = () => {
       case 'pan':
         return <ToolButton key={id} icon={<Hand className="w-6 h-6" />} label="Pan" isActive={toolSettings.tool === 'pan'} onClick={() => handleSelectTool('pan')} />;
       case 'pen':
-        return <SplitToolButton key={id} icon={<Pen className="w-6 h-6" />} label={activePen.name} isActive={toolSettings.tool === 'pen'} isDropdownOpen={activePopover === 'pens'} onMainClick={() => { setActivePopover('none'); activateLastPen(); }} onDropdownClick={() => togglePopover('pens')} />;
+        return <SplitToolButton key={id} icon={<Pen className="w-6 h-6" />} label="Pen" isActive={toolSettings.tool === 'pen'} isDropdownOpen={activePopover === 'pens'} onMainClick={() => { setActivePopover('none'); activateLastPen(); }} onDropdownClick={() => togglePopover('pens')} />;
       case 'marker':
-        return <SplitToolButton key={id} icon={<Highlighter className="w-6 h-6" />} label="Marker" isActive={toolSettings.tool === 'marker'} isDropdownOpen={activePopover === 'width'} onMainClick={() => { setActivePopover('none'); handleSelectTool('marker'); }} onDropdownClick={() => togglePopover('width')} />;
+        return <SplitToolButton key={id} icon={<Highlighter className="w-6 h-6" />} label="Marker" isActive={toolSettings.tool === 'marker'} isDropdownOpen={activePopover === 'width'} onMainClick={() => { setActivePopover('none'); handleSelectTool('marker'); }} onDropdownClick={() => { setTool('marker'); togglePopover('width'); }} />;
       case 'eraser':
-        return <SplitToolButton key={id} icon={<Eraser className="w-6 h-6" />} label="Eraser" isActive={toolSettings.tool === 'eraser'} isDropdownOpen={activePopover === 'eraser'} onMainClick={() => { setActivePopover('none'); handleSelectTool('eraser'); }} onDropdownClick={() => togglePopover('eraser')} />;
+        return <SplitToolButton key={id} icon={<Eraser className="w-6 h-6" />} label="Eraser" isActive={toolSettings.tool === 'eraser'} isDropdownOpen={activePopover === 'eraser'} onMainClick={() => { setActivePopover('none'); handleSelectTool('eraser'); }} onDropdownClick={() => { setTool('eraser'); togglePopover('eraser'); }} />;
       case 'shape':
         return <ToolButton key={id} icon={<Shapes className="w-6 h-6" />} label="Shapes" isActive={toolSettings.tool === 'shape' || activePopover === 'shape'} onClick={() => handleSelectTool('shape')} />;
       case 'text':
@@ -283,8 +284,8 @@ export const MainToolbar: React.FC = () => {
         return <ToolButton key={id} icon={<GraduationCap className="w-6 h-6" />} label="Teaching Tools" onClick={() => { setActivePopover('none'); setTeachingPanelOpen(true); }} />;
       case 'color':
         return (
-          <button key={id} className="flex items-center justify-center min-w-[var(--tool-size)] min-h-[var(--tool-size)] w-[var(--tool-size)] h-[var(--tool-size)] rounded-2xl transition-all hover:bg-slate-800 flex-shrink-0" onClick={() => togglePopover('color')} title="Colour Palette" aria-label="Colour Palette">
-            <div className="w-6 h-6 rounded-full border-2 border-slate-600 shadow-inner" style={{ backgroundColor: toolSettings.color }} />
+          <button key={id} className="wb-colour-tool flex flex-col gap-1 items-center justify-center min-w-[var(--tool-size)] min-h-[var(--tool-size)] w-[var(--tool-size)] h-[var(--tool-size)] rounded-2xl transition-all hover:bg-slate-800 flex-shrink-0" onClick={() => togglePopover('color')} title="Colour Palette" aria-label="Colour Palette">
+            <div className="w-6 h-6 rounded-full border-2 border-slate-600 shadow-inner" style={{ backgroundColor: toolSettings.color }} /><span className="text-[10px]">Colour</span>
           </button>
         );
       case 'undo':
@@ -292,7 +293,7 @@ export const MainToolbar: React.FC = () => {
       case 'redo':
         return <ToolButton key={id} icon={<Redo2 className="w-6 h-6" />} label="Redo" onClick={redo} isDisabled={!history.canRedo} />;
       case 'delete':
-        return <ToolButton key={id} icon={<Trash2 className="w-6 h-6" />} label="Delete" onClick={() => setClearDialogOpen(true)} variant="danger" />;
+        return <ToolButton key={id} icon={<Trash2 className="w-6 h-6" />} label="Clear page" onClick={() => setClearDialogOpen(true)} variant="danger" />;
       case 'divider1': case 'divider2': case 'divider3': case 'divider4':
         return <Divider key={id} />;
       default:
@@ -315,7 +316,7 @@ export const MainToolbar: React.FC = () => {
           onMediaInsert={handleMediaInsert}
         />
 
-        <div className="main-toolbar-strip flex flex-row items-center gap-1 bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-[24px] p-[var(--toolbar-padding)] shadow-2xl overflow-hidden h-[var(--toolbar-height)]">
+        <div role="toolbar" aria-label="Whiteboard tools" className="main-toolbar-strip flex flex-row items-center gap-1 bg-slate-900/95 backdrop-blur-xl border border-slate-700/60 rounded-[24px] p-[var(--toolbar-padding)] shadow-2xl overflow-hidden h-[var(--toolbar-height)]">
           
           {visibleItems.map(item => renderItem(item.id))}
 
@@ -324,7 +325,7 @@ export const MainToolbar: React.FC = () => {
             <div className="flex items-center ml-1">
               <ToolButton
                 icon={<MoreHorizontal className="w-6 h-6" />}
-                label="More Tools"
+                label="More"
                 onClick={() => setIsMoreModalOpen(true)}
               />
             </div>

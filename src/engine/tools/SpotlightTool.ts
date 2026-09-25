@@ -59,6 +59,11 @@ export class SpotlightTool implements ITool {
     const activePointers = engine.getPointerManager().getActivePointers();
     if (activePointers.length > 0) return;
     this.isActive = false;
+    // Keep the highlighted area visible between drags; switching tools closes it.
+  }
+
+  public onDeactivate(engine: WhiteboardEngine): void {
+    this.isActive = false;
     engine.setSpotlight(null);
   }
 }

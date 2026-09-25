@@ -330,6 +330,7 @@ export interface ViewportTransform {
 }
 
 export interface ToolSettings {
+  autoGrouping?: 'off' | 'words' | 'sentences';
   tool: ToolType;
   color: string;
   penWidth: number;

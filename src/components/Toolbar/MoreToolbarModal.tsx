@@ -57,7 +57,7 @@ export const MoreToolbarModal: React.FC<MoreToolbarModalProps> = ({
         return (
           <button key={id} className="flex flex-col items-center justify-center rounded-2xl transition-all hover:bg-slate-800 p-2 gap-1 w-full" onClick={() => handleTool(() => onSelectPopover('color'))}>
             <div className="w-6 h-6 rounded-full border-2 border-slate-600 shadow-inner" style={{ backgroundColor: toolSettings.color }} />
-            <span className="text-[10px] font-medium text-slate-300">Color</span>
+            <span className="text-[10px] font-medium text-slate-300">Colour</span>
           </button>
         );
       case 'undo':
@@ -65,7 +65,7 @@ export const MoreToolbarModal: React.FC<MoreToolbarModalProps> = ({
       case 'redo':
         return <ToolButton key={id} showLabel icon={<Redo2 className="w-6 h-6" />} label="Redo" onClick={() => handleTool(redo)} isDisabled={!history.canRedo} className="w-full flex-1" />;
       case 'delete':
-        return <ToolButton key={id} showLabel icon={<Trash2 className="w-6 h-6" />} label="Delete" onClick={() => handleTool(() => setClearDialogOpen(true))} variant="danger" className="w-full flex-1" />;
+        return <ToolButton key={id} showLabel icon={<Trash2 className="w-6 h-6" />} label="Clear page" onClick={() => handleTool(() => setClearDialogOpen(true))} variant="danger" className="w-full flex-1" />;
       default:
         return null;
     }

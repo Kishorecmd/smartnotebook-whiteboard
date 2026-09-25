@@ -1,82 +1,19 @@
-import React, { useState } from 'react';
+import React, { useReducer } from 'react';
 import { Calculator as CalcIcon } from 'lucide-react';
 import { DraggableOverlay } from '../components/DraggableOverlay';
 import { TeachingToolRegistry } from '../TeachingToolRegistry';
+import { calculatorKey, initialCalculator } from './calculatorModel';
 
 export const CalculatorTool: React.FC = () => {
-  const [display, setDisplay] = useState('0');
-  const [equation, setEquation] = useState('');
-  const [newNumber, setNewNumber] = useState(true);
-  const [lastOperator, setLastOperator] = useState<string | null>(null);
-  const [prevValue, setPrevValue] = useState<number | null>(null);
-
-  const handleNum = (num: string) => {
-    if (newNumber) {
-      setDisplay(num);
-      setNewNumber(false);
-    } else {
-      setDisplay(display === '0' && num !== '.' ? num : display + num);
-    }
-  };
-
-  const calculate = (a: number, b: number, op: string) => {
-    switch (op) {
-      case '+': return a + b;
-      case '-': return a - b;
-      case '×': return a * b;
-      case '÷': return b !== 0 ? a / b : NaN;
-      default: return b;
-    }
-  };
-
-  const handleOp = (op: string) => {
-    const current = parseFloat(display);
-    
-    if (prevValue === null) {
-      setPrevValue(current);
-      setEquation(`${current} ${op}`);
-    } else if (lastOperator) {
-      const result = calculate(prevValue, current, lastOperator);
-      setDisplay(String(result));
-      setPrevValue(result);
-      setEquation(`${result} ${op}`);
-    }
-    
-    setLastOperator(op);
-    setNewNumber(true);
-  };
-
-  const handleEqual = () => {
-    if (prevValue !== null && lastOperator) {
-      const current = parseFloat(display);
-      const result = calculate(prevValue, current, lastOperator);
-      setDisplay(String(result));
-      setEquation('');
-      setPrevValue(null);
-      setLastOperator(null);
-      setNewNumber(true);
-    }
-  };
-
-  const handleClear = () => {
-    setDisplay('0');
-    setEquation('');
-    setPrevValue(null);
-    setLastOperator(null);
-    setNewNumber(true);
-  };
-
-  const handleSqrt = () => {
-    const current = parseFloat(display);
-    setDisplay(String(Math.sqrt(current)));
-    setNewNumber(true);
-  };
-
-  const handlePercent = () => {
-    const current = parseFloat(display);
-    setDisplay(String(current / 100));
-    setNewNumber(true);
-  };
+  const [state, press] = useReducer(calculatorKey, initialCalculator);
+  const display = state.display;
+  const equation = state.previous !== null ? state.previous + ' ' + state.operator : '';
+  const handleNum = press;
+  const handleOp = press;
+  const handleEqual = () => press('=');
+  const handleClear = () => press('AC');
+  const handleSqrt = () => press('√');
+  const handlePercent = () => press('%');
 
   const btnClass = "p-4 sm:p-5 text-2xl font-medium rounded-2xl transition-all duration-200 active:scale-95 select-none touch-manipulation";
   const numClass = `${btnClass} bg-slate-700/50 hover:bg-slate-700 text-slate-100`;
@@ -95,29 +32,28 @@ export const CalculatorTool: React.FC = () => {
         {/* Keypad */}
         <div className="grid grid-cols-4 gap-3">
           <button className={funcClass} onClick={handleClear}>AC</button>
-          <button className={funcClass} onClick={() => setDisplay(display.startsWith('-') ? display.slice(1) : '-' + display)}>±</button>
+          <button className={funcClass} onClick={() => press('±')}>±</button>
           <button className={funcClass} onClick={handlePercent}>%</button>
-          <button className={opClass} onClick={() => handleOp('÷')}>÷</button>
-
           <button className={funcClass} onClick={handleSqrt}>√</button>
           <button className={numClass} onClick={() => handleNum('7')}>7</button>
           <button className={numClass} onClick={() => handleNum('8')}>8</button>
           <button className={numClass} onClick={() => handleNum('9')}>9</button>
-          <button className={opClass} onClick={() => handleOp('×')}>×</button>
+          <button className={opClass} onClick={() => handleOp('÷')}>÷</button>
 
           <button className={numClass} onClick={() => handleNum('4')}>4</button>
           <button className={numClass} onClick={() => handleNum('5')}>5</button>
           <button className={numClass} onClick={() => handleNum('6')}>6</button>
-          <button className={opClass} onClick={() => handleOp('-')}>−</button>
+          <button className={opClass} onClick={() => handleOp('×')}>×</button>
 
           <button className={numClass} onClick={() => handleNum('1')}>1</button>
           <button className={numClass} onClick={() => handleNum('2')}>2</button>
           <button className={numClass} onClick={() => handleNum('3')}>3</button>
-          <button className={opClass} onClick={() => handleOp('+')}>+</button>
+          <button className={opClass} onClick={() => handleOp('-')}>−</button>
 
-          <button className={`${numClass} col-span-2`} onClick={() => handleNum('0')}>0</button>
+          <button className={numClass} onClick={() => handleNum('0')}>0</button>
           <button className={numClass} onClick={() => handleNum('.')}>.</button>
           <button className={opClass} onClick={handleEqual}>=</button>
+          <button className={opClass} onClick={() => handleOp('+')}>+</button>
         </div>
       </div>
     </DraggableOverlay>

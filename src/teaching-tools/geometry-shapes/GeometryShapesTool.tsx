@@ -19,7 +19,8 @@ export const GeometryShapesTool: React.FC = () => {
     if (!engine) return;
     
     const transformer = engine.getTransformer();
-    const center = transformer.screenToWorld({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    const rect = engine.getCanvas().getBoundingClientRect();
+    const center = transformer.screenToWorld({ x: rect.width / 2, y: Math.max(120, (rect.height - 180) / 2) });
     
     const scale = 2; // Size multiplier
     const points = path.map(([x, y]) => ({
@@ -35,13 +36,17 @@ export const GeometryShapesTool: React.FC = () => {
       opacity: 1,
       zIndex: engine.getObjects().length + 1
     });
+    stroke.smooth = false;
     
     engine.addObject(stroke);
+    useWhiteboardStore.getState().setTool('select');
+    engine.setSelectedIds([stroke.id]);
+    useWhiteboardStore.getState().toggleOverlayTool('geometry-shapes');
   };
 
   return (
     <DraggableOverlay toolId="geometry-shapes" title="Geometry Shapes">
-      <div style={{ padding: '20px', display: 'flex', gap: '16px', backgroundColor: '#f8fafc' }}>
+      <div style={{ padding: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px', backgroundColor: '#f8fafc' }}>
         {SHAPES.map(shape => (
           <button
             key={shape.name}

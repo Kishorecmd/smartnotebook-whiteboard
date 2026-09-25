@@ -55,6 +55,10 @@ npx cap sync android
 
 ## Storage and files
 
+- While writing, the **Auto-group** control above the toolbar offers **Words** (default), **Sentences**, or **Off**. This preference is saved on the device.
+- Automatic grouping joins nearby pen, pencil, brush, and crayon strokes using spacing and pauses; it does not recognize text. Word mode starts a new group after a pause of about 1.8 seconds, sentence mode after about 3.5 seconds. New lines, wider gaps, tool changes, and edits also start a new group. Use Off for free drawing or Ungroup to separate strokes again.
+- Each stroke still has its own undo step. Existing handwriting is not regrouped automatically, and groups survive saving and reopening a board.
+
 - Documents, serialized autosaves, recovery checkpoints and media are stored locally in IndexedDB.
 - Version History keeps up to 30 checkpoints per board, including up to 15 periodic automatic recovery points. Manual saves, explicit checkpoints and pre-restore safety points are retained preferentially.
 - Restoring a version first captures the current board, then loads the selected checkpoint as an unsaved change so the user can review it before saving.
@@ -87,3 +91,11 @@ Rotate any API key that has been pasted into chat, source control, screenshots o
 - `android` – Capacitor Android wrapper
 
 CI runs tests, lint, production build and the production dependency audit.
+
+## Classroom screen
+
+Smartnotebook opens with a classroom workspace: movable, resizable widgets, a labeled bottom toolbar, five backgrounds, and welcome, focus, and team templates. Add instructions, countdown timers, clocks, random name pickers, group makers, work symbols, traffic lights, dice, and scoreboards. On narrow screens widgets form a scrollable layout. Present hides the editing frame; Escape returns to editing.
+
+Use **Whiteboard** or **Draw** for handwriting and the existing teaching tools. Use **Classroom** in the whiteboard header to return. The board is saved before switching. Your most recently used workspace opens next time.
+
+Classroom screens save automatically in this browser, separately from whiteboard documents. Running timers use a deadline and keep time across screen changes and reloads. Open the screen list to switch screens, create one, download a JSON backup, or import a backup. Imports add screens without replacing existing ones. Screen backups do not include whiteboard documents; export those separately as `.jhw`.

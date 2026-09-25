@@ -56,7 +56,10 @@ export const registerProtractorTool = () => {
     },
 
     renderer: (ctx: CanvasRenderingContext2D, obj: TeachingToolObject, _zoom: number) => {
-      const { x, y, width, height } = obj;
+      ctx.save();
+      ctx.translate(obj.x, obj.y);
+      ctx.scale(obj.width / PROTRACTOR_WIDTH, obj.height / PROTRACTOR_HEIGHT);
+      const x = 0, y = 0, width = PROTRACTOR_WIDTH, height = PROTRACTOR_HEIGHT;
       const centerX = x + width / 2;
       const centerY = y + height - 30; // base is 30px from bottom
 
@@ -161,6 +164,7 @@ export const registerProtractorTool = () => {
         const textY = centerY + (rayLen + 20) * Math.sin(selectedAngleRad);
         ctx.fillText(`${deg}°`, textX, textY);
       }
+      ctx.restore();
     }
   });
 };

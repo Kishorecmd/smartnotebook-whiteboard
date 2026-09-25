@@ -3,6 +3,7 @@ import { Point, WhiteboardObject, TextObject, BoundingBox, HandleType } from '..
 import {
   getCombinedBoundingBox,
   calculateBoundingBox,
+  rotatePoint,
 } from '../../utils';
 import { HitTest } from '../HitTest';
 import { TransformObjectsCommand } from '../commands/TransformObjectsCommand';
@@ -41,7 +42,7 @@ export class SelectTool implements ITool {
 
     // 1. Check if clicking on an active selection's bounding box or handles
     if (selectedObjects.length > 0) {
-      const box = getCombinedBoundingBox(selectedObjects, 4 / zoom);
+      const box = getCombinedBoundingBox(selectedObjects, 4 / zoom, engine.getObjects());
       
       let handle: HandleType | null = null;
       
@@ -164,7 +165,7 @@ export class SelectTool implements ITool {
       } else {
         this.dragMode = 'moving';
         this.activeHandle = 'body';
-        this.initialBoundingBox = getCombinedBoundingBox(activeSelection, 4 / zoom);
+        this.initialBoundingBox = getCombinedBoundingBox(activeSelection, 4 / zoom, engine.getObjects());
         // Snapshot all descendants so children move/scale with the group
         const allAffected = GroupManager.getAllAffectedObjects(
           activeSelection.map((o) => o.id),
@@ -307,6 +308,21 @@ export class SelectTool implements ITool {
       }
 
       const updatedObjects = this.initialObjectSnapshots.map((obj) => {
+        if (obj.type === 'stroke') {
+          // Ink is rendered from world-space points; changing rotation alone
+          // has no visible effect. All strokes share the selection's pivot.
+          const points = obj.points.map(point => rotatePoint(point, { x: cx, y: cy }, dAngle));
+          const bounds = calculateBoundingBox(points);
+          return {
+            ...obj,
+            points,
+            x: bounds.minX,
+            y: bounds.minY,
+            height: Math.max(1, bounds.height),
+            updatedAt: Date.now(),
+          };
+        }
+        if (obj.type === 'group') return obj;
         const newObj = { ...obj } as any;
         newObj.rotation = (obj.rotation || 0) + dAngle;
         return newObj;
@@ -415,9 +431,9 @@ export class SelectTool implements ITool {
             (objects) => engine.setObjects(objects),
             this.dragMode === 'moving' || this.dragMode === 'compass-drag' ? 'Move' : this.dragMode === 'rotating' ? 'Rotate' : 'Resize'
           );
-          // We push this directly into CommandManager history stack without calling execute again
-          // since objects are already transformed in memory
-          engine.getCommandManager().recordCommand(cmd);
+          // The drag preview only updates the canvas. Publishing the absolute
+          // final snapshots also updates the document and marks it for saving.
+          engine.getCommandManager().execute(cmd);
         }
       }
     }
@@ -430,7 +446,7 @@ export class SelectTool implements ITool {
 
     // Re-render selection box cleanly
     const zoom = engine.getTransformer().getZoom();
-    const box = getCombinedBoundingBox(engine.getSelectedObjects(), 4 / zoom);
+    const box = getCombinedBoundingBox(engine.getSelectedObjects(), 4 / zoom, engine.getObjects());
     engine.getRenderer().setSelectionBox(box, null);
   }
 
@@ -445,7 +461,7 @@ export class SelectTool implements ITool {
     this.activeHandle = null;
     engine.getRenderer().setMarqueeBox(null);
     const zoom = engine.getTransformer().getZoom();
-    const box = getCombinedBoundingBox(engine.getSelectedObjects(), 4 / zoom);
+    const box = getCombinedBoundingBox(engine.getSelectedObjects(), 4 / zoom, engine.getObjects());
     engine.getRenderer().setSelectionBox(box, null);
   }
 
@@ -464,7 +480,7 @@ export class SelectTool implements ITool {
     if (!canvas) return;
 
     if (selectedObjects.length > 0) {
-      const box = getCombinedBoundingBox(selectedObjects, 4 / zoom);
+      const box = getCombinedBoundingBox(selectedObjects, 4 / zoom, engine.getObjects());
       if (box) {
         const handle = HitTest.hitTestHandle(worldPoint, box, zoom);
         if (handle) {

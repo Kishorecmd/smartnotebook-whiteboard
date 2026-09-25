@@ -10,17 +10,17 @@ const COLORS = [
 ];
 
 export const ColorPickerTool: React.FC = () => {
-  const { updateToolSettings } = useWhiteboardStore();
+  const { updateToolSettings, toolSettings } = useWhiteboardStore();
 
   const handleColorSelect = (color: string) => {
-    updateToolSettings({ color });
+    updateToolSettings({ color, textColor: color });
   };
 
   return (
     <DraggableOverlay toolId="color-picker" title="Color Palette">
-      <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(11, 1fr)', gap: '10px', backgroundColor: '#f8fafc' }}>
+      <div style={{ width: '540px', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(40px, 1fr))', gap: '10px', backgroundColor: '#f8fafc' }}>
         {COLORS.map(color => (
-          <div
+          <button type="button" aria-label={`Choose color ${color}`} aria-pressed={toolSettings.color === color}
             key={color}
             onClick={() => handleColorSelect(color)}
             style={{
@@ -29,7 +29,7 @@ export const ColorPickerTool: React.FC = () => {
               borderRadius: '50%',
               backgroundColor: color,
               cursor: 'pointer',
-              border: color === '#ffffff' ? '2px solid #e2e8f0' : '2px solid transparent',
+              border: toolSettings.color === color ? '3px solid #345f42' : '2px solid #cbd5e1',
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               transition: 'transform 0.1s ease',
             }}
@@ -47,7 +47,7 @@ export const registerColorPickerTool = () => {
     id: 'color-picker',
     name: 'Color Picker',
     icon: Palette,
-    category: 'PRESENTATION',
+    category: 'DRAWING',
     type: 'overlay-ui',
     description: 'Large color palette for selecting tool colors.',
     component: ColorPickerTool,

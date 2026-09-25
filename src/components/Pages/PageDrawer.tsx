@@ -64,7 +64,7 @@ export const PageDrawer: React.FC = () => {
   return (
     <aside
       aria-label="Pages Drawer"
-      className="fixed top-14 left-0 bottom-0 w-80 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800/80 z-40 flex flex-col shadow-2xl animate-fade-in select-none"
+      className="wb-ui wb-page-drawer fixed top-14 left-0 bottom-0 w-80 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800/80 z-40 flex flex-col shadow-2xl animate-fade-in select-none"
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-800">

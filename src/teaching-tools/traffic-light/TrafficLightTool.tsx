@@ -7,7 +7,7 @@ export const TrafficLightTool: React.FC = () => {
   const [activeLight, setActiveLight] = useState<'red' | 'yellow' | 'green' | null>('red');
 
   const getOpacity = (color: string) => activeLight === color ? 1 : 0.2;
-  const getShadow = (color: string) => activeLight === color ? `0 0 40px ${color}` : 'none';
+  const getShadow = (color: string, light: string) => activeLight === light ? `0 0 40px ${color}` : 'none';
 
   return (
     <DraggableOverlay toolId="traffic-light" title="Traffic Light">
@@ -22,7 +22,7 @@ export const TrafficLightTool: React.FC = () => {
           boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
         }}>
           {/* Red Light */}
-          <div 
+          <button aria-label="Red light: stop" aria-pressed={activeLight === 'red'}
             onClick={() => setActiveLight('red')}
             style={{
               width: '80px',
@@ -30,13 +30,13 @@ export const TrafficLightTool: React.FC = () => {
               borderRadius: '50%',
               backgroundColor: '#ef4444',
               opacity: getOpacity('red'),
-              boxShadow: getShadow('#ef4444'),
+              boxShadow: getShadow('#ef4444', 'red'),
               cursor: 'pointer',
               transition: 'all 0.3s ease'
             }}
           />
           {/* Yellow Light */}
-          <div 
+          <button aria-label="Yellow light: get ready" aria-pressed={activeLight === 'yellow'}
             onClick={() => setActiveLight('yellow')}
             style={{
               width: '80px',
@@ -44,13 +44,13 @@ export const TrafficLightTool: React.FC = () => {
               borderRadius: '50%',
               backgroundColor: '#eab308',
               opacity: getOpacity('yellow'),
-              boxShadow: getShadow('#eab308'),
+              boxShadow: getShadow('#eab308', 'yellow'),
               cursor: 'pointer',
               transition: 'all 0.3s ease'
             }}
           />
           {/* Green Light */}
-          <div 
+          <button aria-label="Green light: go" aria-pressed={activeLight === 'green'}
             onClick={() => setActiveLight('green')}
             style={{
               width: '80px',
@@ -58,7 +58,7 @@ export const TrafficLightTool: React.FC = () => {
               borderRadius: '50%',
               backgroundColor: '#22c55e',
               opacity: getOpacity('green'),
-              boxShadow: getShadow('#22c55e'),
+              boxShadow: getShadow('#22c55e', 'green'),
               cursor: 'pointer',
               transition: 'all 0.3s ease'
             }}

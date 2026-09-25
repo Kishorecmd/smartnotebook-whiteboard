@@ -175,7 +175,11 @@ export function getObjectBoundingBox(obj: WhiteboardObject, padding: number = 0)
 /**
  * Computes the composite bounding box encompassing an array of objects.
  */
-export function getCombinedBoundingBox(objects: WhiteboardObject[], padding: number = 0): BoundingBox | null {
+export function getCombinedBoundingBox(
+  objects: WhiteboardObject[],
+  padding: number = 0,
+  allObjects: WhiteboardObject[] = objects,
+): BoundingBox | null {
   if (objects.length === 0) return null;
 
   let minX = Infinity;
@@ -183,9 +187,35 @@ export function getCombinedBoundingBox(objects: WhiteboardObject[], padding: num
   let maxX = -Infinity;
   let maxY = -Infinity;
 
-  for (const obj of objects) {
+  // Groups are containers, not geometry. Resolve their descendants from the
+  // page so a selected group uses the same bounds as its ungrouped contents.
+  const childrenByParent = new Map<string, WhiteboardObject[]>();
+  for (const obj of allObjects) {
+    if (obj.parentGroupId) {
+      const children = childrenByParent.get(obj.parentGroupId) ?? [];
+      children.push(obj);
+      childrenByParent.set(obj.parentGroupId, children);
+    }
+  }
+  const pending = [...objects];
+  const visited = new Set<string>();
+  for (let i = 0; i < pending.length; i++) {
+    const obj = pending[i];
+    if (visited.has(obj.id)) continue;
+    visited.add(obj.id);
     if (!obj.visible) continue;
-    const box = getObjectBoundingBox(obj, 0);
+    if (obj.type === 'group') {
+      pending.push(...(childrenByParent.get(obj.id) ?? []));
+      continue;
+    }
+    let box = getObjectBoundingBox(obj, 0);
+    if (obj.type === 'teaching-tool' && obj.rotation) {
+      const center = { x: obj.x + obj.width / 2, y: obj.y + obj.height / 2 };
+      box = calculateBoundingBox([
+        { x: box.minX, y: box.minY }, { x: box.maxX, y: box.minY },
+        { x: box.maxX, y: box.maxY }, { x: box.minX, y: box.maxY },
+      ].map(point => rotatePoint(point, center, obj.rotation)));
+    }
     if (box.minX < minX) minX = box.minX;
     if (box.minY < minY) minY = box.minY;
     if (box.maxX > maxX) maxX = box.maxX;

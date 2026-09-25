@@ -60,8 +60,8 @@ export const registerNumberLineTool = () => {
       const { x, y, width, height, toolData } = obj;
       const centerY = y + height / 2;
       
-      const min = toolData?.min || -10;
-      const max = toolData?.max || 10;
+      const min = toolData?.min ?? -10;
+      const max = toolData?.max ?? 10;
       const range = max - min;
       
       // Draw main line
@@ -88,11 +88,12 @@ export const registerNumberLineTool = () => {
       ctx.fillStyle = '#0f172a';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.font = '16px sans-serif';
 
       const paddingX = 40;
       const drawableWidth = width - paddingX * 2;
       const stepPixels = drawableWidth / range;
+      const labelStep = Math.max(1, Math.ceil(24 / stepPixels));
+      ctx.font = `${Math.min(16, Math.max(11, stepPixels))}px sans-serif`;
 
       for (let i = min; i <= max; i++) {
         const tickX = x + paddingX + (i - min) * stepPixels;
@@ -103,7 +104,9 @@ export const registerNumberLineTool = () => {
         ctx.lineWidth = i === 0 ? 4 : 2;
         ctx.stroke();
 
-        ctx.fillText(i.toString(), tickX, centerY + 15);
+        if (i % labelStep === 0 || i === min || i === max) {
+          ctx.fillText(i.toString(), tickX, centerY + 12);
+        }
       }
     }
   });

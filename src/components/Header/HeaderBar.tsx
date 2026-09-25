@@ -10,7 +10,7 @@ import {
   Play,
   Smile,
   MoreVertical,
-  Menu,
+  Sparkles,
   Cloud,
   CloudUpload,
   RefreshCw,
@@ -18,12 +18,13 @@ import {
   LibraryBig,
   Settings2,
   ClipboardCheck,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useWhiteboardStore } from '../../store';
 import { FileImportService, FileService } from '../../services';
 import { visibleWorldBox } from '../../utils';
 import { Point } from '../../types';
-import Logo from '../../assets/logo.png';
+
 
 export const HeaderBar: React.FC = () => {
   const {
@@ -144,7 +145,7 @@ export const HeaderBar: React.FC = () => {
       return (
         <button type="button" aria-label="Save whiteboard locally" className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 rounded-md text-xs text-amber-400 cursor-pointer hover:bg-amber-500/20" onClick={handleSave}>
           <CloudUpload className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Unsaved</span>
+          <span className="hidden sm:inline">Save changes</span>
         </button>
       );
     }
@@ -159,7 +160,7 @@ export const HeaderBar: React.FC = () => {
   // Build the actions dropdown menu
   const MoreMenu = () => (
     <div className="absolute top-full right-2 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-2 flex flex-col z-50 overflow-hidden">
-      <button onClick={() => { setIsMoreMenuOpen(false); setExportModalOpen(true); }} className="sm:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+      <button onClick={() => { setIsMoreMenuOpen(false); setExportModalOpen(true); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
         <Download className="w-4 h-4 text-primary-400" /> Export Options
       </button>
       
@@ -169,19 +170,19 @@ export const HeaderBar: React.FC = () => {
           const doc = await FileService.importFromJHW();
           loadDocumentFromObject(doc);
         } catch {}
-      }} className="lg:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+      }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
         <FolderOpen className="w-4 h-4 text-purple-400" /> Load .JHW
       </button>
 
-      <button onClick={() => { setIsMoreMenuOpen(false); newDocument(); }} className="lg:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+      <button onClick={() => { setIsMoreMenuOpen(false); newDocument(); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
         <FilePlus className="w-4 h-4 text-primary-400" /> New Whiteboard
       </button>
       
-      <button onClick={() => { setIsMoreMenuOpen(false); setSavedDocsModalOpen(true); }} className="lg:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+      <button onClick={() => { setIsMoreMenuOpen(false); setSavedDocsModalOpen(true); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
         <FolderOpen className="w-4 h-4 text-amber-400" /> Saved Boards
       </button>
 
-      <button onClick={() => { setIsMoreMenuOpen(false); toggleFullscreen(); }} className="sm:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
+      <button onClick={() => { setIsMoreMenuOpen(false); toggleFullscreen(); }} className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-white transition-colors w-full text-left">
         <Play className="w-4 h-4 text-emerald-400" /> Present
       </button>
 
@@ -221,127 +222,25 @@ export const HeaderBar: React.FC = () => {
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2.5 bg-slate-900/85 backdrop-blur-xl border-b border-slate-800/80 select-none shadow-md h-12 sm:h-14">
-      
-      {/* Left Area (Mobile: Menu + Status, Tablet/Desktop: Logo + Name) */}
-      <div className="flex items-center gap-2 sm:gap-4 shrink-0 overflow-hidden">
-        
-        {/* Mobile Hamburger */}
-        <button type="button" aria-label="Open application menu" className="sm:hidden p-2 text-slate-400 hover:text-white" onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}>
-          <Menu className="w-5 h-5" />
-        </button>
-
-        {/* Logo (Hidden on very small screens) */}
-        <div className="hidden sm:flex items-center gap-2">
-          <img src={Logo} alt="Jaihind" className="h-8 object-contain drop-shadow-md" />
-        </div>
-
-        <div className="w-px h-6 bg-slate-700 hidden sm:block" />
-
-        {/* Document Title (Editable) */}
-        <div className="flex items-center gap-2 min-w-0">
-          {isEditingTitle ? (
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                aria-label="Whiteboard title"
-                value={titleInput}
-                onChange={(e) => setTitleInput(e.target.value)}
-                onBlur={handleSaveTitle}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveTitle();
-                  if (e.key === 'Escape') {
-                    setTitleInput(doc.title);
-                    setIsEditingTitle(false);
-                  }
-                }}
-                autoFocus
-                className="w-24 sm:w-48 px-2 py-1 text-sm font-medium bg-slate-800 text-white border border-primary-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50 truncate"
-              />
-              <button
-                type="button"
-                aria-label="Confirm whiteboard title"
-                onClick={handleSaveTitle}
-                className="p-1 text-emerald-400 hover:text-emerald-300"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setTitleInput(doc.title);
-                setIsEditingTitle(true);
-              }}
-              className="group flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800/70 transition-colors truncate max-w-[120px] sm:max-w-xs"
-              title="Rename document"
-            >
-              <span className="truncate">{doc.title}</span>
-              <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-            </button>
-          )}
-        </div>
+    <header className="wb-header wb-ui">
+      <button className="wb-brand" aria-label="Open classroom screen" title="Back to your classroom screens" onClick={() => window.dispatchEvent(new Event('jhw-open-classroom'))}>
+        <span className="wb-brand-mark"><Sparkles size={21} /></span>
+        <span className="wb-brand-name">Smartnotebook<small>THE WHITEBOARD</small></span>
+      </button>
+      <div className="wb-document">
+        {isEditingTitle ? <div className="wb-title-edit">
+          <input aria-label="Whiteboard title" value={titleInput} autoFocus maxLength={100} onChange={e => setTitleInput(e.target.value)} onBlur={handleSaveTitle} onKeyDown={e => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') setIsEditingTitle(false); }} />
+          <button aria-label="Confirm whiteboard title" onClick={handleSaveTitle}><Check size={16} /></button>
+        </div> : <button className="wb-document-name" title="Rename document" onClick={() => { setTitleInput(doc.title); setIsEditingTitle(true); }}><span>{doc.title}</span><Edit2 size={12} /></button>}
+        <div className="wb-save-status">{renderSaveStatus()}</div>
       </div>
-
-      {/* Right Area Actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        
-        {/* Status indicator always visible */}
-        {renderSaveStatus()}
-
-        <div className="w-px h-5 bg-slate-700 mx-1 hidden sm:block" />
-
-        {/* Primary Desktop Actions */}
-        <div className="hidden lg:flex items-center gap-1">
-          <button onClick={newDocument} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
-            <FilePlus className="w-3.5 h-3.5 text-primary-400" /> New
-          </button>
-          
-          <button onClick={() => setSavedDocsModalOpen(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
-            <FolderOpen className="w-3.5 h-3.5 text-amber-400" /> Boards
-          </button>
-
-          <button onClick={() => setVersionHistoryModalOpen(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
-            <History className="w-3.5 h-3.5 text-cyan-400" /> History
-          </button>
-
-          <button onClick={() => openLibrary()} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
-            <LibraryBig className="w-3.5 h-3.5 text-violet-400" /> Library
-          </button>
-
-          <button onClick={() => window.dispatchEvent(new Event('jhw-open-assessments'))} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
-            <ClipboardCheck className="w-3.5 h-3.5 text-sky-400" /> Assess
-          </button>
-        </div>
-
-        {/* Export is primary on tablet and desktop */}
-        <button
-          onClick={() => setExportModalOpen(true)}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary-600 hover:bg-primary-500 text-white rounded-lg shadow-md transition-all active:scale-95 ml-1"
-        >
-          <Download className="w-3.5 h-3.5" /> Export
-        </button>
-
-        {/* Present Mode always primary unless on mobile phone portrait */}
-        <button
-          onClick={toggleFullscreen}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-md transition-all active:scale-95 ml-1"
-        >
-          <Play className="w-3.5 h-3.5" /> Present
-        </button>
-
-        {/* Mobile/Tablet More Dropdown */}
+      <div className="wb-header-actions">
+        <button className="wb-header-button wb-classroom-link" onClick={() => window.dispatchEvent(new Event('jhw-open-classroom'))}><LayoutDashboard size={16} /><span>Classroom</span></button>
+        <button className="wb-header-button wb-boards-link" onClick={() => setSavedDocsModalOpen(true)}><FolderOpen size={16} /><span>My boards</span></button>
+        <button className="wb-header-button wb-export-link" onClick={() => setExportModalOpen(true)}><Download size={16} /><span>Export</span></button>
+        <button className="wb-present-button" aria-label="Present" onClick={toggleFullscreen}><Play size={15} /><span>Present</span></button>
         <div className="relative" ref={moreMenuRef}>
-          <button 
-            type="button"
-            aria-label="Open more actions"
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all" 
-            onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
-
+          <button className="wb-more-button" aria-label="Open more actions" title="Board options" aria-expanded={isMoreMenuOpen} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}><MoreVertical size={20} /></button>
           {isMoreMenuOpen && <MoreMenu />}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CoordinateTransformer } from '../canvas/CoordinateTransformer';
+import { CommandManager } from '../engine/CommandManager';
 import type { WhiteboardEngine } from '../engine/WhiteboardEngine';
 import { createStrokeObject } from '../models';
 import type { FreehandStroke, ImageObject } from '../types';
@@ -36,15 +37,16 @@ describe('GestureEngine', () => {
       mimeType: 'image/png', originalWidth: 100, originalHeight: 100,
     };
     let objects = [image] as ImageObject[];
-    const recordCommand = vi.fn();
+    const history = new CommandManager();
+    const publish = vi.fn((next: ImageObject[]) => { objects = next; });
     const engine = {
       getSelectedObjects: () => objects,
       getObjects: () => objects,
       getTransformer: () => transformer,
       updateObjectsSilently: (next: ImageObject[]) => { objects = next; },
       getRenderer: () => ({ setSelectionBox: vi.fn() }),
-      getCommandManager: () => ({ recordCommand }),
-      setObjects: (next: ImageObject[]) => { objects = next; },
+      getCommandManager: () => history,
+      setObjects: publish,
     } as unknown as WhiteboardEngine;
     const gestures = new GestureEngine({ transformer, getSettings: () => DEFAULT_INPUT_SETTINGS, onPanZoom: vi.fn() });
     expect(gestures.beginObjectTransform(touch(1, 0, 50), touch(2, 100, 50), engine)).toBe(true);
@@ -53,7 +55,12 @@ describe('GestureEngine', () => {
 
     expect(objects[0].width).toBeCloseTo(200);
     expect(objects[0].height).toBeCloseTo(200);
-    expect(recordCommand).toHaveBeenCalledOnce();
+    expect(history.getState().undoCount).toBe(1);
+    expect(publish).toHaveBeenCalledOnce();
+    history.undo();
+    expect(objects[0].width).toBe(100);
+    history.redo();
+    expect(objects[0].width).toBe(200);
   });
 
   it('scales handwriting geometry without replacing pen thickness with its bounds', () => {

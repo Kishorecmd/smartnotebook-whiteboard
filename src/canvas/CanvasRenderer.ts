@@ -419,13 +419,13 @@ export class CanvasRenderer {
       if (this.isDisposed) return;
 
       if (this.isDirty) {
-        this.renderMainScene();
         this.isDirty = false;
+        this.renderMainScene();
       }
 
       if (this.isOverlayDirty) {
-        this.renderOverlay();
         this.isOverlayDirty = false;
+        this.renderOverlay();
       }
 
       this.animationFrameId = requestAnimationFrame(loop);
@@ -503,7 +503,14 @@ export class CanvasRenderer {
         const teachingObj = obj as TeachingToolObject;
         const toolDef = TeachingToolRegistry.getTool(teachingObj.toolId);
         if (toolDef && toolDef.renderer) {
+          ctx.save();
+          const cx = teachingObj.x + teachingObj.width / 2;
+          const cy = teachingObj.y + teachingObj.height / 2;
+          ctx.translate(cx, cy);
+          ctx.rotate(teachingObj.rotation || 0);
+          ctx.translate(-cx, -cy);
           toolDef.renderer(ctx, teachingObj, zoom);
+          ctx.restore();
         }
       } else if (obj.type === 'youtubeVideo') {
         this.renderYouTubeThumbnail(ctx, obj as YouTubeVideoObject);
@@ -535,8 +542,7 @@ export class CanvasRenderer {
       keepAnimating = true;
       const fade = 1 - (age / MAX_AGE);
       ctx.save();
-      ctx.globalAlpha = stroke.opacity * fade;
-      StrokeRenderer.renderStroke(ctx, stroke);
+      StrokeRenderer.renderStroke(ctx, { ...stroke, opacity: stroke.opacity * fade });
       ctx.restore();
     }
 

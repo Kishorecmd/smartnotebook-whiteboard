@@ -20,6 +20,14 @@ export class MagicPenTool implements ITool {
   ): void {
     const settings = engine.getToolSettings();
 
+    if (settings.magicPenMode === 'magnifier') {
+      this.currentMode = 'magnifier_drag';
+      this.pointerDownTime = 0;
+      engine.setSpotlight(null, 0);
+      engine.setMagnifier(worldPoint, engine.getMagnifierRadius() || 150, settings.magicPenMagnification);
+      return;
+    }
+
     // Check if we are tapping/dragging an existing spotlight or magnifier
     if (engine.getSpotlightRadius() > 0 || engine.getMagnifierRadius() > 0) {
       if (engine.getSpotlightRadius() > 0) {

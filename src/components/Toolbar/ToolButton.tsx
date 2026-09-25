@@ -22,7 +22,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   onClick,
   variant = 'ghost',
   className = '',
-  showLabel = false,
+  showLabel = true,
 }) => {
   let baseStyles =
     'relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200 select-none focus:outline-none min-w-[var(--tool-size)] min-h-[var(--tool-size)] w-[var(--tool-size)] h-[var(--tool-size)] flex-shrink-0';
@@ -61,10 +61,10 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
     <button
       type="button"
       title={label}
-      aria-label={label}
+      aria-label={label} aria-pressed={isActive} data-variant={variant}
       disabled={isDisabled}
       onClick={onClick}
-      className={`${baseStyles} ${variantStyles} ${className}`}
+      className={`wb-tool ${baseStyles} ${variantStyles} ${className}`}
     >
       <div className="flex items-center justify-center pointer-events-none w-6 h-6">
         {icon}

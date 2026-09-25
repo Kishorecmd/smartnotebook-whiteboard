@@ -71,7 +71,7 @@ export class GestureEngine {
 
   public beginObjectTransform(first: PointerState, second: PointerState, engine: WhiteboardEngine): boolean {
     const selected = engine.getSelectedObjects();
-    const box = getCombinedBoundingBox(selected, 0);
+    const box = getCombinedBoundingBox(selected, 0, engine.getObjects());
     if (!box) return false;
     const allAffected = GroupManager.getAllAffectedObjects(selected.map((object) => object.id), engine.getObjects());
     const midpoint = this.midpoint(first, second);
@@ -119,7 +119,7 @@ export class GestureEngine {
     if (!gesture?.changed) return;
     const ids = new Set(gesture.snapshots.map((object) => object.id));
     const after = engine.getObjects().filter((object) => ids.has(object.id));
-    engine.getCommandManager().recordCommand(new TransformObjectsCommand(
+    engine.getCommandManager().execute(new TransformObjectsCommand(
       gesture.snapshots,
       after,
       () => engine.getObjects(),

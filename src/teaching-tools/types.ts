@@ -1,5 +1,5 @@
 import React from 'react';
-import { TeachingToolObject, Point, BoundingBox } from '../types';
+import { TeachingToolObject, WhiteboardObject, Point, BoundingBox } from '../types';
 
 export type ToolCategory = 'FAVORITES' | 'RECENT' | 'MATHEMATICS' | 'SCIENCE' | 'DRAWING' | 'CLASSROOM' | 'PRESENTATION' | 'GAMES' | 'UTILITIES';
 export type ToolType = 'canvas-object' | 'overlay-ui' | 'pointer-tool' | 'background';
@@ -25,7 +25,7 @@ export interface ITeachingToolDef {
   onActivate?: (engine: any) => void;
   
   // For canvas-object tools
-  objectFactory?: (center: Point) => TeachingToolObject;
+  objectFactory?: (center: Point) => WhiteboardObject;
   renderer?: (ctx: CanvasRenderingContext2D, obj: TeachingToolObject, zoom: number) => void;
   hitTest?: (obj: TeachingToolObject, point: Point, zoom: number) => boolean | string; // returns true or handle ID
   getBoundingBox?: (obj: TeachingToolObject) => BoundingBox;

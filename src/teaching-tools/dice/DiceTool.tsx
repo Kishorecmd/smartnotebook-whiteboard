@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dices } from 'lucide-react';
 import { TeachingToolRegistry } from '../TeachingToolRegistry';
 import { DraggableOverlay } from '../components/DraggableOverlay';
@@ -6,6 +6,8 @@ import { DraggableOverlay } from '../components/DraggableOverlay';
 export const DiceTool: React.FC = () => {
   const [value, setValue] = useState(1);
   const [isRolling, setIsRolling] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
   const rollDice = () => {
     if (isRolling) return;
@@ -21,6 +23,7 @@ export const DiceTool: React.FC = () => {
         setIsRolling(false);
       }
     }, 50);
+    intervalRef.current = interval;
   };
 
   const getDots = (val: number) => {
@@ -44,7 +47,7 @@ export const DiceTool: React.FC = () => {
   return (
     <DraggableOverlay toolId="dice" title="Dice">
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', boxSizing: 'border-box', backgroundColor: '#f8fafc' }}>
-        <div 
+        <button type="button" aria-label={`Roll dice. Current value ${value}`} disabled={isRolling}
           onClick={rollDice}
           style={{
             width: '120px',
@@ -70,9 +73,9 @@ export const DiceTool: React.FC = () => {
               transform: 'translate(-50%, -50%)'
             }} />
           ))}
-        </div>
+        </button>
         <p style={{ marginTop: '20px', fontSize: '14px', color: '#64748b', fontWeight: '500' }}>
-          Tap to roll
+          {isRolling ? 'Rolling…' : `Rolled ${value} · Tap to roll`}
         </p>
       </div>
     </DraggableOverlay>
@@ -84,7 +87,7 @@ export const registerDiceTool = () => {
     id: 'dice',
     name: 'Dice',
     icon: Dices,
-    category: 'CLASSROOM',
+    category: 'GAMES',
     type: 'overlay-ui',
     description: 'Interactive dice for classroom games.',
     component: DiceTool,

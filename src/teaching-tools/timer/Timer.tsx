@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Timer as TimerIcon, Play, Pause, RotateCcw } from 'lucide-react';
 import { DraggableOverlay } from '../components/DraggableOverlay';
 import { TeachingToolRegistry } from '../TeachingToolRegistry';
 
 export const TimerTool: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes default
+  const [duration, setDuration] = useState(300);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const deadline = useRef(0);
   
   const presets = [
     { label: '30s', value: 30 },
@@ -19,22 +21,19 @@ export const TimerTool: React.FC = () => {
   ];
 
   useEffect(() => {
-    let interval: number;
-    if (isRunning && timeLeft > 0) {
-      interval = window.setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            setIsRunning(false);
-            setIsFinished(true);
-            playAlarm();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    if (!isRunning) return;
+    const interval = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining === 0) {
+        clearInterval(interval);
+        setIsRunning(false);
+        setIsFinished(true);
+        playAlarm();
+      }
+    }, 100);
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft]);
+  }, [isRunning]);
 
   const playAlarm = () => {
     try {
@@ -56,6 +55,7 @@ export const TimerTool: React.FC = () => {
       
       oscillator.start(audioCtx.currentTime);
       oscillator.stop(audioCtx.currentTime + 1);
+      oscillator.onended = () => { void audioCtx.close(); };
     } catch {
       console.log('Audio playback failed');
     }
@@ -68,14 +68,16 @@ export const TimerTool: React.FC = () => {
   };
 
   const handlePreset = (val: number) => {
+    setDuration(val);
     setTimeLeft(val);
     setIsRunning(false);
     setIsFinished(false);
   };
 
   const toggleTimer = () => {
+    if (!isRunning) deadline.current = Date.now() + (isFinished ? duration : timeLeft) * 1000;
     if (isFinished) {
-      setTimeLeft(300);
+      setTimeLeft(duration);
       setIsFinished(false);
       setIsRunning(true);
     } else {
@@ -85,7 +87,7 @@ export const TimerTool: React.FC = () => {
 
   return (
     <DraggableOverlay toolId="timer" title="Classroom Timer">
-      <div className="w-[380px] flex flex-col gap-6 items-center">
+      <div className="tt-timer w-[380px] flex flex-col gap-6 items-center">
         
         {/* Time Display */}
         <div className={`w-full py-8 rounded-3xl flex items-center justify-center transition-colors duration-500 ${
@@ -100,6 +102,7 @@ export const TimerTool: React.FC = () => {
         {/* Controls */}
         <div className="flex gap-4">
           <button 
+            aria-label={isRunning ? 'Pause timer' : 'Start timer'}
             className={`w-20 h-20 rounded-full flex items-center justify-center text-white shadow-lg transition-transform active:scale-90 ${
               isRunning ? 'bg-amber-500 hover:bg-amber-400' : 'bg-emerald-500 hover:bg-emerald-400'
             }`}
@@ -109,8 +112,9 @@ export const TimerTool: React.FC = () => {
           </button>
           
           <button 
+            aria-label="Reset timer"
             className="w-20 h-20 rounded-full flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white shadow-lg transition-transform active:scale-90"
-            onClick={() => handlePreset(timeLeft || 300)} // Reset to current preset
+            onClick={() => handlePreset(duration)}
           >
             <RotateCcw className="w-8 h-8" />
           </button>
@@ -123,6 +127,7 @@ export const TimerTool: React.FC = () => {
             {presets.map(p => (
               <button
                 key={p.label}
+                aria-pressed={duration === p.value}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition-colors"
                 onClick={() => handlePreset(p.value)}
               >
@@ -144,7 +149,7 @@ export const registerTimer = () => {
     icon: TimerIcon,
     category: 'CLASSROOM',
     type: 'overlay-ui',
-    description: 'A large classroom timer and stopwatch.',
+    description: 'Keep activities on track with a countdown timer.',
     component: TimerTool,
   });
 };

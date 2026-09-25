@@ -47,18 +47,19 @@ export const PeriodicTableTool: React.FC = () => {
         
         {/* Detail View */}
         <div style={{ 
-          height: '100px', 
+          minHeight: '100px',
+          flexShrink: 0,
           marginBottom: '20px', 
           backgroundColor: selectedElement ? getTypeColor(selectedElement.type) : '#e2e8f0',
           borderRadius: '12px',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 24px',
+          padding: '12px',
           boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
           transition: 'background-color 0.3s ease'
         }}>
           {selectedElement ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
               <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#1e293b' }}>{selectedElement.symbol}</div>
               <div>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e293b' }}>{selectedElement.name}</div>
@@ -73,15 +74,16 @@ export const PeriodicTableTool: React.FC = () => {
         </div>
 
         {/* Grid */}
+        <div style={{ overflowX: 'auto', maxWidth: '100%', paddingBottom: 8 }} aria-label="Scroll periodic table horizontally" tabIndex={0}>
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(18, 1fr)', 
+          gridTemplateColumns: 'repeat(18, 36px)',
           gridTemplateRows: 'repeat(3, 1fr)', 
           gap: '4px',
-          flex: 1
+          width: 'max-content'
         }}>
           {ELEMENTS.map(el => (
-            <div
+            <button aria-label={`${el.name}, atomic number ${el.number}`} aria-pressed={selectedElement?.symbol === el.symbol}
               key={el.symbol}
               onClick={() => setSelectedElement(el)}
               style={{
@@ -97,13 +99,15 @@ export const PeriodicTableTool: React.FC = () => {
                 boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                 border: selectedElement?.symbol === el.symbol ? '2px solid #1e293b' : '2px solid transparent',
                 transition: 'all 0.1s ease',
-                position: 'relative'
+                position: 'relative',
+                minHeight: '48px'
               }}
             >
               <span style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '9px', color: '#475569' }}>{el.number}</span>
               <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b' }}>{el.symbol}</span>
-            </div>
+            </button>
           ))}
+        </div>
         </div>
 
       </div>
@@ -118,7 +122,7 @@ export const registerPeriodicTableTool = () => {
     icon: FlaskConical,
     category: 'SCIENCE',
     type: 'overlay-ui',
-    description: 'Interactive periodic table of elements.',
+    description: 'Explore the first 18 elements and their atomic numbers.',
     component: PeriodicTableTool,
   });
 };

@@ -1,7 +1,6 @@
 import { ITool } from './ITool';
 import { Point } from '../../types';
 import { createStrokeObject, createShapeObject } from '../../models';
-import { AddStrokeCommand } from '../commands/AddStrokeCommand';
 import { AddObjectCommand } from '../commands/AddObjectCommand';
 import { PenRegistry, PenPreset, readPointerPressure } from '../../drawing/pens';
 import type { SnappedPoint } from '../RulerSnapper';
@@ -13,6 +12,7 @@ import type { WhiteboardEngine } from '../WhiteboardEngine';
  * at pointer-down and never read from global state again mid-stroke.
  */
 interface ActiveStroke {
+  startedAt: number;
   preset: PenPreset;
   points: Point[];
   color: string;
@@ -80,6 +80,7 @@ export class PenFamilyTool implements ITool {
       : { ...worldPoint };
 
     const active: ActiveStroke = {
+      startedAt: Date.now(),
       preset,
       points: [this.pointWithPressure(snapped, e)],
       color,
@@ -204,13 +205,7 @@ export class PenFamilyTool implements ITool {
     };
 
     // One completed stroke, one history entry.
-    engine.getCommandManager().execute(
-      new AddStrokeCommand(
-        withPen,
-        () => engine.getObjects(),
-        (objects) => engine.setObjects(objects)
-      )
-    );
+    engine.commitHandwritingStroke(withPen, e.pointerType, active.startedAt);
   }
 
   public onPointerCancel(
