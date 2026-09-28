@@ -1,0 +1,13 @@
+import type { Mapping, Snapshot, Weather } from './model';
+import { dateKey, minuteOfDay } from './model';
+// Fictitious demonstration data. Never persisted or returned by a live API.
+export function previewData(grade = 'Grade 3', scenario = 'normal', now = Date.now()): { mapping: Mapping; snapshot: Snapshot; weather: Weather } {
+  const mapping = { classId: 'preview', sectionId: 'preview', grade, section: 'A', device: `${grade} Smartboard`, timezone: 'Asia/Kolkata', proof: 'preview-only' };
+  const date = dateKey(now, mapping.timezone);
+  const minute = Math.max(60, Math.min(1300, minuteOfDay(now, mapping.timezone)));
+  const fmt = (n: number) => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+  const students = Array.from({length: 12}, (_, i) => ({ id: `sample-${i}`, name: `Sample Student ${i + 1}`, photo: null, birthday: i === 3, status: scenario === 'unmarked' ? 'unmarked' as const : i < (scenario === 'all' ? 12 : 10) ? 'present' as const : 'absent' as const }));
+  const present = students.filter(s => s.status === 'present').length;
+  const kind = scenario === 'break' ? 'break' : scenario === 'lunch' ? 'lunch' : 'lesson';
+  return { mapping, snapshot: { date, updatedAt: now, academicYearId: 'Sample year', teacher: 'Sample teacher', students, attendance: { date, marked: scenario !== 'unmarked', total: 12, present, absent: scenario === 'unmarked' ? 0 : 12-present, late: 0, unmarked: scenario === 'unmarked' ? 12 : 0, other: 0, percentage: Math.round(present / 12 * 1000) / 10, students }, timetable: { complete: true, holiday: scenario === 'holiday' ? 'School holiday' : undefined, periods: scenario === 'empty' ? [] : [{ id: '1', subject: 'English', start: fmt(minute - 60), end: fmt(minute - 20), teacher: 'Sample teacher', kind: 'lesson' }, { id: '2', subject: kind === 'break' ? 'Morning break' : kind === 'lunch' ? 'Lunch' : 'Mathematics', start: fmt(minute - 20), end: fmt(minute + 20), teacher: kind === 'lesson' ? 'Sample teacher' : '', kind }, { id: '3', subject: 'Science', start: fmt(minute + 20), end: fmt(minute + 60), teacher: 'Sample teacher', kind: 'lesson' }] }, homework: [{title:'Compare fractions',text:'Sample homework: complete the practice page.',subject:'Mathematics'}], notices: [{title:'Reading together',text:'Sample announcement: bring your favourite story tomorrow.',public:true}, {title:'Teacher reminder',text:'Sample private note — hidden in Present Mode.',public:false}], learning: 'We will learn how to identify and compare fractions.' }, weather: {city:'Trichy',temperature:29, feelsLike:31, code:2, high:31, low:25, rain:20, updatedAt:now} };
+}

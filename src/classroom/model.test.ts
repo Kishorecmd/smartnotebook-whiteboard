@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { initialWorkspace, makeGroups, makeScreen, makeWidget, parseWorkspace, readNames, remainingSeconds, restoreWidget, widgetSchema } from './model';
 
 describe('Classroom screens', () => {
+  it('saves sound settings without a live microphone session or audio', () => {
+    const workspace = initialWorkspace();
+    const sound = makeWidget('sound');
+    sound.data = { limit: 45, sensitivity: 1.4, alert: true };
+    workspace.screens[0].widgets.push(sound);
+    expect(parseWorkspace(JSON.stringify(workspace)).screens[0].widgets.at(-1)).toEqual(sound);
+    expect(makeWidget('sound').data).toEqual({ limit: 60, sensitivity: 1, alert: false });
+  });
   it('round trips widget content, positions, and the active screen', () => {
     const workspace = initialWorkspace();
     const second = makeScreen('teams');

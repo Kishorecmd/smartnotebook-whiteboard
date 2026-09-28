@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Play, Pause, RotateCcw, Shuffle, VolumeX, Volume1, Users, UserRound, Pencil, Check, Plus, Minus, Sun, Moon } from 'lucide-react';
 import { type ClassroomWidget, remainingSeconds, readNames, makeGroups } from './model';
+import { SoundMonitor } from '../sound/SoundMonitor';
+import { AnalogClock } from '../clock/AnalogClock';
+import { LiveNames, LiveTeams } from '../dashboard/LiveNames';
+import { useLiveClass } from '../dashboard/data';
 
 type Props = { widget: ClassroomWidget; update: (data: ClassroomWidget['data']) => void; now: number };
 const str = (w: ClassroomWidget, key: string, fallback = '') => typeof w.data[key] === 'string' ? w.data[key] as string : fallback;
@@ -67,17 +71,16 @@ function ScoreWidget({ widget, update }: Props) {
   </div>)}</div>;
 }
 export function WidgetContent(props: Props) {
-  const { widget, update, now } = props;
+  const { widget, update, now } = props; const liveClass = useLiveClass();
   switch (widget.kind) {
+    case 'sound': return <SoundMonitor settings={{ limit: num(widget, 'limit', 60), sensitivity: num(widget, 'sensitivity', 1), alert: widget.data.alert === true }} onSettingsChange={settings => update(settings)} />;
     case 'text': return <TextWidget {...props} />;
     case 'timer': return <TimerWidget {...props} />;
     case 'symbols': return <SymbolsWidget {...props} />;
-    case 'random': case 'groups': return <NamesWidget {...props} />;
-    case 'score': return <ScoreWidget {...props} />;
-    case 'clock': return <div className="cs-clock"><span className="cs-eyebrow">Here & now</span><div>{new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div><p>{new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p><span className="cs-clock-caption">A good time to learn something new.</span></div>;
+    case 'random': case 'groups': return liveClass.mapping ? <LiveNames key={liveClass.mapping.classId + liveClass.mapping.sectionId + widget.kind} groups={widget.kind === 'groups'}/> : <NamesWidget {...props} />;
+    case 'score': return liveClass.mapping ? <LiveTeams key={liveClass.mapping.classId + liveClass.mapping.sectionId}/> : <ScoreWidget {...props} />;
+    case 'clock': return <AnalogClock time={new Date(now)} timeZone={liveClass.mapping?.timezone} />;
     case 'traffic': return <div className="cs-traffic"><div className="cs-lights">{['red', 'amber', 'green'].map(light => <button key={light} className={`cs-light cs-${light} ${widget.data.light === light ? 'is-lit' : ''}`} aria-label={`${light} light`} aria-pressed={widget.data.light === light} onClick={() => update({ light })} />)}</div><h2>{widget.data.light === 'red' ? 'Pause & listen' : widget.data.light === 'amber' ? 'Get ready' : 'Let’s get started'}</h2><p>Tap a light to guide the room.</p></div>;
     case 'dice': return <div className="cs-dice"><div className="cs-dice-faces" aria-live="polite" aria-label={`Dice result ${str(widget, 'result', '1')}`}>{str(widget, 'result', '1').split(',').map((n, i) => <span key={i}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][Math.max(0, Math.min(5, Number(n) - 1))]}</span>)}</div><div className="cs-presets">{[1, 2, 3].map(n => <button key={n} aria-pressed={num(widget, 'count', 1) === n} onClick={() => update({ count: n, result: Array(n).fill('1').join(',') })}>{n} {n === 1 ? 'die' : 'dice'}</button>)}</div><button className="cs-primary" onClick={() => update({ result: Array.from({ length: Math.max(1, Math.min(3, num(widget, 'count', 1))) }, () => Math.ceil(Math.random() * 6) || 1).join(',') })}><Shuffle size={17} />Roll the dice</button></div>;
   }
 }
-
-

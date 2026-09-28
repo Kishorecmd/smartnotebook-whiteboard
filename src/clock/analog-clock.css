@@ -1,0 +1,9 @@
+.analog-clock{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;width:100%;height:100%;min-height:0;padding:14px 18px 20px;box-sizing:border-box;background:#fff;color:#102132;font-family:Inter,'Segoe UI',sans-serif;border-radius:10px}
+.analog-clock-face{display:block;width:100%;max-width:300px;flex:1;min-height:0;aspect-ratio:1;overflow:visible;user-select:none}
+.analog-clock-digital{display:block;flex:none;white-space:nowrap;font-size:clamp(24px,11cqw,38px);line-height:1.2;font-weight:400;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.analog-clock-hand-interactive{cursor:grab;touch-action:none}.analog-clock-hand-interactive:active{cursor:grabbing}
+.clock-teaching-tool{width:300px;max-width:100%;container-type:inline-size}.clock-teaching-tool .analog-clock{height:350px;padding:8px 10px 18px}
+.clock-teaching-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:12px 4px 4px;border-top:1px solid #e4e8de;color:#36513e;font-size:12px}
+.clock-teaching-controls button{display:flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid #d5dfcf;border-radius:8px;background:#eef3e8;color:#36513e;cursor:pointer;font:inherit}.clock-teaching-controls label{display:flex;align-items:center;gap:6px}.clock-teaching-controls input{width:55px;padding:6px;border:1px solid #b8c9af;border-radius:6px;color:#22352a;background:white}.clock-teaching-hint{width:100%;margin:0;text-align:center;color:#64735d;font-size:11px}
+.cs-widget-clock .cs-widget-body{container-type:size}.cs-widget-clock .analog-clock{gap:16px;padding:14px 18px 22px}.cs-widget-clock .analog-clock-face{max-height:calc(100cqh - 95px);max-width:min(100%,300px)}
+@media(max-width:1000px){.cs-widget.cs-widget-clock{height:390px!important}}

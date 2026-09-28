@@ -34,6 +34,7 @@ import { registerScreenShadeTool } from './screen-shade/ScreenShadeTool';
 import { registerColorPickerTool } from './color-picker/ColorPickerTool';
 import { registerFractionTool } from './fraction-tool/FractionTool';
 import { registerGeometryShapesTool } from './geometry-shapes/GeometryShapesTool';
+import { registerSoundMonitorTool } from './sound-monitor/SoundMonitorTool';
 
 let initialized = false;
 export function initializeTeachingTools() {
@@ -58,4 +59,5 @@ export function initializeTeachingTools() {
   registerColorPickerTool();
   registerFractionTool();
   registerGeometryShapesTool();
+  registerSoundMonitorTool();
 }

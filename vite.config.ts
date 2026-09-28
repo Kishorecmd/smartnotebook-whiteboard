@@ -51,7 +51,7 @@ export default defineConfig({
             // bundles the shell 404s and the board never opens, so navigations
             // ask the network first and fall back to the last good copy only
             // when the network is unavailable.
-            urlPattern: ({ request }) => request.mode === 'navigate',
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'jhw-app-shell',

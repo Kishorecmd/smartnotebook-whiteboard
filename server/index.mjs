@@ -4,6 +4,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import { weatherHandler } from './classroom-weather.mjs';
+import { classroomRouter } from './classroom.mjs';
 import { GoogleGenAI } from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,6 +60,8 @@ app.use((request, response, next) => {
   next();
 });
 app.use(express.json({ limit: '6mb', type: 'application/json' }));
+app.get('/api/classroom/weather', weatherHandler());
+app.use('/api/classroom', classroomRouter());
 
 const validImageDataUrl = (value) =>
   typeof value === 'string' &&
@@ -93,7 +97,7 @@ cleanupTimer.unref();
 
 app.get('/api/health', (_request, response) => {
   response.set('Cache-Control', 'no-store');
-  response.json({ ok: true, handwritingConfigured: Boolean(process.env.GEMINI_API_KEY), liveAssessment: true });
+  response.json({ ok: true, handwritingConfigured: Boolean(process.env.GEMINI_API_KEY), liveAssessment: true, classroomAPI: true, classroomWeather: true });
 });
 
 const cleanText = (value, max = 200) => typeof value === 'string' ? value.trim().slice(0, max) : '';

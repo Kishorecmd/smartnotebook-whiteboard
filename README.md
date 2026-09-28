@@ -2,6 +2,14 @@
 
 An interactive classroom whiteboard built with React, TypeScript, Canvas, Zustand and IndexedDB. It supports multi-page lessons, drawing and text tools, images, PDFs, audio/video, image-plus-audio objects, YouTube/web embeds, teaching tools, lesson templates, reusable content, a searchable asset library, portable `.jhw` files and Gemini handwriting recognition.
 
+## Live classroom home
+
+The classroom home includes school branding, a timezone-aware clock, attendance and lesson cards, a collapsible timeline, session-only learning objectives and notes, and quick actions. **Widgets** opens the existing widget workspace; **Home** returns to the dashboard. The analog clock now uses a numbered purple face, red second hand and 12-hour digital time.
+
+**Preview layout** uses clearly labelled fictitious data for KG and Grades 1–4, including attendance, break, holiday and offline states. Present Mode hides attendance, private notes and student/team lists. Quick actions reuse the existing whiteboard, library, website and YouTube dialogs; QR codes are generated locally.
+
+Open **Classroom → Connect classroom**, sign in with the existing **class teacher ERP account**, then choose the assigned class and section and select **Open my classroom**. No administrator login is needed. Antigravity's class teacher assignments are checked on the server before reading classroom data. See [docs/CLASSROOM_API.md](docs/CLASSROOM_API.md) for verified routes and missing ERP capabilities. Both ERP and weather require the Node server. Tests use sample records; live ERP sign-in still needs a real class teacher browser check. Preview figures are never live attendance.
+
 ## Requirements
 
 - Node.js 22 or newer
@@ -30,7 +38,7 @@ npm audit --omit=dev
 
 ## Production deployment
 
-This is not a static-only application when Gemini recognition is enabled. Build the frontend and run the Express server:
+Class teacher sign-in, live ERP data, weather and Gemini recognition require the Node server. Build the frontend and run the Express server:
 
 ```bash
 npm ci
@@ -38,11 +46,19 @@ npm run build
 npm start
 ```
 
-The Node process serves both `dist/` and `/api/handwriting-recognition`. Configure `PORT` and `GEMINI_API_KEY` in the hosting environment. The health check is available at `/api/health`.
+The Node process serves both `dist/` and the classroom/handwriting APIs. Configure `PORT` and, for handwriting recognition, `GEMINI_API_KEY` in the hosting environment. The health check is available at `/api/health`. A GitHub-to-Hostinger static deployment only updates the interface; classroom login needs a Node application with build command `npm run build` and start command `npm start`, served on the same origin. Keep secrets in the hosting environment, not the repository.
 
 If the frontend and API are hosted separately, build the frontend with `VITE_HANDWRITING_API_BASE_URL=https://your-api-host.example`. Set `HANDWRITING_ALLOWED_ORIGINS` on the API server to the comma-separated frontend origins.
 
 A Hostinger static-file deployment by itself will return 404 for handwriting requests. Use a Hostinger Node application or another Node host and point the frontend at it. For a reverse proxy, preserve the client IP and set `TRUST_PROXY` appropriately so per-IP rate limiting works.
+
+## Classroom sound level
+
+Open **Sound level** from the classroom dock, or **Teaching Tools → Sound Level** on the whiteboard. Set **Max. noise**, optionally enable the bell, then choose **Start microphone**. The meter uses a relative 0–100 scale, not calibrated decibels. Sensitivity can be adjusted for the room and microphone.
+
+An alert requires sustained noise, and another alert only follows a quiet period and a cooldown. Sound is processed on the device; it is not recorded or uploaded. Stopping, closing the monitor, or leaving the page releases the microphone. Classroom screens save the threshold, sensitivity and bell preference, but never automatically restart listening.
+
+Microphone access requires HTTPS (or localhost), browser permission and a hosting policy that permits microphone use. The current Node server blocks microphone access; enabling same-origin microphone access is pending approval. Until then, the monitor shows a hosting-settings message when started.
 
 ## Android
 

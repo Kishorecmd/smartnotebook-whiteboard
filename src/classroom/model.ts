@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const widgetKinds = ['text', 'timer', 'clock', 'random', 'groups', 'symbols', 'traffic', 'dice', 'score'] as const;
+export const widgetKinds = ['text', 'timer', 'clock', 'sound', 'random', 'groups', 'symbols', 'traffic', 'dice', 'score'] as const;
 export type WidgetKind = typeof widgetKinds[number];
 export const backgrounds = ['meadow', 'sunrise', 'lavender', 'paper', 'midnight'] as const;
 const value = z.union([z.string().max(30000), z.number().finite(), z.boolean(), z.null()]);
@@ -16,17 +16,18 @@ export type ClassroomScreen = z.infer<typeof screenSchema>;
 export type ClassroomWorkspace = z.infer<typeof workspaceSchema>;
 export const STORAGE_KEY = 'jhw_classroom_workspace_v1';
 const id = () => crypto.randomUUID();
-export const labels: Record<WidgetKind, string> = { text: 'Text', timer: 'Timer', clock: 'Clock', random: 'Random name', groups: 'Group maker', symbols: 'Work symbols', traffic: 'Traffic light', dice: 'Dice', score: 'Scoreboard' };
+export const labels: Record<WidgetKind, string> = { text: 'Text', timer: 'Timer', clock: 'Clock', sound: 'Sound level', random: 'Random name', groups: 'Group maker', symbols: 'Work symbols', traffic: 'Traffic light', dice: 'Dice', score: 'Scoreboard' };
 export function makeWidget(kind: WidgetKind, index = 0): ClassroomWidget {
   const data: ClassroomWidget['data'] = {};
   if (kind === 'text') Object.assign(data, { heading: 'Today’s focus', text: 'Write your instructions here.\n\nWhat will we learn today?' });
   if (kind === 'timer') Object.assign(data, { duration: 600, remaining: 600, endAt: null });
+  if (kind === 'sound') Object.assign(data, { limit: 60, sensitivity: 1, alert: false });
   if (kind === 'symbols') data.mode = 'quiet';
   if (kind === 'traffic') data.light = 'green';
   if (kind === 'dice') Object.assign(data, { count: 1, result: '1' });
   if (kind === 'random' || kind === 'groups') Object.assign(data, { names: '', result: '', groupCount: 3 });
   if (kind === 'score') Object.assign(data, { nameA: 'Team Sun', nameB: 'Team Moon', scoreA: 0, scoreB: 0 });
-  return { id: id(), kind, x: 0.06 + (index % 3) * 0.29, y: 0.13 + (Math.floor(index / 3) % 5) * 0.08, width: kind === 'text' ? 390 : 300, height: kind === 'text' ? 380 : kind === 'timer' ? 350 : 300, data };
+  return { id: id(), kind, x: 0.06 + (index % 3) * 0.29, y: 0.13 + (Math.floor(index / 3) % 5) * 0.08, width: kind === 'text' ? 390 : kind === 'sound' ? 340 : 300, height: kind === 'text' ? 380 : kind === 'sound' ? 480 : kind === 'clock' ? 390 : kind === 'timer' ? 350 : 300, data };
 }
 export function makeScreen(template: 'welcome' | 'focus' | 'teams' | 'blank' = 'blank'): ClassroomScreen {
   const screen: ClassroomScreen = { id: id(), title: { welcome: 'Morning welcome', focus: 'Quiet focus', teams: 'Team challenge', blank: 'Untitled screen' }[template], background: 'meadow', widgets: [] };
