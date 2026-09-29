@@ -14,6 +14,6 @@ Implemented in the classroom dock and Whiteboard → Teaching Tools → Sound Le
 
 ## Pending
 
-The server still sends `microphone=()` in Permissions-Policy. Automatic approval review rejected changing it to same-origin access without explicit user approval. No security headers were changed. Live microphone input and audible alerts have not been verified, and this feature has not been deployed to production.
+Update 29 September 2026: with the owner's explicit approval the server now sends `microphone=(self)` in Permissions-Policy, and this is deployed to whiteboard.jaihind.school. Browser permission prompts remain; camera and geolocation stay blocked. Live microphone input and audible alerts on a classroom device have not been verified.
 
-Proposed change, pending approval: allow microphone access for the site's own origin only, retaining browser permission prompts and the existing camera/geolocation restrictions. The monitor does not record or upload audio.
+The monitor does not record or upload audio.

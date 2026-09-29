@@ -60,7 +60,7 @@ Open **Sound level** from the classroom dock, or **Teaching Tools → Sound Leve
 
 An alert requires sustained noise, and another alert only follows a quiet period and a cooldown. Sound is processed on the device; it is not recorded or uploaded. Stopping, closing the monitor, or leaving the page releases the microphone. Classroom screens save the threshold, sensitivity and bell preference, but never automatically restart listening.
 
-Microphone access requires HTTPS (or localhost), browser permission and a hosting policy that permits microphone use. The current Node server blocks microphone access; enabling same-origin microphone access is pending approval. Until then, the monitor shows a hosting-settings message when started.
+Microphone access requires HTTPS (or localhost), browser permission and a hosting policy that permits microphone use. The Node server allows the microphone for the site's own origin only (`microphone=(self)`); embedded pages from other origins cannot use it, and camera and geolocation stay blocked. A static-only host that sends a stricter policy makes the monitor show a hosting-settings message when started.
 
 ## Android
 
