@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import express from 'express';
-import { ERP_BASE, clean, classesFromTeacher, minimalStudents, attendanceFromERP, teacherLessons, dayParts } from './classroom-adapter.mjs';
+import { erpBase, clean, classesFromTeacher, minimalStudents, attendanceFromERP, teacherLessons, dayParts } from './classroom-adapter.mjs';
 
 const COOKIE = 'jhw_class_teacher';
 const IDLE = 30 * 60_000;
@@ -9,7 +9,7 @@ const routes = new Set(['login', 'logout', 'profile', 'diary/sections', 'student
 const failure = (status, code) => Object.assign(new Error(code), { status, code });
 
 // Tokens and private classroom responses never go into persistent storage.
-export function classroomRouter({ fetchImpl = fetch, now = Date.now } = {}) {
+export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpBase() } = {}) {
   const router = express.Router();
   const sessions = new Map();
   const attempts = new Map();
@@ -18,7 +18,7 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now } = {}) {
 
   async function erp(route, token, query, body) {
     if (!routes.has(route)) throw failure(503, 'ERP_UNAVAILABLE');
-    const url = new URL(ERP_BASE);
+    const url = new URL(base);
     url.searchParams.set('url', `teacher-app/${route}`);
     for (const [key, value] of Object.entries(query || {})) url.searchParams.set(key, String(value));
     let response;

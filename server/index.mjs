@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { weatherHandler } from './classroom-weather.mjs';
 import { classroomRouter } from './classroom.mjs';
+import { erpBase } from './classroom-adapter.mjs';
 import { GoogleGenAI } from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -61,7 +62,7 @@ app.use((request, response, next) => {
 });
 app.use(express.json({ limit: '6mb', type: 'application/json' }));
 app.get('/api/classroom/weather', weatherHandler());
-app.use('/api/classroom', classroomRouter());
+app.use('/api/classroom', classroomRouter({ base: erpBase(process.env.CLASSROOM_ERP_BASE_URL || undefined) }));
 
 const validImageDataUrl = (value) =>
   typeof value === 'string' &&

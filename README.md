@@ -25,6 +25,8 @@ npm run server
 npm run dev
 ```
 
+To sign in against a local XAMPP copy of Antigravity instead of the production ERP, also set `CLASSROOM_ERP_BASE_URL=http://localhost/Antigravity/public/index.php` in `.env` (plain HTTP is accepted only for localhost).
+
 Set `GEMINI_API_KEY` in `.env`. Vite runs the frontend on port 3000 and proxies `/api` to the Express server on port 8787.
 
 Useful checks:

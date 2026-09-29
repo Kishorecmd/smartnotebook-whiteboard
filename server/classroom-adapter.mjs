@@ -1,5 +1,14 @@
 /** Verified ERP response adapters. */
 export const ERP_BASE = 'https://erp.jaihind.school/public/index.php';
+// Teacher passwords are forwarded to the ERP, so a non-default base must be
+// HTTPS, or plain HTTP only to this machine (a local XAMPP Antigravity).
+export function erpBase(value = ERP_BASE) {
+  let url;
+  try { url = new URL(value); } catch { throw new Error('CLASSROOM_ERP_BASE_URL is not a valid URL'); }
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.username || url.password || url.search || url.hash || !(url.protocol === 'https:' || (url.protocol === 'http:' && loopback))) throw new Error('CLASSROOM_ERP_BASE_URL must be https://…/index.php, or http:// on localhost');
+  return url.href;
+}
 export const clean = (v, max = 200) => typeof v === 'string' ? v.slice(0, max) : '';
 export function classesFromTeacher(rows = []) {
   return rows.map(r => ({ classId: String(r.class_id), sectionId: String(r.section_id), grade: clean(r.class_name), section: clean(r.section_name) })).filter(r => /^\d+$/.test(r.classId) && /^\d+$/.test(r.sectionId));
