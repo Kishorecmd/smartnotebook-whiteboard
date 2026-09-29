@@ -8,7 +8,7 @@ The classroom home includes school branding, a timezone-aware clock, attendance 
 
 **Preview layout** uses clearly labelled fictitious data for KG and Grades 1–4, including attendance, break, holiday and offline states. Present Mode hides attendance, private notes and student/team lists. Quick actions reuse the existing whiteboard, library, website and YouTube dialogs; QR codes are generated locally.
 
-Open **Classroom → Connect classroom**, sign in with the existing **class teacher ERP account**, then choose the assigned class and section and select **Open my classroom**. No administrator login is needed. Antigravity's class teacher assignments are checked on the server before reading classroom data. See [docs/CLASSROOM_API.md](docs/CLASSROOM_API.md) for verified routes and missing ERP capabilities. Both ERP and weather require the Node server. Tests use sample records; live ERP sign-in still needs a real class teacher browser check. Preview figures are never live attendance.
+Open **Classroom → Connect classroom**, sign in with the existing **class teacher ERP account**, then choose the assigned class and section and select **Open my classroom**. **Take attendance** on the attendance card then marks today's register directly in the ERP; saving sends the school's absence alert to families of students newly marked absent. No administrator login is needed. Antigravity's class teacher assignments are checked on the server before reading classroom data. See [docs/CLASSROOM_API.md](docs/CLASSROOM_API.md) for verified routes and missing ERP capabilities. Both ERP and weather require the Node server. Tests use sample records; live ERP sign-in still needs a real class teacher browser check. Preview figures are never live attendance.
 
 ## Requirements
 

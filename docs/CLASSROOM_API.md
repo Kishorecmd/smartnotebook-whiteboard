@@ -27,7 +27,8 @@ All routes use `https://erp.jaihind.school/public/index.php?url=ROUTE` by defaul
 | `teacher-app/timetable` | GET | Signed-in teacher's own lessons filtered by class/section; labelled partial |
 | `teacher-app/homework` | GET limit=100 | Teacher's latest homework filtered by class/section names and today's assigned date |
 | `teacher-app/notices` | GET limit=20 | Teacher/school notices; only explicit target_scope=all can be presented |
-| `teacher-portal/attendance` | Browser navigation | Existing ERP web login and editor; no duplicate attendance writes |
+| `teacher-app/attendance/save` | POST class_id, section_id, date, records | Today's register for the class teacher's own class (see below). The ERP sends its absence alert to families of students newly marked absent |
+| `teacher-portal/attendance` | Browser navigation | Existing ERP web editor, linked when no class is connected |
 
 Live photo URLs are suppressed; initials appear until authorized, non-cacheable photo delivery exists. Full dates of birth never reach the browser. Homework is limited to the teacher's latest 100 items and is not a complete class-wide feed; the ERP response currently omits class/section IDs.
 
@@ -42,6 +43,7 @@ Implemented in `server/classroom.mjs`. These are new whiteboard routes, not ERP 
 | `/api/classroom/classes` | GET | Only this class teacher's assignments |
 | `/api/classroom/mapping` | POST classId, sectionId, device, timezone | Canonical labels after fresh assignment validation |
 | `/api/classroom/snapshot` | POST mapping | Authorized current-day minimal data |
+| `/api/classroom/attendance` | POST mapping, records [{id, status}] | Saves today's register after fresh assignment validation; returns date, saved, newlyAbsent |
 | `/api/classroom/logout` | POST empty object | Invalidate local session, clear cookie, attempt ERP token revocation |
 
 Cookies are opaque, HttpOnly, SameSite=Strict, scoped to /api/classroom, and Secure over HTTPS. ERP tokens never reach the browser. Sessions expire after 30 minutes without requests or eight hours total. Five login attempts per IP per five minutes, bounded maps and eight-second upstream timeouts are enforced. No credentials or private payloads are logged or persisted.
@@ -52,7 +54,13 @@ Logout invalidates local access even when ERP revocation fails; an unreachable E
 
 Only class choice/device label/timezone are saved in localStorage. These are preferences, not authorization. Old choices are not queried unless assigned to the current teacher. Student snapshots and roster widget results stay in memory, never in saved screen layouts/exports. In-flight responses cannot restore a signed-out snapshot.
 
-Errors include SIGN_IN_REQUIRED, CLASS_TEACHER_REQUIRED, CLASS_ACCESS_DENIED, TRY_LATER, ERP_UNAVAILABLE, ORIGIN_DENIED and HTTPS_REQUIRED. No upstream stack traces are returned. Authentication errors clear the session and private snapshot. Other feed errors clear the snapshot while tools stay available. Optional timetable/homework/notices failures do not block attendance, but an auth failure from any feed invalidates access.
+## Taking attendance
+
+**Take attendance** on the attendance card (and in Quick actions) opens today's register for the connected class. Unmarked students start as present; statuses are present, absent, late, leave and half day. Before saving, the dialog states how many families will receive the school's absence alert.
+
+The server fetches today's ERP register first and saves only if the records cover exactly those students, once each, with a valid status; otherwise it returns ATTENDANCE_INCOMPLETE and saves nothing. The date is always today in the board's timezone, chosen by the server. Existing ERP remarks are carried over because the ERP overwrites them on save, and they never reach the browser. Half day is sent in the ERP's spelling (`half day`), which it also reports on reads. Saving again is safe: the ERP updates the day's rows and alerts only students not already stored as absent. Present Mode closes and hides the register. Live saving has been verified against a local fictional ERP only, never with real students.
+
+Errors include ATTENDANCE_INCOMPLETE, SIGN_IN_REQUIRED, CLASS_TEACHER_REQUIRED, CLASS_ACCESS_DENIED, TRY_LATER, ERP_UNAVAILABLE, ORIGIN_DENIED and HTTPS_REQUIRED. No upstream stack traces are returned. Authentication errors clear the session and private snapshot. Other feed errors clear the snapshot while tools stay available. Optional timetable/homework/notices failures do not block attendance, but an auth failure from any feed invalidates access.
 
 Snapshot fields: date, updatedAt, academicYearId, teacher, attendance totals and minimal students (ID/name/photo=null/status), roster (ID/name/photo=null/birthday boolean), partial timetable, homework and notices. Late counts as present and separately as late; leave/half-day are not silently counted absent. Malformed/wrong-date attendance fails instead of fabricating totals.
 

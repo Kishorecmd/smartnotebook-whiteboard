@@ -6,3 +6,9 @@
 
 
 .cs-presenting .cs-exit-present{top:auto;bottom:18px;right:24px}.cs-presenting .live-home{bottom:72px}
+
+.live-register-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:12px}.live-register-tools span{font-size:13px;color:#607a5f}
+.live-register{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}.live-register li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:9px 10px;border-radius:12px;background:#f0f5e8}.live-register b{font-size:15px;font-weight:550}
+.live-register [role=group]{display:flex;flex-wrap:wrap;gap:4px}.live-register [role=group] button{min-height:36px;padding:6px 10px;border:1px solid #d4dfc9;border-radius:9px;background:#fff;color:#4a664b;font:inherit;font-size:12.5px}
+.live-register [aria-pressed=true].is-present{background:#365f4a;border-color:#365f4a;color:#fff}.live-register [aria-pressed=true].is-absent{background:#b4493f;border-color:#b4493f;color:#fff}.live-register [aria-pressed=true]:is(.is-late,.is-leave,.is-half_day){background:#c9892f;border-color:#c9892f;color:#fff}
+.live-register-note{background:#fbf1e3;border-radius:10px;padding:10px 12px;font-size:14px!important}

@@ -18,6 +18,7 @@ const fixtures = {
   timetable: { data: { Monday: [{ class_id: 3, section_id: 7, period: 1, subject_name: 'Maths', start_time: '09:00:00', end_time: '09:40:00' }, { class_id: 9, section_id: 9, period: 2, subject_name: 'Other class lesson' }] } },
   homework: { data: [{ class_name: 'Grade 3', section_name: 'A', assigned_date: '2026-09-28', title: 'Read', description: 'Read a story' }, { class_name: 'Grade 4', section_name: 'A', assigned_date: '2026-09-28', title: 'Other class homework' }] },
   notices: { data: [{ title: 'Staff', message: 'Teacher reminder', target_scope: 'teachers' }, { title: 'School', message: 'Reading day', target_scope: 'all' }] },
+  'attendance/save': { saved: 1 },
 };
 beforeEach(async () => {
   time = Date.parse('2026-09-28T04:00:00Z'); overrides = {};
@@ -122,4 +123,46 @@ it('limits repeated sign-in attempts', async () => {
   overrides.login = () => ({ status: 401, ok: false });
   for (let i = 0; i < 5; i++) expect((await request('login', { credential: 'teacher', password: 'wrong' })).status).toBe(401);
   expect((await request('login', { credential: 'teacher', password: 'wrong' })).status).toBe(429);
+});
+
+const saves = () => upstream.mock.calls.filter(([u]) => u.searchParams.get('url') === 'teacher-app/attendance/save');
+it("saves today's register for the assigned class, keeping ERP remarks out of the browser", async () => {
+  const cookie = await login();
+  const response = await request('attendance', { mapping, records: [{ id: '1', status: 'absent' }] }, cookie);
+  expect(response.status).toBe(200);
+  const result = await response.json();
+  expect(result).toEqual({ date: '2026-09-28', saved: 1, newlyAbsent: 1 });
+  expect(JSON.stringify(result)).not.toContain('private remarks');
+  const [[url, options]] = saves();
+  expect(options.method).toBe('POST'); expect(url.searchParams.get('date')).toBeNull();
+  expect(JSON.parse(options.body)).toEqual({ class_id: '3', section_id: '7', date: '2026-09-28', records: [{ student_id: 1, status: 'absent', remarks: 'private remarks' }] });
+});
+it('sends half day in the ERP spelling and counts only newly absent students', async () => {
+  const cookie = await login();
+  overrides.attendance = () => ok({ ...fixtures.attendance, already_saved: true, data: [{ ...fixtures.attendance.data[0], status: 'absent' }, { student_id: 2, full_name: 'Second', status: 'present' }] });
+  const response = await request('attendance', { mapping, records: [{ id: '1', status: 'absent' }, { id: '2', status: 'half_day' }] }, cookie);
+  expect(await response.json()).toMatchObject({ newlyAbsent: 0 });
+  expect(JSON.parse(saves()[0][1].body).records.map(r => r.status)).toEqual(['absent', 'half day']);
+});
+it('rejects incomplete, unknown, duplicate or invalid registers before saving anything', async () => {
+  const cookie = await login();
+  overrides.attendance = () => ok({ ...fixtures.attendance, data: [...fixtures.attendance.data, { student_id: 2, full_name: 'Second', status: null }] });
+  for (const records of [[], [{ id: '1', status: 'present' }], [{ id: '1', status: 'present' }, { id: '99', status: 'present' }], [{ id: '1', status: 'present' }, { id: '1', status: 'absent' }], [{ id: '1', status: 'present' }, { id: '2', status: 'excused' }], 'all present']) {
+    const response = await request('attendance', { mapping, records }, cookie);
+    expect(response.status).toBe(400); expect(await response.json()).toEqual({ code: 'ATTENDANCE_INCOMPLETE' });
+  }
+  expect(saves()).toHaveLength(0);
+});
+it('refuses to save another class or without a class teacher session', async () => {
+  expect((await request('attendance', { mapping, records: [{ id: '1', status: 'present' }] })).status).toBe(401);
+  const cookie = await login();
+  const response = await request('attendance', { mapping: { ...mapping, classId: '99' }, records: [{ id: '1', status: 'present' }] }, cookie);
+  expect(response.status).toBe(403);
+  expect(upstream.mock.calls.some(([u]) => /attendance/.test(u.searchParams.get('url')))).toBe(false);
+});
+it('does not save when the ERP register is for a different day', async () => {
+  const cookie = await login();
+  overrides.attendance = () => ok({ ...fixtures.attendance, date: '2026-09-27' });
+  expect((await request('attendance', { mapping, records: [{ id: '1', status: 'present' }] }, cookie)).status).toBe(503);
+  expect(saves()).toHaveLength(0);
 });

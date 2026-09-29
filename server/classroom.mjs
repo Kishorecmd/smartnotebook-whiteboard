@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import express from 'express';
-import { erpBase, clean, classesFromTeacher, minimalStudents, attendanceFromERP, teacherLessons, dayParts } from './classroom-adapter.mjs';
+import { erpBase, clean, classesFromTeacher, minimalStudents, attendanceFromERP, teacherLessons, dayParts, ATTENDANCE_STATUSES, statusToERP } from './classroom-adapter.mjs';
 
 const COOKIE = 'jhw_class_teacher';
 const IDLE = 30 * 60_000;
 const MAX_AGE = 8 * 60 * 60_000;
-const routes = new Set(['login', 'logout', 'profile', 'diary/sections', 'students', 'attendance', 'timetable', 'homework', 'notices']);
+const routes = new Set(['login', 'logout', 'profile', 'diary/sections', 'students', 'attendance', 'attendance/save', 'timetable', 'homework', 'notices']);
 const failure = (status, code) => Object.assign(new Error(code), { status, code });
 
 // Tokens and private classroom responses never go into persistent storage.
@@ -144,6 +144,33 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpB
         homework: (Array.isArray(homework?.data) ? homework.data : []).filter(h => h.class_name === mapping.grade && h.section_name === mapping.section && h.assigned_date === date).map(h => ({ title: clean(h.title), text: clean(h.description, 4000), subject: clean(h.subject_name) })),
         notices: (Array.isArray(notices?.data) ? notices.data : []).map(n => ({ title: clean(n.title), text: clean(n.message, 4000), public: n.target_scope === 'all' })),
       });
+    } catch (e) { next(e); }
+  });
+  // Marks today's register for the teacher's own class. The server picks the
+  // date, and a save must cover exactly the students the ERP lists today.
+  // Saving tells the ERP, which alerts the parents of newly absent students.
+  router.post('/attendance', async (req, res, next) => {
+    try {
+      const s = active(req);
+      const mapping = mappingFrom(req.body?.mapping, await scope(s));
+      const { date } = dayParts(new Date(now()), mapping.timezone);
+      const query = { class_id: mapping.classId, section_id: mapping.sectionId };
+      const register = await erp('attendance', s.token, { ...query, date });
+      if (!Array.isArray(register.data) || register.date !== date) throw failure(503, 'ERP_UNAVAILABLE');
+      const roster = new Map(register.data.map(r => [String(r.student_id), r]));
+      const records = req.body?.records;
+      if (!Array.isArray(records) || records.length !== roster.size || !roster.size) throw failure(400, 'ATTENDANCE_INCOMPLETE');
+      const seen = new Set();
+      for (const r of records) {
+        if (!roster.has(r?.id) || seen.has(r.id) || !ATTENDANCE_STATUSES.includes(r.status)) throw failure(400, 'ATTENDANCE_INCOMPLETE');
+        seen.add(r.id);
+      }
+      const before = attendanceFromERP(register).students;
+      const newlyAbsent = records.filter(r => r.status === 'absent' && before.find(b => b.id === r.id)?.status !== 'absent').length;
+      stillActive(req, s);
+      // The ERP replaces remarks on save, so keep each student's existing one.
+      const result = await erp('attendance/save', s.token, null, { ...query, date, records: records.map(r => ({ student_id: Number(r.id), status: statusToERP(r.status), remarks: roster.get(r.id).remarks ?? null })) });
+      res.json({ date, saved: Number(result.saved) || records.length, newlyAbsent });
     } catch (e) { next(e); }
   });
   router.use((error, req, res, _next) => {

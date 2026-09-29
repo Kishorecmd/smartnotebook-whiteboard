@@ -23,8 +23,12 @@ export function photoUrl(value) {
 export function minimalStudents(rows, monthDay) {
   return rows.map(s => ({ id: String(s.id), name: clean(s.full_name), photo: photoUrl(s.photo), birthday: typeof s.date_of_birth === 'string' && s.date_of_birth.slice(5, 10) === monthDay }));
 }
+// The ERP stores 'Half Day' and reports it lowercased with a space.
+export const ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'half_day', 'leave'];
+const statusFromERP = value => { const s = typeof value === 'string' ? value.trim().toLowerCase().replace(' ', '_') : ''; return ATTENDANCE_STATUSES.includes(s) ? s : 'unmarked'; };
+export const statusToERP = status => status === 'half_day' ? 'half day' : status;
 export function attendanceFromERP(payload) {
-  const students = (payload.data || []).map(s => ({ id: String(s.student_id), name: clean(s.full_name), photo: photoUrl(s.photo), status: ['present', 'absent', 'late', 'half_day', 'leave'].includes(s.status?.toLowerCase()) ? s.status.toLowerCase() : 'unmarked' }));
+  const students = (payload.data || []).map(s => ({ id: String(s.student_id), name: clean(s.full_name), photo: photoUrl(s.photo), status: statusFromERP(s.status) }));
   const present = students.filter(s => s.status === 'present' || s.status === 'late').length;
   const absent = students.filter(s => s.status === 'absent').length;
   const late = students.filter(s => s.status === 'late').length;
