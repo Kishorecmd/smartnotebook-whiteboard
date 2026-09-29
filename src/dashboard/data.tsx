@@ -9,6 +9,15 @@ export async function classroomRequest(path: string, body?: unknown, signal?: Ab
   if (!response.ok) { let code = 'ERP_UNAVAILABLE'; try { code = (await response.json()).code || code; } catch { /* Static-only hosts return HTML. */ } throw new Error(code); }
   return response.json();
 }
+// Node answers /api/health. PHP shared hosting has no such route, so fall back
+// to classroom.php, which reports that the classroom connection is unavailable.
+export async function classroomHealth(signal?: AbortSignal): Promise<{ classroomAPI?: boolean; classroomWeather?: boolean } | null> {
+  for (const url of ['/api/health', '/api/classroom.php?action=health']) {
+    try { const response = await fetch(url, { cache: 'no-store', signal }); if (response.ok) return await response.json(); }
+    catch (error) { if (signal?.aborted) throw error; /* Not JSON or unreachable: try the next check. */ }
+  }
+  return null;
+}
 export function useClassroomData(now: number) {
   const [mapping, setMapping] = useState<Mapping | null>(() => { try { return MappingSchema.parse(JSON.parse(localStorage.getItem(MAPPING_KEY) || 'null')); } catch { return null; } });
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -25,7 +34,7 @@ export function useClassroomData(now: number) {
   const boundary = useRef('');
   useEffect(() => {
     const abort = new AbortController(); const epoch = authEpoch.current;
-    fetch('/api/health', { cache: 'no-store', signal: abort.signal }).then(r => r.ok ? r.json() : null).then(async h => {
+    classroomHealth(abort.signal).then(async h => {
       if (abort.signal.aborted || epoch !== authEpoch.current) return;
       setWeatherReady(h?.classroomWeather === true);
       if (!h?.classroomAPI) { setReady(false); storeSession(null); setSnapshot(null); return; }
