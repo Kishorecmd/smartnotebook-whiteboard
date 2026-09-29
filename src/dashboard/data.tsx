@@ -1,6 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { MappingSchema, SnapshotSchema, WeatherSchema, currentPeriod, dateKey, type Mapping, type Snapshot, type Weather } from './model';
 export const MAPPING_KEY = 'jhw_classroom_mapping_v1';
+export const DEFAULT_ERP_BASE = 'https://erp.jaihind.school/public/index.php';
+/** An ERP web page on the server's configured ERP, or production if none is known. */
+export function erpLink(base: unknown, route: string) {
+  let url: URL;
+  try { url = new URL(typeof base === 'string' ? base : DEFAULT_ERP_BASE); } catch { url = new URL(DEFAULT_ERP_BASE); }
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) url = new URL(DEFAULT_ERP_BASE);
+  return `${url.href}?url=${route}`;
+}
 export const LiveClassContext = createContext<{ mapping: Mapping | null; snapshot: Snapshot | null; presenting: boolean }>({ mapping: null, snapshot: null, presenting: false });
 export const useLiveClass = () => useContext(LiveClassContext);
 export type ClassTeacherSession = { role: 'teacher'; name: string; classes: Pick<Mapping, 'classId'|'sectionId'|'grade'|'section'>[] };
@@ -11,7 +19,7 @@ export async function classroomRequest(path: string, body?: unknown, signal?: Ab
 }
 // Node answers /api/health. PHP shared hosting has no such route, so fall back
 // to classroom.php, which reports that the classroom connection is unavailable.
-export async function classroomHealth(signal?: AbortSignal): Promise<{ classroomAPI?: boolean; classroomWeather?: boolean } | null> {
+export async function classroomHealth(signal?: AbortSignal): Promise<{ classroomAPI?: boolean; classroomWeather?: boolean; erpBase?: string } | null> {
   for (const url of ['/api/health', '/api/classroom.php?action=health']) {
     try { const response = await fetch(url, { cache: 'no-store', signal }); if (response.ok) return await response.json(); }
     catch (error) { if (signal?.aborted) throw error; /* Not JSON or unreachable: try the next check. */ }
@@ -26,6 +34,7 @@ export function useClassroomData(now: number) {
   const authEpoch = useRef(0);
   const [ready, setReady] = useState(false);
   const [weatherReady, setWeatherReady] = useState(false);
+  const [erpBase, setErpBase] = useState(DEFAULT_ERP_BASE);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -37,6 +46,7 @@ export function useClassroomData(now: number) {
     classroomHealth(abort.signal).then(async h => {
       if (abort.signal.aborted || epoch !== authEpoch.current) return;
       setWeatherReady(h?.classroomWeather === true);
+      setErpBase(typeof h?.erpBase === 'string' ? h.erpBase : DEFAULT_ERP_BASE);
       if (!h?.classroomAPI) { setReady(false); storeSession(null); setSnapshot(null); return; }
       setReady(true);
       try { const s = await classroomRequest('session', undefined, abort.signal); if (!abort.signal.aborted && epoch === authEpoch.current) storeSession(s); } catch { if (!abort.signal.aborted && epoch === authEpoch.current) { storeSession(null); setSnapshot(null); } }
@@ -74,6 +84,6 @@ export function useClassroomData(now: number) {
   }, [now, mapping, snapshot, refresh]);
   const saveMapping = (value: Mapping) => { const parsed = MappingSchema.parse(value); localStorage.setItem(MAPPING_KEY, JSON.stringify(parsed)); setSnapshot(null); setMapping(parsed); refresh(); };
   const logout = async () => { authEpoch.current++; setSnapshot(null); storeSession(null); try { await classroomRequest('logout', {}); setError(''); } catch { setError('SIGN_OUT_UNCONFIRMED'); } };
-  return { mapping, snapshot: snapshot && mapping && snapshot.date === dateKey(now, mapping.timezone) ? snapshot : null, weather, session, ready, error, loading, refresh, setSession, saveMapping, logout };
+  return { mapping, snapshot: snapshot && mapping && snapshot.date === dateKey(now, mapping.timezone) ? snapshot : null, weather, session, ready, erpBase, error, loading, refresh, setSession, saveMapping, logout };
 }
 export type ClassroomData = ReturnType<typeof useClassroomData>;

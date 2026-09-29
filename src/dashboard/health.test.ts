@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { classroomHealth } from './data';
+import { classroomHealth, erpLink } from './data';
 
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
 afterEach(() => vi.unstubAllGlobals());
@@ -21,4 +21,9 @@ it('falls back to classroom.php when a static host returns 404 or its HTML page'
 it('returns null when neither check answers', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('offline'); }));
   expect(await classroomHealth()).toBeNull();
+});
+it('builds ERP web links on the configured base and falls back to production', () => {
+  expect(erpLink('http://localhost/Antigravity/public/index.php', 'teacher-portal/attendance')).toBe('http://localhost/Antigravity/public/index.php?url=teacher-portal/attendance');
+  for (const bad of [undefined, 'not a url', 'javascript:alert(1)', 'https://u:p@erp.example/index.php', 'https://erp.example/index.php?url=x'])
+    expect(erpLink(bad, 'teacher-portal/login')).toBe('https://erp.jaihind.school/public/index.php?url=teacher-portal/login');
 });

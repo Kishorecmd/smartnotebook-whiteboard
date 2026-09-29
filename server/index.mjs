@@ -62,7 +62,8 @@ app.use((request, response, next) => {
 });
 app.use(express.json({ limit: '6mb', type: 'application/json' }));
 app.get('/api/classroom/weather', weatherHandler());
-app.use('/api/classroom', classroomRouter({ base: erpBase(process.env.CLASSROOM_ERP_BASE_URL || undefined) }));
+const classroomErpBase = erpBase(process.env.CLASSROOM_ERP_BASE_URL || undefined);
+app.use('/api/classroom', classroomRouter({ base: classroomErpBase }));
 
 const validImageDataUrl = (value) =>
   typeof value === 'string' &&
@@ -98,7 +99,7 @@ cleanupTimer.unref();
 
 app.get('/api/health', (_request, response) => {
   response.set('Cache-Control', 'no-store');
-  response.json({ ok: true, handwritingConfigured: Boolean(process.env.GEMINI_API_KEY), liveAssessment: true, classroomAPI: true, classroomWeather: true });
+  response.json({ ok: true, handwritingConfigured: Boolean(process.env.GEMINI_API_KEY), liveAssessment: true, classroomAPI: true, classroomWeather: true, erpBase: classroomErpBase });
 });
 
 const cleanText = (value, max = 200) => typeof value === 'string' ? value.trim().slice(0, max) : '';

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { X, ArrowUpRight, Sun, CloudSun, CloudRain, Settings2, ChevronDown, Users, Check, Sparkles, Zap, BookOpen, Clock3 } from 'lucide-react';
 import { type Mapping, type Snapshot, type Weather, currentPeriod, minuteOfDay, timeMinutes, weatherCondition } from './model';
-import { classroomRequest, type ClassroomData } from './data';
+import { classroomRequest, erpLink, type ClassroomData } from './data';
 import { useWhiteboardStore } from '../store';
 import type { WidgetKind } from '../classroom/model';
 import './dashboard.css';
@@ -22,7 +22,7 @@ export function ConnectionDialog({ data, close }: {data: ClassroomData; close: (
     return code === 'CLASS_TEACHER_REQUIRED' ? 'This account has no class teacher assignment. Ask the school office to update your class and section in ERP.' : code === 'CLASS_ACCESS_DENIED' ? 'Your account is not authorized for this classroom. Sign in with its class teacher account.' : code === 'TRY_LATER' ? 'Too many sign-in attempts. Please wait five minutes and try again.' : code === 'SIGN_IN_REQUIRED' ? 'Please check your ERP username and password, then sign in again.' : 'The school ERP could not be reached. Please try again shortly.';
   };
   return <DashboardModal title="Classroom connection" close={close}>
-    {!data.ready ? <><p>The classroom connection service is unavailable. Your whiteboard and classroom tools are ready to use.</p><p>When connected, sign in with your existing class teacher ERP account to open your assigned classroom.</p><button className="live-button" onClick={data.refresh}>Retry connection</button><a className="live-button" href="https://erp.jaihind.school/public/index.php?url=teacher-portal/login" target="_blank" rel="noopener noreferrer">Open school ERP <ArrowUpRight size={17}/></a></> : !data.session ? <form onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { const s = await classroomRequest('login', { credential, password }); setPassword(''); data.setSession(s); } catch (e) { setPassword(''); setError(connectionError(e)); } finally { setBusy(false); } }}>
+    {!data.ready ? <><p>The classroom connection service is unavailable. Your whiteboard and classroom tools are ready to use.</p><p>When connected, sign in with your existing class teacher ERP account to open your assigned classroom.</p><button className="live-button" onClick={data.refresh}>Retry connection</button><a className="live-button" href={erpLink(data.erpBase, 'teacher-portal/login')} target="_blank" rel="noopener noreferrer">Open school ERP <ArrowUpRight size={17}/></a></> : !data.session ? <form onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { const s = await classroomRequest('login', { credential, password }); setPassword(''); data.setSession(s); } catch (e) { setPassword(''); setError(connectionError(e)); } finally { setBusy(false); } }}>
       <p>Sign in with your existing class teacher ERP account. Only the class and section assigned to you as class teacher will be available.</p>
       <label>Email or username<input autoComplete="username" required value={credential} onChange={e => setCredential(e.target.value)} /></label>
       <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label><button className="live-button live-primary" disabled={busy}>{busy ? 'Signing in…' : 'Class teacher sign in'}</button>
@@ -44,7 +44,7 @@ export function ClassroomHome({ now, mapping, snapshot, weather, presenting, dat
   const hour = Math.floor(minuteOfDay(now, timezone) / 60);
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const attendance = snapshot?.attendance;
-  const markUrl = 'https://erp.jaihind.school/public/index.php?url=teacher-portal/attendance';
+  const markUrl = erpLink(data.erpBase, 'teacher-portal/attendance');
   const objective = learning ?? snapshot?.learning;
   useEffect(() => { if(presenting) { setList(null); setActions(false); setMore(false); setEditLearning(false); setQr(false); } }, [presenting]);
   const openExisting = (kind: 'lesson'|'website'|'youtube') => { onWhiteboard(); const s = useWhiteboardStore.getState(); if(kind === 'lesson') s.openLibrary('templates'); else if(kind === 'website') s.setWebAppDialogOpen(true); else s.setYouTubeDialogOpen(true); };

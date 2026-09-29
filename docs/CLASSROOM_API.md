@@ -14,7 +14,7 @@ The proxy is now implemented and enabled locally following the class teacher aut
 
 ## Verified ERP routes used
 
-All routes use `https://erp.jaihind.school/public/index.php?url=ROUTE` by default. `CLASSROOM_ERP_BASE_URL` overrides the base, for example `http://localhost/Antigravity/public/index.php` for local XAMPP; the server refuses to start with a non-HTTPS base unless it is localhost, 127.0.0.1 or [::1], because teacher passwords are forwarded to it. The ERP web links in the dashboard still open production. Except login, requests use the teacher Bearer token server-side. Hosts/routes are allowlisted; redirects are rejected.
+All routes use `https://erp.jaihind.school/public/index.php?url=ROUTE` by default. `CLASSROOM_ERP_BASE_URL` overrides the base, for example `http://localhost/Antigravity/public/index.php` for local XAMPP; the server refuses to start with a non-HTTPS base unless it is localhost, 127.0.0.1 or [::1], because teacher passwords are forwarded to it. `/api/health` reports the configured base as `erpBase`, and the dashboard's Mark Attendance and Open school ERP links use it, falling back to production when it is missing (for example on PHP-only hosting). Except login, requests use the teacher Bearer token server-side. Hosts/routes are allowlisted; redirects are rejected.
 
 | ERP route | Request | Scope / data |
 |---|---|---|
