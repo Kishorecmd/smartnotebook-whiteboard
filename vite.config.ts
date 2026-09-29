@@ -73,7 +73,9 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
-      '/api': 'http://127.0.0.1:8787',
+      // Keep the browser's Host so the classroom API's same-origin check
+      // compares the page origin with itself, not with port 8787.
+      '/api': { target: 'http://127.0.0.1:8787', changeOrigin: false },
     },
   },
 })
