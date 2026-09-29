@@ -1,6 +1,6 @@
 # Jaihind Smart Classroom integration
 
-Updated: 28 September 2026.
+Updated: 29 September 2026.
 
 ## Class teacher authorization
 
@@ -24,10 +24,13 @@ All routes use `https://erp.jaihind.school/public/index.php?url=ROUTE`. Except l
 | `teacher-app/profile` | GET | Current academic year ID; discard contacts and other profile details |
 | `teacher-app/students` | GET class_id, section_id | ID/name/birthday-today boolean; discard DOB, contacts and admission details |
 | `teacher-app/attendance` | GET class_id, section_id, date | Names/status/totals with explicit unmarked state |
-| `teacher-app/timetable` | GET | Signed-in teacher's own lessons filtered by class/section; labelled partial |
-| `teacher-app/homework` | GET limit=100 | Teacher's latest homework filtered by class/section names and today's assigned date |
+| `teacher-app/timetable` | GET | Fallback only: signed-in teacher's own lessons filtered by class/section; labelled partial |
+| `teacher-app/homework` | GET limit=100 | Fallback only: teacher's latest homework filtered by class/section names and today's assigned date |
+| `teacher-app/classroom/day` | GET class_id, section_id, date | Class-teacher-only section day: full timeline (every teacher's lessons, breaks, lunch), student holiday, year label, and that day's published homework with class/section IDs. Preferred when present |
 | `teacher-app/notices` | GET limit=20 | Teacher/school notices; only explicit target_scope=all can be presented |
 | `teacher-portal/attendance` | Browser navigation | Existing ERP web login and editor; no duplicate attendance writes |
+
+`teacher-app/classroom/day` is added in JaihindERP (`TeacherApiController::classroomDay`). It checks the section against the same class-teacher assignments as the diary before reading anything, returns 403 otherwise, and builds the day with `Modules\Timetable\Services\SectionDayTimeline`, the logic the parent app already uses. The whiteboard uses it only when its date, class ID and section ID match the request. Otherwise, and on ERP builds without the route, it falls back to the partial teacher feeds below. A 401/403 from it ends the session like any other feed.
 
 Live photo URLs are suppressed; initials appear until authorized, non-cacheable photo delivery exists. Full dates of birth never reach the browser. Homework is limited to the teacher's latest 100 items and is not a complete class-wide feed; the ERP response currently omits class/section IDs.
 
@@ -70,11 +73,11 @@ GET /api/classroom/weather uses server/classroom-weather.mjs, with no credential
 
 ## ERP capabilities still needed
 
-1. Full class-day timetable with other teachers, breaks/lunch/ECA, authoritative holidays and substitutions. Existing teacher timetable is partial.
-2. Academic year label and classroom context; year ID is available today.
-3. Corrected calendar scope: inspected teacher-app/calendar calls requireToken() without assigning $auth before using its teacher ID. Do not consume until corrected and audience/holiday semantics are verified.
-4. Lesson plans/current objectives linked to class/date/period. The existing lesson library and manual session-only objective remain available.
-5. Authorized no-store student photos; otherwise continue using initials.
-6. Homework class/section IDs and a complete class-scoped feed instead of name matching against recent teacher items.
+1. Substitutions in the section day. `teacher-app/classroom/day` now gives the full class timetable with other teachers, breaks, lunch and student holidays, but not same-day cover changes.
+2. Lesson plans/current objectives linked to class/date/period. The existing lesson library and manual session-only objective remain available.
+3. Authorized no-store student photos; otherwise continue using initials.
+4. `teacher-app/calendar` now assigns the token's teacher before narrowing homework and no longer returns exception text. The whiteboard still does not consume it; verify audience and holiday semantics first.
+
+Resolved in JaihindERP: the academic year label and the section's homework with class/section IDs come from `teacher-app/classroom/day`.
 
 Admin APIs, admin-session api/academic_years.php and insufficiently authenticated api/v1/homework.php are not used.

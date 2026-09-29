@@ -123,3 +123,34 @@ it('limits repeated sign-in attempts', async () => {
   for (let i = 0; i < 5; i++) expect((await request('login', { credential: 'teacher', password: 'wrong' })).status).toBe(401);
   expect((await request('login', { credential: 'teacher', password: 'wrong' })).status).toBe(429);
 });
+const classDay = (extra = {}) => ok({ date: '2026-09-28', day: 'Monday', year_id: 12, year_label: '2026-2027', class_id: 3, section_id: 7, holiday: null,
+  timeline: [{ period_number: 1, label: 'Assembly', start_time: '08:30', end_time: '08:45', is_break: true, subject_name: null, teacher_name: null }, { period_number: 2, label: 'Period 1', start_time: '08:45', end_time: '09:30', is_break: false, subject_name: 'English', teacher_name: 'Other Teacher' }, { period_number: 7, label: 'Lunch Break', start_time: '12:00', end_time: '12:45', is_break: true }],
+  homework: [{ id: 5, class_id: 3, section_id: 7, title: 'Spellings', description: 'Learn ten words', subject_name: 'English', assigned_date: '2026-09-28' }, { id: 6, class_id: 4, section_id: 7, title: 'Other class homework', assigned_date: '2026-09-28' }], ...extra });
+it('shows the whole section day from the ERP classroom feed when it is available', async () => {
+  const cookie = await login(); overrides['classroom/day'] = url => { expect(url.searchParams.get('class_id')).toBe('3'); expect(url.searchParams.get('date')).toBe('2026-09-28'); return classDay(); };
+  const result = await (await request('snapshot', { mapping }, cookie)).json();
+  expect(SnapshotSchema.safeParse(result).success).toBe(true);
+  expect(result.academicYear).toBe('2026-2027');
+  expect(result.timetable.complete).toBe(true);
+  expect(result.timetable.periods.map(p => [p.subject, p.kind, p.teacher])).toEqual([['Assembly', 'break', ''], ['English', 'lesson', 'Other Teacher'], ['Lunch Break', 'lunch', '']]);
+  expect(result.homework).toEqual([{ title: 'Spellings', text: 'Learn ten words', subject: 'English' }]);
+  expect(JSON.stringify(result)).not.toMatch(/Other class/);
+});
+it('reports an ERP holiday instead of a timetable', async () => {
+  const cookie = await login(); overrides['classroom/day'] = () => classDay({ holiday: { name: 'Gandhi Jayanti', scope: 'whole_school' } });
+  const result = await (await request('snapshot', { mapping }, cookie)).json();
+  expect(result.timetable).toEqual({ complete: true, holiday: 'Gandhi Jayanti', periods: [] });
+});
+it('falls back to the teacher’s own lessons when the classroom feed is for another class or date', async () => {
+  const cookie = await login(); overrides['classroom/day'] = () => classDay({ date: '2026-09-27' });
+  let result = await (await request('snapshot', { mapping }, cookie)).json();
+  expect(result.timetable.complete).toBe(false); expect(result.academicYear).toBeUndefined();
+  overrides['classroom/day'] = () => classDay({ section_id: 8 });
+  result = await (await request('snapshot', { mapping }, cookie)).json();
+  expect(result.timetable.complete).toBe(false);
+});
+it('treats a refused classroom feed as lost access', async () => {
+  const cookie = await login(); overrides['classroom/day'] = () => ({ status: 403, ok: false });
+  expect((await request('snapshot', { mapping }, cookie)).status).toBe(403);
+  expect((await request('session', undefined, cookie)).status).toBe(401);
+});

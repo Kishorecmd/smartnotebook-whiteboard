@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import express from 'express';
-import { ERP_BASE, clean, classesFromTeacher, minimalStudents, attendanceFromERP, teacherLessons, dayParts } from './classroom-adapter.mjs';
+import { ERP_BASE, clean, classesFromTeacher, minimalStudents, attendanceFromERP, teacherLessons, dayParts, classroomDayFromERP } from './classroom-adapter.mjs';
 
 const COOKIE = 'jhw_class_teacher';
 const IDLE = 30 * 60_000;
 const MAX_AGE = 8 * 60 * 60_000;
-const routes = new Set(['login', 'logout', 'profile', 'diary/sections', 'students', 'attendance', 'timetable', 'homework', 'notices']);
+const routes = new Set(['login', 'logout', 'profile', 'diary/sections', 'students', 'attendance', 'timetable', 'homework', 'notices', 'classroom/day']);
 const failure = (status, code) => Object.assign(new Error(code), { status, code });
 
 // Tokens and private classroom responses never go into persistent storage.
@@ -128,20 +128,25 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now } = {}) {
       const results = await Promise.allSettled([
         erp('profile', s.token), erp('students', s.token, query), erp('attendance', s.token, { ...query, date }),
         erp('timetable', s.token), erp('homework', s.token, { limit: 100 }), erp('notices', s.token, { limit: 20 }),
+        erp('classroom/day', s.token, { ...query, date }),
       ]);
       // An expired token or denied access must not become an optional feed error.
       for (const r of results) if (r.status === 'rejected' && [401, 403].includes(r.reason.status)) throw r.reason;
       for (const r of results.slice(0, 3)) if (r.status === 'rejected') throw r.reason;
-      const [profile, students, attendance, timetable, homework, notices] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+      const [profile, students, attendance, timetable, homework, notices, classDay] = results.map(r => r.status === 'fulfilled' ? r.value : null);
       if (!Array.isArray(students.data) || !Array.isArray(attendance.data) || attendance.date !== date || typeof attendance.already_saved !== 'boolean' || !profile.data?.year_id) throw failure(503, 'ERP_UNAVAILABLE');
       stillActive(req, s);
+      // The section's whole day when the ERP offers it; older ERP builds only
+      // have the signed-in teacher's own lessons and recent homework.
+      const day = classroomDayFromERP(classDay, mapping, date);
       // Show initials until the ERP provides authorized, non-cacheable photos.
       const totals = attendanceFromERP(attendance);
       totals.students = totals.students.map(student => ({ ...student, photo: null }));
       res.json({ date, updatedAt: now(), academicYearId: String(profile.data.year_id), teacher: s.name, attendance: totals,
         students: minimalStudents(students.data, date.slice(5)).map(student => ({ ...student, photo: null })),
-        timetable: { complete: false, periods: timetable ? teacherLessons(timetable, mapping, weekday, s.name) : [] },
-        homework: (Array.isArray(homework?.data) ? homework.data : []).filter(h => h.class_name === mapping.grade && h.section_name === mapping.section && h.assigned_date === date).map(h => ({ title: clean(h.title), text: clean(h.description, 4000), subject: clean(h.subject_name) })),
+        ...(day?.yearLabel ? { academicYear: day.yearLabel } : {}),
+        timetable: day ? day.timetable : { complete: false, periods: timetable ? teacherLessons(timetable, mapping, weekday, s.name) : [] },
+        homework: day ? day.homework : (Array.isArray(homework?.data) ? homework.data : []).filter(h => h.class_name === mapping.grade && h.section_name === mapping.section && h.assigned_date === date).map(h => ({ title: clean(h.title), text: clean(h.description, 4000), subject: clean(h.subject_name) })),
         notices: (Array.isArray(notices?.data) ? notices.data : []).map(n => ({ title: clean(n.title), text: clean(n.message, 4000), public: n.target_scope === 'all' })),
       });
     } catch (e) { next(e); }

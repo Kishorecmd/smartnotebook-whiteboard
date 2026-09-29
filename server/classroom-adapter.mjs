@@ -29,3 +29,23 @@ export function dayParts(now, timezone = 'Asia/Kolkata') {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'long' }).formatToParts(now).map(p => [p.type, p.value]));
   return { date: `${parts.year}-${parts.month}-${parts.day}`, weekday: parts.weekday };
 }
+const hhmm = v => typeof v === 'string' && /^\d\d:\d\d/.test(v) ? v.slice(0, 5) : null;
+function periodKind(p) {
+  if (p.is_break) return /lunch/i.test(p.label || '') ? 'lunch' : 'break';
+  if (p.subject_name) return 'lesson';
+  return /\b(eca|club|activit)/i.test(p.label || '') ? 'eca' : 'free';
+}
+/**
+ * The section's whole day from ERP teacher-app/classroom/day, or null when the
+ * response is not for this class and date. Null means "fall back to the
+ * teacher's own lessons", never "no classes today".
+ */
+export function classroomDayFromERP(payload, mapping, date) {
+  if (!payload || payload.date !== date || String(payload.class_id) !== mapping.classId || String(payload.section_id) !== mapping.sectionId || !Array.isArray(payload.timeline) || !Array.isArray(payload.homework)) return null;
+  const holiday = payload.holiday && typeof payload.holiday.name === 'string' ? clean(payload.holiday.name) || 'Holiday' : undefined;
+  return {
+    yearLabel: clean(payload.year_label, 20),
+    timetable: { complete: true, ...(holiday ? { holiday } : {}), periods: holiday ? [] : payload.timeline.map(p => ({ id: String(p.period_number), subject: clean(p.subject_name || p.label || 'Period'), start: hhmm(p.start_time), end: hhmm(p.end_time), teacher: clean(p.teacher_name || ''), kind: periodKind(p) })) },
+    homework: payload.homework.filter(h => String(h.class_id) === mapping.classId && String(h.section_id) === mapping.sectionId && h.assigned_date === date).map(h => ({ title: clean(h.title), text: clean(h.description, 4000), subject: clean(h.subject_name) })),
+  };
+}
