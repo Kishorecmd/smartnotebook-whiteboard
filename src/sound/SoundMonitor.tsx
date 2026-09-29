@@ -28,7 +28,10 @@ export function SoundMonitor({ settings, onSettingsChange }: Props) {
     return () => { mounted.current = false; session.current?.stop(); window.removeEventListener('pagehide', stop); };
   }, []);
   const change = (patch: Partial<Settings>) => {
-    const next = { ...options, ...patch };
+    // Build on the latest change, not this render's options, so two changes
+    // before the next render (or before a parent passes new settings) both apply.
+    const next = { ...current.current, ...patch };
+    current.current = next;
     setLocal(next); onSettingsChange?.(next); detector.current = new NoiseLimit();
   };
   const stop = () => {
@@ -87,7 +90,7 @@ export function SoundMonitor({ settings, onSettingsChange }: Props) {
     <strong className="sound-monitor-state" role="status">{stateText}</strong>
     <label className="sound-monitor-slider">Max. noise <output>{options.limit}</output><input aria-label="Maximum noise level" type="range" min="10" max="95" value={options.limit} onChange={event => change({ limit: Number(event.target.value) })} /></label>
     <div className="sound-monitor-controls">
-      <button type="button" className="sound-monitor-alert" aria-label="Sound alert" aria-pressed={options.alert} onClick={() => change({ alert: !options.alert })}>{options.alert ? <Bell size={19} /> : <BellOff size={19} />}<span>Alert {options.alert ? 'on' : 'off'}</span></button>
+      <button type="button" className="sound-monitor-alert" aria-label="Sound alert" aria-pressed={options.alert} onClick={() => change({ alert: !current.current.alert })}>{options.alert ? <Bell size={19} /> : <BellOff size={19} />}<span>Alert {options.alert ? 'on' : 'off'}</span></button>
       <span className="sound-monitor-count" title="Number of sustained noise-limit crossings"><Bell size={16} /> {count}<small>alerts</small></span>
       <button type="button" aria-label="Reset noise alert count" title="Reset alert count" disabled={!count} onClick={() => setCount(0)}><RotateCcw size={17} /></button>
     </div>
