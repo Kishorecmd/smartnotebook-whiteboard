@@ -10,6 +10,10 @@ The classroom home includes school branding, a timezone-aware clock, attendance 
 
 Open **Classroom → Connect classroom**, sign in with the existing **class teacher ERP account**, then choose the assigned class and section and select **Open my classroom**. **Take attendance** on the attendance card then marks today's register directly in the ERP; saving sends the school's absence alert to families of students newly marked absent. No administrator login is needed. Antigravity's class teacher assignments are checked on the server before reading classroom data. See [docs/CLASSROOM_API.md](docs/CLASSROOM_API.md) for verified routes and missing ERP capabilities. Both ERP and weather require the Node server. Tests use sample records; live ERP sign-in still needs a real class teacher browser check. Preview figures are never live attendance.
 
+## Jaihind LMS lesson whiteboards
+
+Jaihind LMS (lms.jaihind.school) embeds Smartnotebook to build and show lesson content. `/?lms=edit` is the full editor with **Save to LMS**, **My boards** (use a board already saved on this device) and **Library**; `/?lms=view` is a read-only student viewer with page navigation, pointer, pen, marker, eraser and **Reset**. The LMS checks ERP sign-in and course access on its server, then hands the board to the iframe through `postMessage` (contract in `src/lms/bridge.ts`); Smartnotebook holds no LMS credentials and ignores messages from other origins (`VITE_LMS_ORIGINS`). An LMS board autosaves to its own slot and never creates or prunes this device's recovery checkpoints, so a teacher's own boards are untouched. Saved media, boards and the library stay shared.
+
 ## Requirements
 
 - Node.js 22 or newer
