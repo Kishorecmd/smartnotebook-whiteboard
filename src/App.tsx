@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { ClassroomWorkspace } from './classroom/ClassroomWorkspace';
 import './whiteboard.css';
 import {
@@ -28,6 +28,9 @@ import { TeachingToolsPanel, TeachingToolsOverlay, initializeTeachingTools } fro
 import { useWhiteboardStore } from './store';
 import { StorageService } from './services';
 import { ResponsiveLayoutManager } from './core/responsive';
+import { lmsModeFromLocation } from './lms/bridge';
+
+const LmsWhiteboard = lazy(() => import('./lms/LmsWhiteboard'));
 
 const WhiteboardApp: React.FC = () => {
   const [classroomMode, setClassroomMode] = useState(() => {
@@ -163,7 +166,13 @@ const WhiteboardApp: React.FC = () => {
   );
 };
 
+const lmsMode = lmsModeFromLocation();
+// Before anything autosaves: a lesson board opened from Jaihind LMS must not
+// replace this device's own autosave or recovery history.
+if (lmsMode) StorageService.isolateSession('lms');
+
 export const App: React.FC = () => {
+  if (lmsMode) return <Suspense fallback={null}><LmsWhiteboard mode={lmsMode} /></Suspense>;
   const joinCode = new URLSearchParams(window.location.search).get('join')?.trim().toUpperCase();
   return joinCode ? <StudentResponseView code={joinCode} /> : <WhiteboardApp />;
 };

@@ -208,6 +208,20 @@ export class StorageService {
   private static dbPromise: Promise<IDBPDatabase> | null = null;
   private static checkpointQueue: Promise<void> = Promise.resolve();
   private static autosaveQueue: Promise<void> = Promise.resolve();
+  private static autosaveKey = 'current_session';
+  private static autosaveFallbackKey = 'jhw_autosave';
+  private static checkpointsEnabled = true;
+
+  /**
+   * Keeps a board opened for another owner (an LMS lesson) out of this device's
+   * own recovery state: it autosaves to a separate slot and never creates or
+   * prunes checkpoints. Media, saved boards and the library stay shared.
+   */
+  public static isolateSession(scope: string): void {
+    this.autosaveKey = `${scope}_session`;
+    this.autosaveFallbackKey = `jhw_autosave_${scope}`;
+    this.checkpointsEnabled = false;
+  }
 
   private static getDB(): Promise<IDBPDatabase> {
     if (!this.dbPromise) {
@@ -320,8 +334,9 @@ export class StorageService {
         }
       }
 
-      const autosave = await db.get(STORE_AUTOSAVE, 'current_session');
-      if (autosave?.doc) {
+      // Every autosave slot, including an LMS lesson being edited in another tab.
+      for (const autosave of await db.getAll(STORE_AUTOSAVE)) {
+        if (!autosave?.doc) continue;
         try {
           documents.push(validateDocument(autosave.doc));
         } catch {
@@ -359,7 +374,7 @@ export class StorageService {
           if (
             !key ||
             (!key.startsWith('jhw_doc_') &&
-              key !== 'jhw_autosave' &&
+              !key.startsWith('jhw_autosave') &&
               !key.startsWith(CHECKPOINT_FALLBACK_PREFIX) &&
               key !== TEMPLATE_FALLBACK_KEY &&
               key !== CONTENT_FALLBACK_KEY)
@@ -386,7 +401,7 @@ export class StorageService {
                 if (checkpoint) documents.push(checkpoint.document);
               }
             } else {
-              const candidate = key === 'jhw_autosave' ? parsed?.doc : parsed;
+              const candidate = key.startsWith('jhw_autosave') ? parsed?.doc : parsed;
               if (candidate) documents.push(validateDocument(candidate));
             }
           } catch {
@@ -524,10 +539,10 @@ export class StorageService {
     const task = async () => {
       try {
         const db = await this.getDB();
-        await db.put(STORE_AUTOSAVE, { id: 'current_session', doc: validDocument, timestamp: Date.now() });
+        await db.put(STORE_AUTOSAVE, { id: this.autosaveKey, doc: validDocument, timestamp: Date.now() });
       } catch {
         try {
-          localStorage.setItem('jhw_autosave', JSON.stringify({ doc: validDocument, timestamp: Date.now() }));
+          localStorage.setItem(this.autosaveFallbackKey, JSON.stringify({ doc: validDocument, timestamp: Date.now() }));
         } catch {}
       }
       await this.createRecoveryCheckpoint(
@@ -550,6 +565,7 @@ export class StorageService {
     label?: string,
     minimumIntervalMs = 0
   ): Promise<RecoveryCheckpoint | null> {
+    if (!this.checkpointsEnabled) return Promise.resolve(null);
     const task = async (): Promise<RecoveryCheckpoint | null> => {
       const document = validateDocument(doc);
       const existing = await this.listRecoveryCheckpoints(document.id);
@@ -701,7 +717,7 @@ export class StorageService {
   public static async loadAutosave(): Promise<WhiteboardDocument | null> {
     try {
       const db = await this.getDB();
-      const record = await db.get(STORE_AUTOSAVE, 'current_session');
+      const record = await db.get(STORE_AUTOSAVE, this.autosaveKey);
       if (record && record.doc) {
         return validateDocument(record.doc);
       }
@@ -710,7 +726,7 @@ export class StorageService {
     }
 
     try {
-      const raw = localStorage.getItem('jhw_autosave');
+      const raw = localStorage.getItem(this.autosaveFallbackKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.doc) {

@@ -105,3 +105,21 @@
 @media(max-width:750px){.wb-header{height:70px;padding:0 15px;gap:13px}.wb-brand-name{display:none}.wb-document{padding-left:13px}.wb-header-actions{gap:3px}.wb-header-button,.wb-present-button{padding:9px 10px}.wb-export-link,.wb-classroom-link{display:none}.wb-canvas-shell{padding-top:70px}.wb-dock{left:12px;right:12px;bottom:10px;gap:8px}.wb-dock-context{gap:7px}.wb-page-controls{gap:5px}.wb-tool-help>label{padding:4px 6px}.wb-tool-help>label>span{display:none}.wb-background-button{padding:10px 7px}.wb-dock-caption{font-size:7px;letter-spacing:1.3px}.wb-page-drawer{top:70px!important}.wb-ui .main-toolbar-strip{padding:7px 8px}.wb-ui .context-toolbar-popover{bottom:102px;max-height:calc(100dvh - 180px)}.wb-selection-bar{bottom:172px}}
 @media(max-width:450px){.wb-header{gap:10px;padding:0 12px}.wb-document{border:0;padding:0}.wb-brand-mark{width:34px;height:34px}.wb-present-button span{display:none}.wb-document-name{font-size:12px}.wb-save-status span{display:inline!important}.wb-tool-help{display:none}.wb-dock{left:8px;right:8px}.wb-ui .main-toolbar-strip{gap:1px;padding:7px 4px}.wb-ui .wb-tool,.wb-ui .wb-colour-tool{width:52px;min-width:52px}.wb-ui .wb-split-tool{width:70px;min-width:70px}}
 @media(prefers-reduced-motion:reduce){.wb-ui *{transition:none!important;animation:none!important}}
+
+/* Lesson whiteboards embedded in Jaihind LMS (src/lms) */
+.lms-message { min-height:100vh; display:grid; place-content:center; justify-items:center; gap:10px; padding:24px; color:#30452c; background:#f1f5ec; font-family:Inter,'Segoe UI',sans-serif; text-align:center; }
+.lms-message h1 { margin:0; font-size:18px; }
+.lms-message p { margin:0; color:#5f7259; font-size:13px; max-width:420px; }
+.lms-save-status { font-size:10px; color:#6a7f64; }
+.lms-save-status.lms-save-error { color:#b42318; max-width:340px; white-space:normal; }
+.lms-save-status.lms-save-saved { color:#237a45; }
+.lms-save-button:disabled { opacity:.65; cursor:wait; }
+.lms-viewer-toolbar { position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:40; display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); padding:7px; border:1px solid #dce5d7; border-radius:16px; background:#f8faf5f2; box-shadow:0 10px 30px #1d2b1a26; backdrop-filter:blur(14px); font-family:Inter,'Segoe UI',sans-serif; }
+.lms-viewer-group { display:flex; align-items:center; gap:4px; padding:3px; border-radius:11px; background:#e9f0e4; }
+.lms-viewer-group>button { display:grid; place-items:center; width:38px; height:38px; border:0; border-radius:9px; color:#30452c; background:transparent; cursor:pointer; }
+.lms-viewer-group>button:disabled { opacity:.35; cursor:default; }
+.lms-viewer-group>button:not(:disabled):hover { background:#dbe7d3; }
+.lms-viewer-group>span { min-width:54px; color:#30452c; font-size:13px; font-weight:600; text-align:center; }
+.lms-viewer-reset { display:flex; align-items:center; gap:6px; height:44px; padding:0 12px; border:0; border-radius:11px; color:#55704f; background:transparent; font-size:12px; font-weight:600; cursor:pointer; }
+.lms-viewer-reset:hover { background:#e5eddd; }
+@media(max-width:560px){ .lms-viewer-toolbar{bottom:10px;gap:5px;padding:5px;width:max-content;flex-wrap:wrap;justify-content:center} .lms-viewer-reset{height:38px} .lms-viewer-reset span{display:none} .lms-viewer-group>span{min-width:44px} }

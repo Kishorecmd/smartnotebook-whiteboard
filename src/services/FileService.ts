@@ -126,6 +126,30 @@ export class FileService {
    * Serializes and downloads the whiteboard document as a .jhw file.
    */
   public static async exportToJHW(doc: WhiteboardDocument, filename?: string): Promise<void> {
+    const jsonString = await this.toPortableJSON(doc, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const safeName = (filename || doc.title || 'whiteboard')
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${safeName}.jhw`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  /**
+   * Serializes a board as .jhw text, packaging the bytes of any local media.
+   */
+  public static async toPortableJSON(doc: WhiteboardDocument, indent?: number): Promise<string> {
     const validDoc = validateDocument(doc);
     const references = collectAssetReferences(validDoc);
     const assets: PortableAsset[] = [];
@@ -152,24 +176,35 @@ export class FileService {
           document: validDoc,
           assets,
         };
-    const jsonString = JSON.stringify(content, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    return JSON.stringify(content, null, indent);
+  }
 
-    const safeName = (filename || doc.title || 'whiteboard')
-      .trim()
-      .replace(/[^a-zA-Z0-9_-]/g, '_');
+  /**
+   * Parses .jhw text, storing any packaged media on this device first.
+   */
+  public static async fromPortableJSON(text: string): Promise<WhiteboardDocument> {
+    const parsed: unknown = JSON.parse(text);
+    if (!isPortableJHWPackage(parsed)) return validateDocument(parsed);
 
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${safeName}.jhw`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+    const validated = validateDocument(parsed.document);
+    const assetsById = new Map(parsed.assets.map((asset) => [asset.id, asset]));
+    for (const reference of collectAssetReferences(validated)) {
+      const asset = assetsById.get(reference.id);
+      if (!asset) {
+        throw new Error(`Portable package is missing media asset "${reference.fileName || reference.id}".`);
+      }
+      if (asset.kind !== reference.kind) {
+        throw new Error(`Portable package has an invalid media type for "${reference.fileName || reference.id}".`);
+      }
 
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 1000);
+      const blob = base64ToBlob(asset.data, asset.mimeType);
+      await MediaManager.putAsset(blob, asset.kind, {
+        id: asset.id,
+        mimeType: asset.mimeType,
+        fileName: asset.fileName,
+      });
+    }
+    return validated;
   }
 
   /**
@@ -190,34 +225,7 @@ export class FileService {
 
         const file = target.files[0];
         try {
-          const text = await file.text();
-          const parsed: unknown = JSON.parse(text);
-
-          if (!isPortableJHWPackage(parsed)) {
-            resolve(validateDocument(parsed));
-            return;
-          }
-
-          const validated = validateDocument(parsed.document);
-          const assetsById = new Map(parsed.assets.map((asset) => [asset.id, asset]));
-          for (const reference of collectAssetReferences(validated)) {
-            const asset = assetsById.get(reference.id);
-            if (!asset) {
-              throw new Error(`Portable package is missing media asset "${reference.fileName || reference.id}".`);
-            }
-            if (asset.kind !== reference.kind) {
-              throw new Error(`Portable package has an invalid media type for "${reference.fileName || reference.id}".`);
-            }
-
-            const blob = base64ToBlob(asset.data, asset.mimeType);
-            await MediaManager.putAsset(blob, asset.kind, {
-              id: asset.id,
-              mimeType: asset.mimeType,
-              fileName: asset.fileName,
-            });
-          }
-
-          resolve(validated);
+          resolve(await this.fromPortableJSON(await file.text()));
         } catch (err: any) {
           reject(new Error(`Failed to load .jhw file: ${err.message || err}`));
         }
