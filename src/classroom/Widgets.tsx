@@ -49,12 +49,13 @@ function SymbolsWidget({ widget, update }: Props) {
   const mode = modes.find(m => m.id === widget.data.mode) ?? modes[0];
   return <div className="cs-symbols"><div className={`cs-symbol-icon cs-symbol-${mode.id}`}><mode.Icon size={52} strokeWidth={1.4} /></div><h2>{mode.title}</h2><p>{mode.detail}</p><div className="cs-symbol-options">{modes.map(m => <button key={m.id} aria-label={m.title} title={m.title} aria-pressed={m.id === mode.id} onClick={() => update({ mode: m.id })}><m.Icon size={20} /></button>)}</div></div>;
 }
-function NamesWidget({ widget, update }: Props) {
+function NamesWidget({ widget, update, classPending }: Props & { classPending?: boolean }) {
   const names = readNames(str(widget, 'names'));
   const [editing, setEditing] = useState(names.length === 0);
   const groupMode = widget.kind === 'groups';
   const result = str(widget, 'result');
   return <div className="cs-names">
+    {classPending && <p className="cs-names-note">Your class list appears here when you are signed in. Until then, type names below.</p>}
     {editing ? <><label className="cs-field-label">Your class list · one name per line<textarea aria-label="Class names" placeholder={'Add your students…\nOne name per line'} value={str(widget, 'names')} maxLength={10000} onChange={e => update({ names: e.target.value, result: '' })} /></label><button className="cs-primary" disabled={!names.length} onClick={() => setEditing(false)}><Check size={16} />Use {names.length} names</button></> : <>
       <span className="cs-eyebrow">{groupMode ? 'A fresh mix of brilliant minds' : 'Everyone gets a moment'}</span>
       {groupMode ? <div className="cs-group-results">{result ? result.split('\n\n').map((g, i) => <div key={i}><b>Group {i + 1}</b><p>{g}</p></div>) : <p>Ready to make your teams?</p>}</div> : <div className="cs-picked" aria-live="polite">{result || 'Who’s next?'}</div>}
@@ -77,8 +78,10 @@ export function WidgetContent(props: Props) {
     case 'text': return <TextWidget {...props} />;
     case 'timer': return <TimerWidget {...props} />;
     case 'symbols': return <SymbolsWidget {...props} />;
-    case 'random': case 'groups': return liveClass.mapping ? <LiveNames key={liveClass.mapping.classId + liveClass.mapping.sectionId + widget.kind} groups={widget.kind === 'groups'}/> : <NamesWidget {...props} />;
-    case 'score': return liveClass.mapping ? <LiveTeams key={liveClass.mapping.classId + liveClass.mapping.sectionId}/> : <ScoreWidget {...props} />;
+    // The class list is used only once it has loaded. Signed out, ERP down or
+    // still loading, the widgets keep working with typed names and plain teams.
+    case 'random': case 'groups': return liveClass.mapping && liveClass.snapshot ? <LiveNames key={liveClass.mapping.classId + liveClass.mapping.sectionId + widget.kind} groups={widget.kind === 'groups'}/> : <NamesWidget {...props} classPending={!!liveClass.mapping} />;
+    case 'score': return liveClass.mapping && liveClass.snapshot ? <LiveTeams key={liveClass.mapping.classId + liveClass.mapping.sectionId}/> : <ScoreWidget {...props} />;
     case 'clock': return <AnalogClock time={new Date(now)} timeZone={liveClass.mapping?.timezone} />;
     case 'traffic': return <div className="cs-traffic"><div className="cs-lights">{['red', 'amber', 'green'].map(light => <button key={light} className={`cs-light cs-${light} ${widget.data.light === light ? 'is-lit' : ''}`} aria-label={`${light} light`} aria-pressed={widget.data.light === light} onClick={() => update({ light })} />)}</div><h2>{widget.data.light === 'red' ? 'Pause & listen' : widget.data.light === 'amber' ? 'Get ready' : 'Let’s get started'}</h2><p>Tap a light to guide the room.</p></div>;
     case 'dice': return <div className="cs-dice"><div className="cs-dice-faces" aria-live="polite" aria-label={`Dice result ${str(widget, 'result', '1')}`}>{str(widget, 'result', '1').split(',').map((n, i) => <span key={i}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][Math.max(0, Math.min(5, Number(n) - 1))]}</span>)}</div><div className="cs-presets">{[1, 2, 3].map(n => <button key={n} aria-pressed={num(widget, 'count', 1) === n} onClick={() => update({ count: n, result: Array(n).fill('1').join(',') })}>{n} {n === 1 ? 'die' : 'dice'}</button>)}</div><button className="cs-primary" onClick={() => update({ result: Array.from({ length: Math.max(1, Math.min(3, num(widget, 'count', 1))) }, () => Math.ceil(Math.random() * 6) || 1).join(',') })}><Shuffle size={17} />Roll the dice</button></div>;
