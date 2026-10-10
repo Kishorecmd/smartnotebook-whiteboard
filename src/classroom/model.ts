@@ -87,6 +87,17 @@ export function segmentAt(turn: number, count: number): number {
   return Math.min(count - 1, Math.floor(under / slice));
 }
 
+/**
+ * How far a 3D die turns to show `face` on top of `turns` full tumbles. The cube
+ * puts 1 at the front, 2 right, 3 top, 4 bottom, 5 left and 6 at the back, so
+ * opposite faces add up to 7 as on a real die.
+ */
+export function diceRotation(face: number, turns = 0): { x: number; y: number } {
+  const rest: Record<number, [number, number]> = { 1: [0, 0], 2: [0, -90], 3: [-90, 0], 4: [90, 0], 5: [0, 90], 6: [0, 180] };
+  const [x, y] = rest[Math.max(1, Math.min(6, Math.round(face) || 1))];
+  return { x: x + turns * 360, y: y + turns * 360 };
+}
+
 /** The next turn: at least five full spins further, stopping mid-way through slice `index`. */
 export function spinTo(index: number, count: number, turn: number, spins = 5): number {
   const slice = 360 / count;

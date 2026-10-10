@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Play, Pause, RotateCcw, Shuffle, VolumeX, Volume1, Users, UserRound, Pencil, Check, Plus, Minus, Sun, Moon } from 'lucide-react';
-import { type ClassroomWidget, remainingSeconds, readNames, makeGroups, segmentAt, spinTo } from './model';
+import { type ClassroomWidget, diceRotation, remainingSeconds, readNames, makeGroups, segmentAt, spinTo } from './model';
+import { playRattle } from '../games/feedback';
+import { useNameShuffle } from './useNameShuffle';
 import { SoundMonitor } from '../sound/SoundMonitor';
 import { AnalogClock } from '../clock/AnalogClock';
 import { LiveNames, LiveTeams } from '../dashboard/LiveNames';
@@ -21,6 +23,50 @@ function TextWidget({ widget, update }: Props) {
     <button className="cs-subtle cs-note-edit" aria-label={editing ? 'Finish editing instructions' : 'Edit instructions'} onClick={() => setEditing(!editing)}>{editing ? <Check size={15} /> : <Pencil size={15} />}{editing ? 'Done' : 'Edit text'}</button>
   </div>;
 }
+// Pip positions on a 3×3 grid (0–8, reading order) for each face.
+const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+const ROLL_MS = 1100;
+const reducedMotion = () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+/** One 3D die. `turns` grows with every roll so the cube always tumbles forwards to its new face. */
+function Die({ face, turns, delay }: { face: number; turns: number; delay: number }) {
+  const { x, y } = diceRotation(face, turns);
+  return <div className="cs-die-stage" style={{ animationDelay: `${delay}ms` }}>
+    <div className="cs-die" style={{ transform: `rotateX(${x}deg) rotateY(${y}deg)`, transitionDelay: `${delay}ms` }}>
+      {[1, 2, 3, 4, 5, 6].map(n => <span key={n} className={`cs-die-face cs-die-face-${n}`}>{Array.from({ length: 9 }, (_, i) => <i key={i} className={PIPS[n].includes(i) ? 'is-pip' : ''} />)}</span>)}
+    </div>
+  </div>;
+}
+
+function DiceWidget({ widget, update }: Props) {
+  const count = Math.max(1, Math.min(3, num(widget, 'count', 1)));
+  const faces = str(widget, 'result', '1').split(',').map(n => Math.max(1, Math.min(6, Number(n) || 1))).slice(0, count);
+  while (faces.length < count) faces.push(1);
+  // Whole tumbles per die; they start at 0 so a reloaded board shows the last roll at rest.
+  const [turns, setTurns] = useState<number[]>(() => faces.map(() => 0));
+  const [rolling, setRolling] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const roll = () => {
+    if (rolling) return;
+    const next = faces.map(() => Math.floor(Math.random() * 6) + 1);
+    const still = reducedMotion();
+    setTurns(t => next.map((_, i) => (t[i] ?? 0) + (still ? 0 : 2 + Math.floor(Math.random() * 2))));
+    setRolling(true);
+    if (!still) playRattle();
+    update({ result: next.join(',') });
+    timer.current = setTimeout(() => setRolling(false), still ? 150 : ROLL_MS + 150 * (count - 1));
+  };
+  const total = faces.reduce((a, b) => a + b, 0);
+  return <div className={`cs-dice ${rolling ? 'is-rolling' : ''}`}>
+    <div className="cs-dice-tray" aria-hidden="true">{faces.map((f, i) => <Die key={i} face={f} turns={turns[i] ?? 0} delay={i * 150} />)}</div>
+    <p className="cs-dice-result" aria-live="polite">{rolling ? 'Rolling…' : count > 1 ? `${faces.join(' + ')} = ${total}` : `You rolled ${faces[0]}`}</p>
+    <div className="cs-presets">{[1, 2, 3].map(n => <button key={n} disabled={rolling} aria-pressed={count === n} onClick={() => { update({ count: n, result: Array(n).fill('1').join(',') }); setTurns(t => Array.from({ length: n }, (_, i) => t[i] ?? 0)); }}>{n} {n === 1 ? 'die' : 'dice'}</button>)}</div>
+    <button className="cs-primary" disabled={rolling} onClick={roll}><Shuffle size={17} />{rolling ? 'Rolling…' : 'Roll the dice'}</button>
+  </div>;
+}
+
 function TimerWidget({ widget, update, now }: Props) {
   const remaining = remainingSeconds(widget.data, Math.max(now, Date.now()));
   const running = typeof widget.data.endAt === 'number' && remaining > 0;
@@ -54,14 +100,16 @@ function NamesWidget({ widget, update, classPending }: Props & { classPending?: 
   const [editing, setEditing] = useState(names.length === 0);
   const groupMode = widget.kind === 'groups';
   const result = str(widget, 'result');
+  const shuffle = useNameShuffle<string>(winner => update({ result: winner }));
+  const showing = shuffle.rolling ? shuffle.shown : result;
   return <div className="cs-names">
     {classPending && <p className="cs-names-note">Your class list appears here when you are signed in. Until then, type names below.</p>}
     {editing ? <><label className="cs-field-label">Your class list · one name per line<textarea aria-label="Class names" placeholder={'Add your students…\nOne name per line'} value={str(widget, 'names')} maxLength={10000} onChange={e => update({ names: e.target.value, result: '' })} /></label><button className="cs-primary" disabled={!names.length} onClick={() => setEditing(false)}><Check size={16} />Use {names.length} names</button></> : <>
       <span className="cs-eyebrow">{groupMode ? 'A fresh mix of brilliant minds' : 'Everyone gets a moment'}</span>
-      {groupMode ? <div className="cs-group-results">{result ? result.split('\n\n').map((g, i) => <div key={i}><b>Group {i + 1}</b><p>{g}</p></div>) : <p>Ready to make your teams?</p>}</div> : <div className="cs-picked" aria-live="polite">{result || 'Who’s next?'}</div>}
+      {groupMode ? <div className="cs-group-results">{result ? result.split('\n\n').map((g, i) => <div key={i}><b>Group {i + 1}</b><p>{g}</p></div>) : <p>Ready to make your teams?</p>}</div> : <div className={`cs-picked ${shuffle.rolling ? 'is-rolling' : shuffle.shown ? 'is-picked' : ''}`} key={shuffle.tick} aria-live={shuffle.rolling ? 'off' : 'polite'}>{showing || 'Who’s next?'}</div>}
       {groupMode && <label className="cs-custom-time">Number of groups <input aria-label="Number of groups" type="number" min="1" max={Math.max(1, names.length)} value={num(widget, 'groupCount', 3)} onChange={e => update({ groupCount: Math.max(1, Math.min(names.length, Number(e.target.value) || 1)) })} /></label>}
-      <button className="cs-primary" disabled={!names.length} onClick={() => update({ result: groupMode ? makeGroups(names, num(widget, 'groupCount', 3)).map(g => g.join(', ')).join('\n\n') : names[Math.floor(Math.random() * names.length)] })}><Shuffle size={17} />{groupMode ? 'Make groups' : 'Pick a name'}</button>
-      <button className="cs-subtle" onClick={() => setEditing(true)}><Pencil size={14} />Edit {names.length} names</button>
+      <button className="cs-primary" disabled={!names.length || shuffle.rolling} onClick={() => groupMode ? update({ result: makeGroups(names, num(widget, 'groupCount', 3)).map(g => g.join(', ')).join('\n\n') }) : shuffle.start(names)}><Shuffle size={17} />{groupMode ? 'Make groups' : shuffle.rolling ? 'Choosing…' : 'Pick a name'}</button>
+      <button className="cs-subtle" disabled={shuffle.rolling} onClick={() => setEditing(true)}><Pencil size={14} />Edit {names.length} names</button>
     </>}
   </div>;
 }
@@ -125,6 +173,6 @@ export function WidgetContent(props: Props) {
     case 'score': return liveClass.mapping && liveClass.snapshot ? <LiveTeams key={liveClass.mapping.classId + liveClass.mapping.sectionId}/> : <ScoreWidget {...props} />;
     case 'clock': return <AnalogClock time={new Date(now)} timeZone={liveClass.mapping?.timezone} />;
     case 'traffic': return <div className="cs-traffic"><div className="cs-lights">{['red', 'amber', 'green'].map(light => <button key={light} className={`cs-light cs-${light} ${widget.data.light === light ? 'is-lit' : ''}`} aria-label={`${light} light`} aria-pressed={widget.data.light === light} onClick={() => update({ light })} />)}</div><h2>{widget.data.light === 'red' ? 'Pause & listen' : widget.data.light === 'amber' ? 'Get ready' : 'Let’s get started'}</h2><p>Tap a light to guide the room.</p></div>;
-    case 'dice': return <div className="cs-dice"><div className="cs-dice-faces" aria-live="polite" aria-label={`Dice result ${str(widget, 'result', '1')}`}>{str(widget, 'result', '1').split(',').map((n, i) => <span key={i}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][Math.max(0, Math.min(5, Number(n) - 1))]}</span>)}</div><div className="cs-presets">{[1, 2, 3].map(n => <button key={n} aria-pressed={num(widget, 'count', 1) === n} onClick={() => update({ count: n, result: Array(n).fill('1').join(',') })}>{n} {n === 1 ? 'die' : 'dice'}</button>)}</div><button className="cs-primary" onClick={() => update({ result: Array.from({ length: Math.max(1, Math.min(3, num(widget, 'count', 1))) }, () => Math.ceil(Math.random() * 6) || 1).join(',') })}><Shuffle size={17} />Roll the dice</button></div>;
+    case 'dice': return <DiceWidget widget={widget} update={update} now={now} />;
   }
 }

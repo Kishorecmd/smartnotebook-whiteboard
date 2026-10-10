@@ -34,3 +34,13 @@ describe('Random name, Group maker and Scoreboard', () => {
     expect(render('score', { mapping: sample.mapping, snapshot: sample.snapshot })).toContain('Make two temporary teams');
   });
 });
+
+describe('Dice', () => {
+  it('draws a 3D die with every face and announces the roll', () => {
+    const html = render('dice', { mapping: null, snapshot: null });
+    expect(html.match(/cs-die-face /g)).toHaveLength(6);
+    expect(html.match(/is-pip/g)).toHaveLength(21);
+    expect(html).toContain('You rolled 1');
+    expect(html).toContain('Roll the dice');
+  });
+});

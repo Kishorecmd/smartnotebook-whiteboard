@@ -32,6 +32,10 @@ function tones(notes: [frequency: number, start: number, length: number][], type
 }
 
 export const playRight = () => tones([[523, 0, 0.18], [659, 0.12, 0.25]], 'triangle', 0.18);
+/** Dice rattling across the table, then settling: short, quiet clicks. */
+export const playRattle = () => tones(Array.from({ length: 9 }, (_, i) => [180 + ((i * 97) % 140), i * 0.085, 0.04] as [number, number, number]), 'square', 0.035);
+/** One soft click as a name flicks past in Random name. */
+export const playTick = () => tones([[880, 0, 0.03]], 'sine', 0.05);
 export const playTryAgain = () => tones([[220, 0, 0.22]], 'sine', 0.12);
 export const playFinish = () => tones([[523, 0, 0.2], [659, 0.15, 0.2], [784, 0.3, 0.4]], 'triangle', 0.18);
 

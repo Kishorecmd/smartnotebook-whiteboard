@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { initialWorkspace, makeGroups, makeScreen, makeWidget, parseWorkspace, readNames, remainingSeconds, restoreWidget, segmentAt, spinTo, widgetSchema } from './model';
+import { diceRotation, initialWorkspace, makeGroups, makeScreen, makeWidget, parseWorkspace, readNames, remainingSeconds, restoreWidget, segmentAt, spinTo, widgetSchema } from './model';
 
 describe('Classroom screens', () => {
   it('saves sound settings without a live microphone session or audio', () => {
@@ -96,5 +96,28 @@ describe('spinner', () => {
     expect(segmentAt(-1, 4)).toBe(0);
     expect(segmentAt(1, 4)).toBe(3);
     expect(segmentAt(360 - 135, 4)).toBe(1);
+  });
+});
+
+describe('Animated dice', () => {
+  // Undo the cube's turn on each face's own placement and check which face ends up at the front.
+  const placement: Record<number, string> = { 1: '', 2: 'Y90', 3: 'X90', 4: 'X-90', 5: 'Y-90', 6: 'Y180' };
+  const frontAfter = (x: number, y: number) => {
+    const norm = (a: number) => ((a % 360) + 360) % 360;
+    for (const [face, place] of Object.entries(placement)) {
+      const fx = place.startsWith('X') ? Number(place.slice(1)) : 0, fy = place.startsWith('Y') ? Number(place.slice(1)) : 0;
+      if (norm(fx + x) === 0 && norm(fy + y) === 0) return Number(face);
+    }
+    return null;
+  };
+  it('lands every face at the front, after any number of tumbles', () => {
+    for (let face = 1; face <= 6; face++) for (const turns of [0, 2, 5]) {
+      const { x, y } = diceRotation(face, turns);
+      expect(frontAfter(x, y)).toBe(face);
+    }
+  });
+  it('keeps out-of-range faces on the die', () => {
+    expect(diceRotation(0)).toEqual(diceRotation(1));
+    expect(diceRotation(9)).toEqual(diceRotation(6));
   });
 });
