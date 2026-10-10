@@ -5,7 +5,8 @@ import { WidgetContent } from './Widgets';
 import './classroom.css';
 import { AudioLines, Settings, LoaderPinwheel, Eraser, Shapes, Ruler, Triangle, DraftingCompass, StickyNote, PenTool } from 'lucide-react';
 import { openOnBoard, type BoardAction } from '../teaching-tools/launch';
-import { lmsHomeUrl } from '../lms/bridge';
+import { LessonsDialog } from '../lms/LessonsDialog';
+import { takeLinkResult } from '../lms/classroomLessons';
 
 // Whiteboard tools in the dock open the board with the tool ready.
 const boardTools: [string, typeof PenTool, BoardAction, string][] = [
@@ -51,6 +52,9 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   const [gamesOpen, setGamesOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The LMS sends the teacher back here after connecting, with the result in the address.
+  const [linkResult] = useState(takeLinkResult);
+  const [lessonsOpen, setLessonsOpen] = useState(!!linkResult);
   const [playing, setPlaying] = useState<{ id: Exclude<GameId, 'drawing'>; level: Level; withClass: boolean } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
@@ -82,7 +86,7 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   }, []);
   // A signed-in teacher's data stays hidden until the teacher confirms their password.
   const locked = !!live.session && !preview;
-  const enterStudentMode = () => { setPresenting(true); setPanel('none'); setConnection(false); setMore(false); setTaking(false); setRosterOpen(false); setSettingsOpen(false); };
+  const enterStudentMode = () => { setPresenting(true); setPanel('none'); setConnection(false); setMore(false); setTaking(false); setRosterOpen(false); setSettingsOpen(false); setLessonsOpen(false); };
   const leaveStudentMode = () => { if (locked) setUnlocking(true); else setPresenting(false); };
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -106,8 +110,7 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     else if (target === 'screens') { if (home) setHome(false); else setPanel(panel === 'screens' ? 'none' : 'screens'); }
     else if (target === 'attendance') { if (attendanceReady) setTaking(true); }
     else if (target === 'library') openInWhiteboard('library');
-    // LMS lessons open in their own tab, so this classroom screen stays as it is.
-    else if (target === 'lessons') window.open(lmsHomeUrl(), 'jaihind-lms', 'noopener');
+    else if (target === 'lessons') setLessonsOpen(true);
     else if (target === 'games') setGamesOpen(true);
     else if (target === 'students') { if (attendanceReady) setRosterOpen(true); }
     else if (target === 'settings') setSettingsOpen(true);
@@ -225,6 +228,7 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     </section></div>}
     {connection && !presenting && <ConnectionDialog data={live} close={()=>setConnection(false)}/>}
     {rosterOpen && !presenting && snapshot && <StudentsDialog snapshot={snapshot} close={() => setRosterOpen(false)} />}
+    {lessonsOpen && !presenting && <LessonsDialog data={live} grade={mapping?.grade ?? null} message={linkResult} close={() => setLessonsOpen(false)} />}
     {settingsOpen && !presenting && <SettingsDialog data={live} close={() => setSettingsOpen(false)} onSetup={() => setConnection(true)} />}
     {more && !presenting && <MoreDialog snapshot={snapshot} data={live} close={() => setMore(false)} onConnection={() => setConnection(true)} onOpenWhiteboard={openInWhiteboard} />}
     {taking && !presenting && attendanceReady && snapshot && mapping && <TakeAttendance data={live} mapping={mapping} attendance={snapshot.attendance} close={() => setTaking(false)} />}

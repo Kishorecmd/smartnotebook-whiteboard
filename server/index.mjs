@@ -7,6 +7,7 @@ import express from 'express';
 import { weatherHandler } from './classroom-weather.mjs';
 import { classroomRouter } from './classroom.mjs';
 import { erpBase } from './classroom-adapter.mjs';
+import { lmsConfig } from './classroom-lms.mjs';
 import { GoogleGenAI } from '@google/genai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -60,6 +61,8 @@ app.use((request, response, next) => {
   }
   next();
 });
+// Save to lesson sends a whole board; the LMS caps boards at 25 MB.
+app.use('/api/classroom/lms/lessons', express.json({ limit: '26mb', type: 'application/json' }));
 app.use(express.json({ limit: '6mb', type: 'application/json' }));
 app.get('/api/classroom/weather', weatherHandler());
 const classroomErpBase = erpBase(process.env.CLASSROOM_ERP_BASE_URL || undefined);
@@ -99,7 +102,7 @@ cleanupTimer.unref();
 
 app.get('/api/health', (_request, response) => {
   response.set('Cache-Control', 'no-store');
-  response.json({ ok: true, handwritingConfigured: Boolean(process.env.GEMINI_API_KEY), liveAssessment: true, classroomAPI: true, classroomWeather: true, erpBase: classroomErpBase });
+  response.json({ ok: true, handwritingConfigured: Boolean(process.env.GEMINI_API_KEY), liveAssessment: true, classroomAPI: true, classroomWeather: true, erpBase: classroomErpBase, lmsLink: Boolean(lmsConfig()) });
 });
 
 const cleanText = (value, max = 200) => typeof value === 'string' ? value.trim().slice(0, max) : '';

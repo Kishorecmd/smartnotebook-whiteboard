@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Eraser, FolderOpen, Hand, Highlighter, LibraryBig, Loader2, LogOut, PenTool, Play, RotateCcw, Sparkles, Target, UploadCloud } from 'lucide-react';
+import { lessonIdFromLocation, lessonMessage, lmsBoard, saveLessonBoard } from './classroomLessons';
 import {
   WhiteboardCanvas,
   BottomDock,
@@ -28,6 +29,8 @@ import '../whiteboard.css';
 
 type LoadState = { status: 'waiting' } | { status: 'ready' } | { status: 'error'; message: string };
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'error'; message: string };
+/** Lesson mode asks before saving (students see it), before leaving with unsaved notes, and on a version conflict. */
+type Ask = null | 'save' | 'leave' | 'conflict';
 
 const ViewerToolbar: React.FC<{ onReset: () => void; onPageChange: () => void }> = ({ onReset, onPageChange }) => {
   const { toolSettings, setTool, activePageIndex, document, setActivePageIndex } = useWhiteboardStore();
@@ -61,6 +64,10 @@ const LmsWhiteboard: React.FC<{ mode: LmsMode }> = ({ mode }) => {
   const [fitRequest, setFitRequest] = useState(0);
   const original = useRef<{ title: string; package: string | null } | null>(null);
   const pendingSave = useRef<string | null>(null);
+  // Lesson mode: the LMS board version this copy was opened at, sent back with Save to lesson.
+  const version = useRef(0);
+  const [ask, setAsk] = useState<Ask>(null);
+  const [savedVersion, setSavedVersion] = useState<number | null>(null);
 
   const open = useCallback(async (lessonTitle: string, pkg: string | null) => {
     try {
@@ -76,7 +83,42 @@ const LmsWhiteboard: React.FC<{ mode: LmsMode }> = ({ mode }) => {
     }
   }, [mode]);
 
+  const fetchLesson = useCallback(async () => {
+    const id = lessonIdFromLocation();
+    setLoad({ status: 'waiting' });
+    if (!id) { setLoad({ status: 'error', message: 'This lesson link is not complete. Open the lesson again from Lessons.' }); return; }
+    try {
+      const board = await lmsBoard(id);
+      if (!board.package) { setLoad({ status: 'error', message: 'This lesson has no whiteboard yet. Create it in the LMS first.' }); return; }
+      version.current = board.version;
+      original.current = { title: board.lesson.title, package: board.package };
+      setTitle(board.lesson.title);
+      setSave({ status: 'idle' });
+      setSavedVersion(null);
+      await open(board.lesson.title, board.package);
+      useWhiteboardStore.setState({ isDirty: false });
+    } catch (error) {
+      setLoad({ status: 'error', message: lessonMessage(error instanceof Error ? error.message : '') });
+    }
+  }, [open]);
+
   useEffect(() => {
+    if (mode !== 'lesson') return;
+    initializeTeachingTools();
+    const unsubscribe = ResponsiveLayoutManager.getInstance().subscribe(setResponsiveState);
+    void fetchLesson();
+    return unsubscribe;
+  }, [mode, fetchLesson, setResponsiveState]);
+
+  useEffect(() => {
+    if (mode !== 'lesson' || !isDirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [mode, isDirty]);
+
+  useEffect(() => {
+    if (mode === 'lesson') return;
     initializeTeachingTools();
     const unsubscribe = ResponsiveLayoutManager.getInstance().subscribe(setResponsiveState);
     const stopListening = listenToLms((message) => {
@@ -131,17 +173,46 @@ const LmsWhiteboard: React.FC<{ mode: LmsMode }> = ({ mode }) => {
     }
   };
 
+  /** Save to lesson: replaces the LMS board that students see, if nobody saved since it was opened. */
+  const saveToLesson = async () => {
+    const id = lessonIdFromLocation();
+    if (!id || save.status === 'saving') return;
+    setAsk(null);
+    setSave({ status: 'saving' });
+    try {
+      const state = useWhiteboardStore.getState();
+      const board = { ...state.document, title: title || state.document.title, activePageIndex: state.activePageIndex, updatedAt: Date.now() };
+      const result = await saveLessonBoard(id, await FileService.toPortableJSON(board), version.current);
+      version.current = result.version;
+      useWhiteboardStore.setState({ isDirty: false });
+      setSavedVersion(result.version);
+      setSave({ status: 'saved' });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : '';
+      if (code === 'LMS_VERSION_CONFLICT') { setSave({ status: 'idle' }); setAsk('conflict'); return; }
+      setSave({ status: 'error', message: code.startsWith('LMS_') || code === 'SIGN_IN_REQUIRED' ? lessonMessage(code) : 'The board could not be saved. Try again.' });
+    }
+  };
+
+  const backToClassroom = () => {
+    useWhiteboardStore.setState({ isDirty: false });
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    window.location.replace('/');
+  };
+  const endLesson = () => { if (useWhiteboardStore.getState().isDirty) setAsk('leave'); else backToClassroom(); };
+
   const present = () => {
     setPresenterMode(true);
     document.documentElement.requestFullscreen?.().catch(() => undefined);
   };
 
-  if (window.parent === window) {
+  if (window.parent === window && mode !== 'lesson') {
     return <div className="lms-message"><Sparkles size={28} /><h1>Open this lesson from Jaihind LMS</h1><p>Lesson whiteboards are shown inside lms.jaihind.school after you sign in.</p></div>;
   }
   if (load.status !== 'ready') {
     return <div className="lms-message" role={load.status === 'error' ? 'alert' : 'status'}>
-      {load.status === 'waiting' ? <><Loader2 className="animate-spin" size={28} /><p>Opening the lesson whiteboard…</p></> : <><h1>This whiteboard could not be opened</h1><p>{load.message}</p></>}
+      {load.status === 'waiting' ? <><Loader2 className="animate-spin" size={28} /><p>Opening the lesson whiteboard…</p></> : <><h1>This whiteboard could not be opened</h1><p>{load.message}</p>
+        {mode === 'lesson' && <div className="lms-message-actions"><button onClick={() => void fetchLesson()}><RotateCcw size={16} />Try again</button><button onClick={backToClassroom}><LogOut size={16} />Back to the classroom</button></div>}</>}
     </div>;
   }
 
@@ -167,6 +238,37 @@ const LmsWhiteboard: React.FC<{ mode: LmsMode }> = ({ mode }) => {
           <button className="wb-present-button" onClick={() => postToLms({ type: 'exit' })}><LogOut size={15} /><span>End lesson</span></button>
         </div>
       </header>}
+      {mode === 'lesson' && !isPresenterMode && <header className="wb-header wb-ui lms-teach-header">
+        <span className="wb-brand" aria-hidden="true">
+          <span className="wb-brand-mark"><Sparkles size={21} /></span>
+          <span className="wb-brand-name">Smartnotebook<small>TEACHING</small></span>
+        </span>
+        <div className="wb-document">
+          <span className="wb-document-name"><span>{title || doc.title}</span></span>
+          <div className={`wb-save-status lms-save-status lms-save-${save.status}`} role="status">{
+            save.status === 'saving' ? 'Saving to the lesson…'
+            : save.status === 'error' ? save.message
+            : isDirty ? 'Your notes do not change the lesson until you save'
+            : save.status === 'saved' ? `Saved · version ${savedVersion}`
+            : 'Lesson board from Jaihind LMS'}</div>
+        </div>
+        <div className="wb-header-actions">
+          <button className="wb-header-button" onClick={() => openLibrary()}><LibraryBig size={16} /><span>Library</span></button>
+          <button className="wb-header-button" onClick={present}><Play size={15} /><span>Present</span></button>
+          <button className="wb-header-button" disabled={save.status === 'saving' || !isDirty} onClick={() => setAsk('save')}>
+            {save.status === 'saving' ? <Loader2 className="animate-spin" size={15} /> : <UploadCloud size={15} />}<span>Save to lesson</span>
+          </button>
+          <button className="wb-present-button" onClick={endLesson}><LogOut size={15} /><span>End lesson</span></button>
+        </div>
+      </header>}
+      {ask && <div className="lms-ask-shade"><div className="lms-ask" role="alertdialog" aria-modal="true" aria-labelledby="lms-ask-title">
+        {ask === 'save' && <><h2 id="lms-ask-title">Save your changes to the lesson?</h2><p>Students will see this version of the board in the LMS.</p>
+          <div><button onClick={() => setAsk(null)}>Cancel</button><button className="lms-ask-primary" onClick={() => void saveToLesson()}>Save to lesson</button></div></>}
+        {ask === 'leave' && <><h2 id="lms-ask-title">End the lesson?</h2><p>Your changes are not saved to the lesson.</p>
+          <div><button onClick={() => setAsk(null)}>Keep teaching</button><button onClick={backToClassroom}>Discard changes</button><button className="lms-ask-primary" onClick={() => setAsk('save')}>Save to lesson…</button></div></>}
+        {ask === 'conflict' && <><h2 id="lms-ask-title">Someone else saved this lesson</h2><p>The lesson board changed after you opened it, so your version was not saved. Load the newer board (your changes here are lost), or keep teaching with yours.</p>
+          <div><button onClick={() => setAsk(null)}>Keep my board</button><button className="lms-ask-primary" onClick={() => { setAsk(null); void fetchLesson(); }}>Load the newer board</button></div></>}
+      </div></div>}
       {mode === 'edit' && !isPresenterMode && <header className="wb-header wb-ui">
         <span className="wb-brand" aria-hidden="true">
           <span className="wb-brand-mark"><Sparkles size={21} /></span>

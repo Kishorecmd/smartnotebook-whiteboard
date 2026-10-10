@@ -167,8 +167,9 @@ const WhiteboardApp: React.FC = () => {
 };
 
 const lmsMode = lmsModeFromLocation();
-// Before anything autosaves: a lesson board opened from Jaihind LMS must not
-// replace this device's own autosave or recovery history.
+// Before anything autosaves: a lesson board opened from Jaihind LMS (in its frame,
+// or from the classroom's Lessons panel) must not replace this device's own
+// autosave or recovery history.
 if (lmsMode) StorageService.isolateSession('lms');
 
 export const App: React.FC = () => {

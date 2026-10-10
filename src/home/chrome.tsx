@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { BookOpen, ChevronDown, Settings, Users, Cake, Volume2, VolumeX, House, PenLine, LayoutGrid, ClipboardCheck, LibraryBig, Gamepad2, MoreHorizontal, LogIn, Sun, CloudSun, CloudRain, CircleAlert, Wifi, WifiOff, RefreshCw, QrCode, Globe, MonitorPlay, Settings2, LogOut, Lock } from 'lucide-react';
+import { BookOpen, ChevronDown, Unlink, Settings, Users, Cake, Volume2, VolumeX, House, PenLine, LayoutGrid, ClipboardCheck, LibraryBig, Gamepad2, MoreHorizontal, LogIn, Sun, CloudSun, CloudRain, CircleAlert, Wifi, WifiOff, RefreshCw, QrCode, Globe, MonitorPlay, Settings2, LogOut, Lock } from 'lucide-react';
 import { weatherCondition, type Snapshot } from '../dashboard/model';
 import { Avatar } from '../dashboard/Avatar';
 import { setSoundOn, soundOn } from '../games/feedback';
 import { classroomRequest, type ClassroomData } from '../dashboard/data';
 import { DashboardModal, QrDialog } from '../dashboard/dialogs';
+import { disconnectLms } from '../lms/classroomLessons';
 import type { SyncStatus, WeatherStatus } from './homeModel';
 
 export type RailTarget = 'home' | 'board' | 'screens' | 'attendance' | 'students' | 'lessons' | 'library' | 'games' | 'more' | 'settings';
@@ -123,6 +124,7 @@ export function SettingsDialog({ data, close, onSetup }: { data: ClassroomData; 
     <div className="sc-more-tools">
       <button onClick={() => { close(); onSetup(); }}><Settings2 size={22} />Class and smartboard</button>
       <button aria-pressed={sound} onClick={() => { setSoundOn(!sound); setSound(!sound); }}>{sound ? <Volume2 size={22} /> : <VolumeX size={22} />}Game sounds: {sound ? 'on' : 'off'}</button>
+      {data.session?.lms?.connected && <button onClick={() => { close(); void disconnectLms().catch(() => undefined).finally(data.refresh); }}><Unlink size={22} />Disconnect LMS</button>}
       {data.session && <button onClick={() => { close(); void data.logout(); }}><LogOut size={22} />Sign out</button>}
     </div>
     <p className="live-muted">Student Mode hides attendance and student names. Leaving it asks for the signed-in teacher’s ERP password.</p>

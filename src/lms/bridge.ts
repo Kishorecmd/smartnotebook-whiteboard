@@ -13,10 +13,16 @@
  *   whiteboard → LMS  { channel: 'jaihind-whiteboard', type: 'save', requestId, package, pages }
  *   LMS → whiteboard  { channel: 'jaihind-lms', type: 'saved', requestId, ok, message? }
  *   whiteboard → LMS  { channel: 'jaihind-whiteboard', type: 'exit' }   (teach mode: the lesson is over)
+ *
+ * `/?lms=lesson&id=N` is different: no LMS frame. The classroom's Lessons panel opens
+ * it, and the board comes from this site's classroom server (src/lms/classroomLessons.ts).
  */
 
-/** Teach opens the lesson in the full editor without saving back, so class annotations never change the lesson. */
-export type LmsMode = 'view' | 'edit' | 'teach';
+/**
+ * Teach opens the lesson in the full editor without saving back, so class annotations never change the lesson.
+ * Lesson is teaching from the classroom's Lessons panel, where the teacher may choose Save to lesson.
+ */
+export type LmsMode = 'view' | 'edit' | 'teach' | 'lesson';
 
 export type LmsInboundMessage =
   | { channel: 'jaihind-lms'; type: 'load'; title: string; package: string | null }
@@ -37,7 +43,7 @@ export function lmsHomeUrl(): string {
 
 export function lmsModeFromLocation(search: string = window.location.search): LmsMode | null {
   const mode = new URLSearchParams(search).get('lms');
-  return mode === 'view' || mode === 'edit' || mode === 'teach' ? mode : null;
+  return mode === 'view' || mode === 'edit' || mode === 'teach' || mode === 'lesson' ? mode : null;
 }
 
 function configuredOrigins(): string[] {

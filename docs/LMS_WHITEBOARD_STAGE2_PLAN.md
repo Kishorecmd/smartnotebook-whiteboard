@@ -1,6 +1,6 @@
 # Stage 2 plan: choose LMS lessons inside the whiteboard
 
-**Status:** decisions made, not started · **Written:** 10 October 2026
+**Status:** built and tested locally (fake ERP + LMS branch `lms-whiteboard-lessons`), not deployed · **Written:** 10 October 2026
 **Repos:** Smartnotebook (`whiteboard.jaihind.school`), Jaihind LMS (`lms.jaihind.school`), and one small ERP change (Antigravity)
 **Builds on:** Stage 1 (live): LMS lesson page → **Teach on whiteboard** (`?lms=teach`), and the classroom rail's **Lessons** button, which opens the LMS in a new tab.
 
@@ -42,8 +42,8 @@ Whiteboard browser ──(1) Connect LMS──▶ lms.jaihind.school/auth/whiteb
                                          │ mint signed hand-off (≤120 s, single use)
 Whiteboard browser ◀─(2) auto-POST form─┘
         │
-        ▼ (3) POST /api/lms/callback (whiteboard server)
-  verify signature, audience, expiry, nonce → create LMS link (HttpOnly cookie, server memory)
+        ▼ (3) POST /api/classroom/lms/callback (whiteboard server)
+  verify signature, audience, expiry, nonce, same teacher → LMS link inside the classroom session
         │
         ▼ (4) whiteboard server → LMS server: /api/whiteboard/* with WHITEBOARD_API_TOKEN + actor
   LMS server → ERP (existing ERP_API_TOKEN + actor) → the ERP decides course access
@@ -62,11 +62,11 @@ Whiteboard browser ◀─(2) auto-POST form─┘
   - Refuses the `parent` role and staff roles outside teacher, coordinator and administrator.
   - Builds an assertion `{ iss: 'lms.jaihind.school', aud: 'whiteboard.jaihind.school', iat, exp: iat + 120, nonce, user: { id, user_id, role, name } }` and signs it with HMAC-SHA256 using a **new** secret, `WHITEBOARD_SSO_SECRET`. This is the same format as the ERP's assertion, so the existing `verifyErpAssertion` code can be copied.
   - Returns a page that **auto-POSTs** the assertion to `https://whiteboard.jaihind.school/api/lms/callback`. A POST keeps the assertion out of URLs, browser history and server logs.
-- **New whiteboard route `POST /api/lms/callback`:**
+- **New whiteboard route `POST /api/classroom/lms/callback`** (as built; the plan first said `/api/lms/callback`):
   - Verifies the signature, issuer, audience and expiry (lifetime 180 s at most, no more than 30 s of clock skew).
   - Rejects nonces it has already seen; nonces are remembered until they expire.
-  - Creates an **LMS link**: an opaque random ID in an HttpOnly, Secure, SameSite=Strict cookie scoped to `/api/lms`, mapped in server memory to `{ lmsUser, created, lastSeen }`.
-  - Uses the same limits as classroom sessions: 30 minutes idle, 8 hours total, with bounded maps.
+  - Stores the **LMS link inside the classroom session** in server memory. No second cookie: the classroom cookie (path `/api/classroom`) already reaches the callback, the link inherits its 30-minute idle and 8-hour limits, and it ends with sign-out, expiry or a different teacher signing in.
+  - Redirects to `/?lmsLink=connected` or `/?lmsLink=<ERROR_CODE>`; the page removes the parameter and opens the Lessons panel.
 
 ### 3.2 Data (whiteboard server → LMS server)
 - **New LMS routes under `/api/whiteboard/*`:**
@@ -77,7 +77,7 @@ Whiteboard browser ◀─(2) auto-POST form─┘
     - `GET /api/whiteboard/courses/{id}`: units, lessons, and which lessons have a board (reuses `/api/lms/courses/{id}`).
     - `GET /api/whiteboard/lessons/{id}/board`: the board package and its `version` (reuses `/api/lms/lessons/{id}/whiteboard` GET).
     - `PUT /api/whiteboard/lessons/{id}/board`: **Save to lesson**, with `expected_version`. Reuses the LMS's PUT, so the ERP rechecks that this user may edit the course. A version conflict comes back as 409 "Someone else saved this whiteboard after you opened it".
-- **Whiteboard routes `/api/lms/courses`, `/api/lms/courses/:id`, `/api/lms/lessons/:id/board` (GET and PUT):**
+- **Whiteboard routes `/api/classroom/lms/courses`, `/api/classroom/lms/courses/:id`, `/api/classroom/lms/lessons/:id/board` (GET and PUT), and `POST /api/classroom/lms/disconnect`:**
   - Check the LMS link, then forward with the token and actor.
   - Responses are `no-store, private`.
   - Boards are capped at 25 MB, like the LMS, and streamed rather than buffered twice where possible.
@@ -103,7 +103,7 @@ Generate each value once with `node -e "console.log(require('crypto').randomByte
 |---|---|---|
 | LMS | `WHITEBOARD_SSO_SECRET` | New 32-byte secret, same on both apps |
 | LMS | `WHITEBOARD_API_TOKEN` | New 32-byte token, same on both apps |
-| LMS | `WHITEBOARD_CALLBACK_URL` | `https://whiteboard.jaihind.school/api/lms/callback` |
+| LMS | `WHITEBOARD_CALLBACK_URL` | `https://whiteboard.jaihind.school/api/classroom/lms/callback` |
 | Whiteboard | `LMS_SSO_SECRET` | Same as LMS `WHITEBOARD_SSO_SECRET` |
 | Whiteboard | `LMS_API_TOKEN` | Same as LMS `WHITEBOARD_API_TOKEN` |
 | Whiteboard | `LMS_BASE_URL` | `https://lms.jaihind.school` |
@@ -152,3 +152,11 @@ Both apps stay inert until the variables are set. `/api/health` reports `lmsLink
 - **Integration:** whiteboard server against a fake LMS that checks the token and actor fields; LMS routes against a fake ERP that checks the actor is forwarded.
 - **Browser:** at 1280×720, the Lessons panel fits, a lesson opens in teach mode, End lesson returns home, and Student Mode hides the panel.
 - **Not automatable:** the real ERP SSO round trip and full screen on the classroom board need one manual check after deployment.
+
+## 10. As built (10 October 2026)
+- **ERP:** `TeacherApiController` login and Google login return `user_id`.
+- **LMS:** `lib/whiteboard-link.ts`, `lib/whiteboard-api.ts`, `app/auth/whiteboard`, `app/api/whiteboard/*`. A teacher who is not yet signed in goes through ERP SSO and comes back to the hand-off (`jaihind_lms_next` cookie, path `/auth`). Both save routes share `saveWhiteboard()`.
+- **Whiteboard server:** `server/classroom-lms.mjs` plus routes in `server/classroom.mjs`. LMS refusals never use 401/403, so they cannot end the classroom sign-in. Tests: `src/dashboard/lmsLink.test.mjs`.
+- **Whiteboard UI:** Rail → Lessons opens `src/lms/LessonsDialog.tsx`, filtered to the board's class (for example LKG), with "All my courses" beside it. **Teach** opens `/?lms=lesson&id=N` (`LmsWhiteboard` in `lesson` mode, isolated storage) with Save to lesson, a version-conflict prompt and End lesson. Settings has **Disconnect LMS**. A wrong-teacher refusal offers **Sign out of the LMS**.
+- **Save to lesson visibility:** for staff, the ERP's view rule equals its edit rule, so anyone who can open a lesson here can save it. The ERP still rechecks on every save.
+- **Local end-to-end check:** passed for connect (with and without an LMS session), the LKG filter, teach, save, version conflict, end lesson, the device's own board untouched, disconnect, and wrong-teacher refusal.

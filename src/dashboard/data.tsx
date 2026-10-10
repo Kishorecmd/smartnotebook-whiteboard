@@ -11,7 +11,7 @@ export function erpLink(base: unknown, route: string) {
 }
 export const LiveClassContext = createContext<{ mapping: Mapping | null; snapshot: Snapshot | null; presenting: boolean }>({ mapping: null, snapshot: null, presenting: false });
 export const useLiveClass = () => useContext(LiveClassContext);
-export type ClassTeacherSession = { role: 'teacher'; name: string; classes: Pick<Mapping, 'classId'|'sectionId'|'grade'|'section'>[] };
+export type ClassTeacherSession = { role: 'teacher'; name: string; classes: Pick<Mapping, 'classId'|'sectionId'|'grade'|'section'>[]; lms?: { available: boolean; connected: boolean; name: string | null } };
 export async function classroomRequest(path: string, body?: unknown, signal?: AbortSignal) {
   const response = await fetch(`/api/classroom/${path}`, { method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', signal, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   if (!response.ok) { let code = 'ERP_UNAVAILABLE'; try { code = (await response.json()).code || code; } catch { /* Static-only hosts return HTML. */ } throw new Error(code); }
