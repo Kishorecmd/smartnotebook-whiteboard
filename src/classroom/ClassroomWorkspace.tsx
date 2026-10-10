@@ -1,12 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Type, Timer, Clock3, Shuffle, Users, VolumeX, TrafficCone, Dices, Trophy, Image, Plus, X, GripHorizontal, Copy, Expand, Minimize, PenLine, LayoutTemplate, Download, Upload, Check, Sparkles, ArrowUpRight, Undo2 } from 'lucide-react';
+import { Type, Timer, Clock3, Shuffle, Users, VolumeX, TrafficCone, Dices, Trophy, Image, Plus, X, GripHorizontal, Copy, MonitorSmartphone, Lock, PenLine, LayoutTemplate, Download, Upload, Check, Sparkles, ArrowUpRight, Undo2 } from 'lucide-react';
 import { backgrounds, initialWorkspace, labels, makeScreen, makeWidget, parseWorkspace, restoreWidget, STORAGE_KEY, widgetKinds, type ClassroomWidget, type ClassroomWorkspace as Workspace, type WidgetKind } from './model';
 import { WidgetContent } from './Widgets';
 import './classroom.css';
-import { AudioLines, House } from 'lucide-react';
-import { ClassroomHome, ConnectionDialog } from '../dashboard/ClassroomHome';
+import { AudioLines } from 'lucide-react';
+import { ConnectionDialog } from '../dashboard/dialogs';
+import { TakeAttendance } from '../dashboard/TakeAttendance';
 import { LiveClassContext, useClassroomData } from '../dashboard/data';
 import type { Mapping, Snapshot, Weather } from '../dashboard/model';
+import { HomeScreen } from '../home/HomeScreen';
+import { MoreDialog, NavRail, StudentModeUnlock, SyncIndicator, WeatherChip, type RailTarget } from '../home/chrome';
+import { syncStatus, weatherStatus } from '../home/homeModel';
+import { useWhiteboardStore } from '../store';
 
 const icons = { text: Type, timer: Timer, clock: Clock3, sound: AudioLines, random: Shuffle, groups: Users, symbols: VolumeX, traffic: TrafficCone, dice: Dices, score: Trophy };
 const backgroundNames = { meadow: 'Quiet meadow', sunrise: 'Golden hour', lavender: 'Lavender skies', paper: 'Clean paper', midnight: 'Night class' };
@@ -20,7 +25,11 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   const [connection, setConnection] = useState(false);
   const [preview, setPreview] = useState<{mapping:Mapping;snapshot:Snapshot|null;weather:Weather|null}|null>(null);
   const [panel, setPanel] = useState<'none' | 'backgrounds' | 'templates' | 'screens'>('none');
+  // Student Mode hides attendance, student lists and teacher controls.
   const [presenting, setPresenting] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const [more, setMore] = useState(false);
+  const [taking, setTaking] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [saveError, setSaveError] = useState(false);
@@ -49,10 +58,36 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     const observer = new ResizeObserver(([entry]) => setSize({ width: entry.contentRect.width, height: entry.contentRect.height }));
     observer.observe(stage.current); return () => observer.disconnect();
   }, []);
+  // A signed-in teacher's data stays hidden until the teacher confirms their password.
+  const locked = !!live.session && !preview;
+  const enterStudentMode = () => { setPresenting(true); setPanel('none'); setConnection(false); setMore(false); setTaking(false); };
+  const leaveStudentMode = () => { if (locked) setUnlocking(true); else setPresenting(false); };
   useEffect(() => {
-    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') { setPresenting(false); setPanel('none'); } };
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setPanel('none');
+      if (presenting && !unlocking) { if (locked) setUnlocking(true); else setPresenting(false); }
+    };
     window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
-  }, []);
+  }, [presenting, unlocking, locked]);
+  const openInWhiteboard = (target: 'library' | 'website' | 'youtube') => {
+    onWhiteboard();
+    const store = useWhiteboardStore.getState();
+    if (target === 'library') store.openLibrary('templates');
+    else if (target === 'website') store.setWebAppDialogOpen(true);
+    else store.setYouTubeDialogOpen(true);
+  };
+  const attendanceReady = !!mapping && !!snapshot && !preview;
+  const navigate = (target: RailTarget) => {
+    if (target === 'home') setHome(true);
+    else if (target === 'board') onWhiteboard();
+    else if (target === 'screens') { if (home) setHome(false); else setPanel(panel === 'screens' ? 'none' : 'screens'); }
+    else if (target === 'attendance') { if (attendanceReady) setTaking(true); }
+    else if (target === 'library') openInWhiteboard('library');
+    else setMore(true);
+  };
+  const sync = syncStatus({ preview: !!preview, ready: live.ready, signedIn: !!live.session, hasClass: !!mapping, error: live.error, snapshot, now });
+  const timezone = mapping?.timezone || 'Asia/Kolkata';
   useEffect(() => {
     if (panel === 'none' || !dialog.current) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -116,14 +151,19 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   };
   return <div className={`cs-workspace cs-bg-${screen.background} ${presenting ? 'cs-presenting' : ''}`}>
     <div className="cs-landscape" aria-hidden="true"><div className="cs-sun" /><div className="cs-hill cs-hill-back" /><div className="cs-hill cs-hill-front" /></div>
-    <header className="cs-header cs-live-header" inert={panel !== 'none'}>
-      <div className="cs-school-brand"><img src="/jaihind-school-logo.webp" alt="Jaihind International School logo"/><div><b>Jaihind International School</b><small>SMART CLASSROOM</small></div></div>
-      {mapping && <div className="live-class-label"><b>{mapping.grade}</b><small>Section {mapping.section}</small></div>}
-      <div className="cs-live-clock"><strong>{new Intl.DateTimeFormat('en-IN',{timeZone:mapping?.timezone || 'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hour12:true}).format(now)}</strong><span>{new Intl.DateTimeFormat('en-IN',{timeZone:mapping?.timezone || 'Asia/Kolkata',weekday:'long',day:'numeric',month:'short'}).format(now)}</span></div>
-      {!presenting && <div className="cs-header-actions"><button className="cs-home-toggle" onClick={()=>setHome(!home)} aria-label={home ? 'Open classroom widgets' : 'Open classroom home'}><House size={17}/><span>{home ? 'Widgets' : 'Home'}</span></button><button className="cs-whiteboard-button" aria-label="Open whiteboard" onClick={onWhiteboard}><PenLine size={17}/><span>Whiteboard</span></button><button className="cs-primary" onClick={()=>{setPresenting(true);setPanel('none');setConnection(false);}}><Expand size={16}/><span>Present</span></button></div>}
+    <header className="cs-header sc-header" inert={panel !== 'none'}>
+      <div className="cs-school-brand"><img src="/jaihind-school-logo.webp" alt="Jaihind International School logo"/><div><b>Jaihind International School</b><small>SMART CLASSROOM{mapping ? ` · ${mapping.grade} ${mapping.section}` : ''}</small></div></div>
+      {!presenting && <SyncIndicator status={sync} onClick={() => setConnection(true)} />}
+      <WeatherChip status={weatherStatus(weather, now)} sample={!!preview} />
+      <div className="sc-clock"><strong>{new Intl.DateTimeFormat('en-IN',{timeZone:timezone,hour:'numeric',minute:'2-digit',hour12:true}).format(now)}</strong><span>{new Intl.DateTimeFormat('en-IN',{timeZone:timezone,weekday:'short',day:'numeric',month:'short'}).format(now)}</span></div>
+      {presenting
+        ? <button className="sc-mode-button sc-mode-locked" onClick={leaveStudentMode}><Lock size={18}/><span>Teacher mode</span></button>
+        : <button className="sc-mode-button" onClick={enterStudentMode}><MonitorSmartphone size={18}/><span>Student mode</span></button>}
     </header>
+    {!presenting && <NavRail active={home ? 'home' : 'screens'} attendanceReady={attendanceReady} signedIn={!!live.session} onNavigate={navigate} onSignIn={() => setConnection(true)} />}
     <LiveClassContext.Provider value={{mapping,snapshot,presenting}}>
-    <div hidden={!home}><ClassroomHome now={now} mapping={mapping} snapshot={snapshot} weather={weather} presenting={presenting} data={live} preview={!!preview} onPreview={(...args)=>void showPreview(...args)} addWidget={addWidget} onWhiteboard={onWhiteboard} onPresent={()=>{setPresenting(true);setPanel('none');setConnection(false);}} onConnection={()=>setConnection(true)}/></div>
+    {home && <HomeScreen now={now} mapping={mapping} snapshot={snapshot} studentMode={presenting} data={live} preview={!!preview} onPreview={(...args)=>void showPreview(...args)} onStartLesson={onWhiteboard} onConnection={()=>setConnection(true)} onTakeAttendance={()=>setTaking(true)}/>}
+    {!home && !presenting && <div className="sc-screens-bar"><button className="cs-screen-switch" onClick={() => setPanel(panel === 'screens' ? 'none' : 'screens')}><span className="cs-screen-number">{workspace.screens.findIndex(s => s.id === screen.id) + 1}</span><span>{screen.title || 'Untitled screen'}</span><small>{workspace.screens.length} {workspace.screens.length === 1 ? 'screen' : 'screens'}</small></button><button className="cs-template-link" onClick={() => setPanel(panel === 'templates' ? 'none' : 'templates')}><LayoutTemplate size={16} />Templates<ArrowUpRight size={14} /></button></div>}
     <main className={`cs-stage ${home ? 'cs-widget-stage-hidden' : ''}`} ref={stage} aria-label="Classroom screen" inert={panel !== 'none'}>
       {screen.widgets.length === 0 && <div className="cs-empty"><Sparkles size={40} strokeWidth={1} /><h1>A little space.<br />A world of possibilities.</h1><p>Add a widget below, or start with a ready-made screen.</p><button className="cs-primary" onClick={() => setPanel('templates')}><LayoutTemplate size={17} />Explore templates</button></div>}
       {screen.widgets.map(widget => {
@@ -145,11 +185,9 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
         </section>;
       })}
     </main></LiveClassContext.Provider>
-    <footer className="cs-footer" inert={panel !== 'none'}><div className="cs-footer-top"><button className="cs-screen-switch" onClick={() => setPanel(panel === 'screens' ? 'none' : 'screens')}><span className="cs-screen-number">{workspace.screens.findIndex(s => s.id === screen.id) + 1}</span><span>{screen.title || 'Untitled screen'}</span><small>{workspace.screens.length} {workspace.screens.length === 1 ? 'screen' : 'screens'}</small></button><button className="cs-template-link" onClick={() => setPanel(panel === 'templates' ? 'none' : 'templates')}><LayoutTemplate size={16} />Templates<ArrowUpRight size={14} /></button></div>
+    <footer className="cs-footer sc-dock-bar" inert={panel !== 'none'}>
       <nav className="cs-dock" aria-label="Classroom widgets"><button className={panel === 'backgrounds' ? 'is-active' : ''} onClick={() => setPanel(panel === 'backgrounds' ? 'none' : 'backgrounds')}><span className="cs-dock-icon cs-color-background"><Image size={24} /></span><span>Background</span></button><i />{widgetKinds.map(kind => { const Icon = icons[kind]; return <button key={kind} onClick={() => addWidget(kind)} aria-label={`Add ${labels[kind]} widget`}><span className={`cs-dock-icon cs-color-${kind}`}><Icon size={24} /></span><span>{labels[kind]}</span></button>; })}<i /><button onClick={onWhiteboard}><span className="cs-dock-icon cs-color-draw"><PenLine size={24} /></span><span>Draw</span></button></nav>
-      <div className="cs-footer-hint">A place for every idea. A screen for every lesson.</div>
     </footer>
-    {presenting && <button className="cs-exit-present" onClick={() => setPresenting(false)}><Minimize size={17} />Exit presentation</button>}
     {panel !== 'none' && <div className="cs-panel-shade" onClick={() => setPanel('none')}><section ref={dialog} className="cs-panel" role="dialog" aria-modal="true" aria-label={panel === 'backgrounds' ? 'Choose a background' : panel === 'templates' ? 'Classroom templates' : 'Your screens'} onClick={e => e.stopPropagation()}>
       <header><div><span className="cs-eyebrow">MAKE IT YOURS</span><h2>{panel === 'backgrounds' ? 'Set the mood.' : panel === 'templates' ? 'A little inspiration.' : 'Your classroom screens.'}</h2></div><button className="cs-icon-button" aria-label="Close classroom panel" onClick={() => setPanel('none')}><X size={20} /></button></header>
       {panel === 'backgrounds' && <div className="cs-background-grid">{backgrounds.map(bg => <button key={bg} aria-pressed={screen.background === bg} onClick={() => { editScreen({ background: bg }); setPanel('none'); }}><span className={`cs-background-sample cs-bg-${bg}`} /><b>{backgroundNames[bg]}</b>{screen.background === bg && <Check size={16} />}</button>)}</div>}
@@ -157,6 +195,9 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
       {panel === 'screens' && <><div className="cs-screen-list">{workspace.screens.map((s, i) => <button key={s.id} aria-current={s.id === screen.id ? 'page' : undefined} onClick={() => { setHome(false); setWorkspace(w => ({ ...w, activeId: s.id })); setPanel('none'); setSelected(null); }}><span className={`cs-screen-thumb cs-bg-${s.background}`}>{i + 1}</span><span><b>{s.title || 'Untitled screen'}</b><small>{s.widgets.length} widgets</small></span>{s.id === screen.id && <Check size={18} />}</button>)}</div><div className="cs-screen-actions"><button className="cs-primary" onClick={() => addScreen('blank')}><Plus size={16} />New screen</button><button className="cs-subtle" onClick={exportScreens}><Download size={16} />Download backup</button><button className="cs-subtle" onClick={() => upload.current?.click()}><Upload size={16} />Import screens</button></div><p className="cs-storage-note">Saved in this browser. Download a backup to move your screens to another device.</p></>}
     </section></div>}
     {connection && !presenting && <ConnectionDialog data={live} close={()=>setConnection(false)}/>}
+    {more && !presenting && <MoreDialog snapshot={snapshot} data={live} close={() => setMore(false)} onConnection={() => setConnection(true)} onOpenWhiteboard={openInWhiteboard} />}
+    {taking && !presenting && attendanceReady && snapshot && mapping && <TakeAttendance data={live} mapping={mapping} attendance={snapshot.attendance} close={() => setTaking(false)} />}
+    {unlocking && presenting && <StudentModeUnlock data={live} close={() => setUnlocking(false)} onUnlocked={() => { setUnlocking(false); setPresenting(false); }} />}
     <input ref={upload} type="file" accept="application/json,.json" hidden onChange={e => void importScreens(e.target.files?.[0])} />
     {(removed || notice || saveError) && <div className="cs-notice" role="status"><span>{notice || (saveError ? 'Could not save locally. Download a backup of your screens.' : 'Widget removed.')}</span>{removed && <button onClick={() => { if (workspace.screens.find(s => s.id === removed.screenId)?.widgets.length === 60) { setNotice('This screen is full. Remove a widget to make room before restoring.'); return; } setWorkspace(w => restoreWidget(w, removed.screenId, removed.widget)); setRemoved(null); setNotice(''); }}><Undo2 size={14} />Undo</button>}{saveError && <button onClick={exportScreens}>Download</button>}<button aria-label="Dismiss message" onClick={() => { setRemoved(null); setNotice(''); }}><X size={14} /></button></div>}
   </div>;

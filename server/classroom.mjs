@@ -108,7 +108,7 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpB
       const result = await erp('login', null, null, { username: credential, password, device_info: 'Jaihind Smart Classroom' });
       token = result.api_token;
       if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw failure(503, 'ERP_UNAVAILABLE');
-      const s = { token, name: clean(result.teacher_name), created: now(), lastSeen: now(), photos: new Map(), photoIds: new Map() };
+      const s = { token, credential, name: clean(result.teacher_name), created: now(), lastSeen: now(), photos: new Map(), photoIds: new Map() };
       const classes = await scope(s);
       discard(sessionId(req));
       const id = randomBytes(32).toString('hex');
@@ -116,6 +116,27 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpB
       res.cookie(COOKIE, id, cookieOptions(req));
       res.json({ role: 'teacher', name: s.name, classes });
     } catch (error) { if (token) await revoke(token); next(error); }
+  });
+  // Leaving Student Mode needs the teacher: the signed-in teacher's ERP password
+  // is checked with a fresh login whose token is revoked at once. A wrong
+  // password is an ordinary answer here and must not end the session.
+  router.post('/confirm', async (req, res, next) => {
+    try {
+      const s = active(req);
+      const key = `confirm:${req.ip}`;
+      const bucket = attempts.get(key) || { count: 0, until: now() + 5 * 60_000 };
+      if (bucket.count >= 5 || (!attempts.has(key) && attempts.size >= 1000)) throw failure(429, 'TRY_LATER');
+      const password = req.body?.password;
+      if (typeof password !== 'string' || !password || password.length > 1024) throw failure(400, 'PASSWORD_REQUIRED');
+      bucket.count++; attempts.set(key, bucket);
+      let result;
+      try { result = await erp('login', null, null, { username: s.credential, password, device_info: 'Jaihind Smart Classroom unlock' }); }
+      catch (error) { if ([401, 403].includes(error.status)) return res.status(400).json({ code: 'PASSWORD_INCORRECT' }); throw error; }
+      if (typeof result.api_token === 'string') await revoke(result.api_token);
+      stillActive(req, s);
+      attempts.delete(key);
+      res.json({ ok: true });
+    } catch (e) { next(e); }
   });
   router.post('/logout', async (req, res) => {
     const id = sessionId(req), s = sessions.get(id);

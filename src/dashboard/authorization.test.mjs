@@ -1,5 +1,5 @@
 import express from 'express';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { classroomRouter } from '../../server/classroom.mjs';
 import { SnapshotSchema } from './model';
 
@@ -199,4 +199,28 @@ it('refuses anything that is not a small image, and keeps the session', async ()
     expect((await fetch(base + students[0].photo, { headers: { Cookie: cookie } })).status).toBe(404);
   }
   expect((await request('session', undefined, cookie)).status).toBe(200);
+});
+describe('confirming the teacher to leave Student Mode', () => {
+  const loginWith = password => overrides.login = (url, options) => JSON.parse(options.body).password === password ? ok({ ...fixtures.login, api_token: 'b'.repeat(64) }) : { status: 401, ok: false };
+  it('accepts the signed-in teacher’s password and revokes the extra ERP token', async () => {
+    const cookie = await login(); loginWith('right-password'); upstream.mockClear();
+    const response = await request('confirm', { password: 'right-password' }, cookie);
+    expect(response.status).toBe(200); expect(await response.json()).toEqual({ ok: true });
+    const [loginCall] = upstream.mock.calls.filter(([u]) => u.searchParams.get('url') === 'teacher-app/login');
+    expect(JSON.parse(loginCall[1].body)).toMatchObject({ username: 'class.teacher', password: 'right-password' });
+    const logout = upstream.mock.calls.find(([u]) => u.searchParams.get('url') === 'teacher-app/logout');
+    expect(logout[1].headers.Authorization).toBe(`Bearer ${'b'.repeat(64)}`);
+  });
+  it('rejects a wrong password without ending the session', async () => {
+    const cookie = await login(); loginWith('right-password');
+    const response = await request('confirm', { password: 'wrong' }, cookie);
+    expect(response.status).toBe(400); expect(await response.json()).toEqual({ code: 'PASSWORD_INCORRECT' });
+    expect((await request('session', undefined, cookie)).status).toBe(200);
+  });
+  it('needs a session and limits repeated guesses', async () => {
+    expect((await request('confirm', { password: 'x' })).status).toBe(401);
+    const cookie = await login(); loginWith('right-password');
+    for (let i = 0; i < 5; i++) expect((await request('confirm', { password: 'wrong' }, cookie)).status).toBe(400);
+    expect((await request('confirm', { password: 'right-password' }, cookie)).status).toBe(429);
+  });
 });

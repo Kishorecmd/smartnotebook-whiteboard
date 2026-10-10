@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DashboardModal } from './ClassroomHome';
+import { DashboardModal } from './dialogs';
 import { classroomRequest, type ClassroomData } from './data';
 import type { Mapping, Snapshot } from './model';
 import { Avatar } from './Avatar';

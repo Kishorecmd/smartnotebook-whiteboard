@@ -44,6 +44,7 @@ Implemented in `server/classroom.mjs`. These are new whiteboard routes, not ERP 
 | `/api/classroom/mapping` | POST classId, sectionId, device, timezone | Canonical labels after fresh assignment validation |
 | `/api/classroom/snapshot` | POST mapping | Authorized current-day minimal data |
 | `/api/classroom/attendance` | POST mapping, records [{id, status}] | Saves today's register after fresh assignment validation; returns date, saved, newlyAbsent |
+| `/api/classroom/confirm` | POST password | Checks the signed-in teacher's ERP password to leave Student Mode; the extra ERP token is revoked at once. A wrong password returns PASSWORD_INCORRECT and keeps the session. Five attempts per IP per five minutes |
 | `/api/classroom/logout` | POST empty object | Invalidate local session, clear cookie, attempt ERP token revocation |
 
 Cookies are opaque, HttpOnly, SameSite=Strict, scoped to /api/classroom, and Secure over HTTPS. ERP tokens never reach the browser. Sessions expire after 30 minutes without requests or eight hours total. Five login attempts per IP per five minutes, bounded maps and eight-second upstream timeouts are enforced. No credentials or private payloads are logged or persisted.
@@ -68,7 +69,7 @@ Snapshot fields: date, updatedAt, academicYearId, teacher, attendance totals and
 
 Classroom data refreshes every 90 seconds while visible, on focus and at period boundaries. Each snapshot reads fresh ERP data; no private server cache exists. Clock evaluation runs locally each second in the selected timezone, default Asia/Kolkata. A date change hides the previous day's snapshot.
 
-Present Mode does not mount attendance, student dialogs, birthdays, teacher notes, account setup or roster/team widgets. Only public notices appear. Manual objectives/notes remain session-local; objectives may be presented. Sample mode is visibly labelled, including during presentation.
+Student Mode (formerly Present Mode) does not mount attendance, student dialogs, birthdays, teacher notes, account setup or roster/team widgets. Only public notices appear. Manual objectives/notes remain session-local; objectives may be presented. Sample mode is visibly labelled, including during presentation.
 
 ## Public weather
 

@@ -64,9 +64,11 @@ export function useClassroomData(now: number) {
       finally { if (!abort.signal.aborted) { setLoading(false); timer = setTimeout(poll, 90000); } }
     };
     void poll();
+    // A board switched on, or a tab brought back, refreshes at once rather than at the next 90-second poll.
     const visible = () => { if (!document.hidden) refresh(); };
     window.addEventListener('focus', visible);
-    return () => { abort.abort(); clearTimeout(timer); window.removeEventListener('focus', visible); };
+    document.addEventListener('visibilitychange', visible);
+    return () => { abort.abort(); clearTimeout(timer); window.removeEventListener('focus', visible); document.removeEventListener('visibilitychange', visible); };
   }, [ready, mapping, session, refresh, revision]);
   useEffect(() => {
     if (!weatherReady) return;

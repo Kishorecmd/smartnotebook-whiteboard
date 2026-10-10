@@ -1,0 +1,181 @@
+/* Smart Classroom design system — docs/SMART_CLASSROOM_SPEC.md §2 and §5.
+   Zones at 1280×720: 64px header, 76px rail, 84px dock, content in between. */
+.cs-workspace {
+  --sc-primary: #164a44;
+  --sc-primary-hover: #0f3833;
+  --sc-bg: #f7f8f2;
+  --sc-success: #dceee4;
+  --sc-activity: #7053ce;
+  --sc-accent: #e9b653;
+  --sc-ink: #14302b;
+  --sc-muted: #4b5f59;
+  --sc-line: #d9e2dc;
+  --sc-card: #ffffff;
+  --sc-absent: #b4493f;
+  --sc-late: #a86a12;
+  --sc-header: 64px;
+  --sc-rail: 76px;
+  --sc-dock: 84px;
+  --sc-touch: 56px;
+  --sc-gap: 16px;
+}
+
+/* Header */
+.cs-header.sc-header { height: var(--sc-header); padding: 0 16px 0 20px; gap: 14px; background: var(--sc-bg); border-bottom: 1px solid var(--sc-line); color: var(--sc-ink); }
+.sc-header .cs-school-brand { flex: 1; min-width: 0; }
+.sc-header .cs-school-brand b { font-size: 16px; color: var(--sc-ink); }
+.sc-header .cs-school-brand small { font-size: 12px; letter-spacing: 1px; color: var(--sc-muted); }
+.sc-sync, .sc-weather, .sc-mode-button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px; border-radius: 12px; border: 1px solid var(--sc-line); background: var(--sc-card); color: var(--sc-ink); font-size: 14px; white-space: nowrap; }
+.sc-sync span { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+.sc-sync b { font-weight: 600; font-size: 13px; }
+.sc-sync small { font-size: 12px; color: var(--sc-muted); }
+.sc-sync-connected svg { color: #1f7a4d; }
+.sc-sync-error svg, .sc-sync-offline svg { color: var(--sc-absent); }
+.sc-sync-syncing svg { color: var(--sc-late); }
+.sc-sync-sample { background: #fbf1dc; border-color: #ead7ad; }
+.sc-weather b { font-size: 15px; }
+.sc-weather span { color: var(--sc-muted); font-size: 13px; }
+.sc-weather svg { color: #b98a1f; }
+.sc-weather-stale { opacity: .75; }
+.sc-weather-none { color: var(--sc-muted); font-size: 13px; }
+.sc-weather-big { display: flex; align-items: center; gap: 12px; font-size: 22px !important; }
+.sc-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.sc-clock strong { font-size: 24px; font-weight: 600; color: var(--sc-ink); font-variant-numeric: tabular-nums; }
+.sc-clock span { font-size: 13px; color: var(--sc-muted); }
+.sc-mode-button { min-height: 48px; background: var(--sc-primary); border-color: var(--sc-primary); color: #fff; font-weight: 600; }
+.sc-mode-button:hover { background: var(--sc-primary-hover); }
+.sc-mode-locked { background: var(--sc-card); color: var(--sc-primary); border-color: var(--sc-primary); }
+
+/* Navigation rail */
+.sc-rail { position: absolute; top: var(--sc-header); left: 0; bottom: 0; width: var(--sc-rail); z-index: 6; display: flex; flex-direction: column; gap: 6px; padding: 10px 6px; background: var(--sc-bg); border-right: 1px solid var(--sc-line); overflow-y: auto; scrollbar-width: none; }
+.sc-rail button { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 14px; background: transparent; color: var(--sc-muted); font-size: 12px; font-weight: 600; }
+.sc-rail button:hover:not(:disabled) { background: var(--sc-success); color: var(--sc-ink); }
+.sc-rail button[aria-current="page"] { background: var(--sc-primary); color: #fff; }
+.sc-rail .sc-rail-signin { margin-top: auto; color: var(--sc-primary); }
+
+/* Content area: everything right of the rail, above the dock */
+.sc-home, .sc-screens-bar { position: absolute; left: var(--sc-rail); right: 0; }
+.sc-home { top: var(--sc-header); bottom: calc(var(--sc-dock) + 8px); padding: 14px 24px 8px; overflow-y: auto; scrollbar-width: thin; background: var(--sc-bg); color: var(--sc-ink); display: flex; flex-direction: column; gap: 12px; font-size: 16px; }
+.sc-home * { box-sizing: border-box; }
+.cs-workspace .cs-stage { top: calc(var(--sc-header) + 60px); left: calc(var(--sc-rail) + 16px); right: 16px; bottom: calc(var(--sc-dock) + 16px); }
+.sc-screens-bar { top: var(--sc-header); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 4; }
+
+/* Quick tools dock */
+.cs-footer.sc-dock-bar { left: calc(var(--sc-rail) + 12px); right: 12px; bottom: 6px; max-width: none; }
+.sc-dock-bar .cs-dock { height: var(--sc-dock); padding: 6px 10px; border-radius: 18px; background: var(--sc-card); border: 1px solid var(--sc-line); }
+.sc-dock-bar .cs-dock > button { min-width: 72px; min-height: 64px; font-size: 12px; font-weight: 600; color: var(--sc-ink); gap: 4px; }
+.sc-dock-bar .cs-dock > button:hover { background: var(--sc-success); }
+
+/* Welcome strip */
+.sc-welcome { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; }
+.sc-welcome h1 { margin: 0; font-size: 30px; line-height: 1.15; font-weight: 700; letter-spacing: -0.3px; color: var(--sc-primary); }
+.sc-welcome p { margin: 0; font-size: 16px; color: var(--sc-muted); }
+
+/* Cards */
+.sc-cards { flex: 1 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, .9fr); gap: var(--sc-gap); }
+/* The cards take the spare height, so larger screens show bigger cards rather than an empty band. */
+.sc-student-mode .sc-cards { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.sc-card { background: var(--sc-card); border: 1px solid var(--sc-line); border-radius: 18px; padding: 14px 18px; min-width: 0; display: flex; flex-direction: column; gap: 6px; min-height: 176px; max-height: 420px; }
+.sc-card h2 { margin: 0 0 2px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--sc-muted); }
+.sc-card-copy { margin: 0; font-size: 16px; color: var(--sc-muted); }
+.sc-figure { margin: 0; display: flex; align-items: baseline; gap: 8px; }
+.sc-figure b { font-size: 40px; line-height: 1; font-weight: 700; color: var(--sc-primary); font-variant-numeric: tabular-nums; }
+.sc-figure b small { font-size: 22px; color: var(--sc-muted); font-weight: 600; }
+.sc-figure span { font-size: 16px; color: var(--sc-muted); }
+.sc-counts { display: flex; flex-wrap: wrap; gap: 6px; }
+.sc-counts > button, .sc-counts > span { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 4px 10px; border-radius: 10px; border: 1px solid var(--sc-line); background: var(--sc-bg); color: var(--sc-ink); font-size: 15px; font-weight: 600; }
+.sc-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.sc-dot-present { background: #1f7a4d; }
+.sc-dot-absent { background: var(--sc-absent); }
+.sc-dot-late { background: var(--sc-late); }
+.sc-meta { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--sc-muted); }
+.sc-note { margin: auto 0 0; font-size: 13px; color: #7a5b16; }
+.sc-lesson-title { margin: 0; font-size: 30px; line-height: 1.1; font-weight: 700; color: var(--sc-ink); overflow-wrap: anywhere; }
+.sc-lesson-time { margin: 0; font-size: 18px; color: var(--sc-primary); font-weight: 600; }
+.sc-progress { height: 8px; border-radius: 8px; background: var(--sc-success); overflow: hidden; }
+.sc-progress span { display: block; height: 100%; background: var(--sc-primary); }
+.sc-next-title { margin: 0; font-size: 24px; font-weight: 700; color: var(--sc-ink); overflow-wrap: anywhere; }
+.sc-next-time { margin: 0; font-size: 18px; font-weight: 600; color: var(--sc-activity); }
+.sc-skeleton { height: 72px; border-radius: 12px; background: linear-gradient(100deg, #edf1ec, #fafbf8, #edf1ec); background-size: 200% 100%; animation: sc-loading 1.4s ease-in-out infinite; }
+@keyframes sc-loading { to { background-position: -200% 0; } }
+
+/* Buttons */
+.sc-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--sc-touch); padding: 0 18px; border-radius: 14px; border: 1px solid var(--sc-line); background: var(--sc-card); color: var(--sc-primary); font-size: 16px; font-weight: 600; width: max-content; max-width: 100%; }
+.sc-button:hover { background: var(--sc-success); }
+.sc-button-primary { background: var(--sc-primary); border-color: var(--sc-primary); color: #fff; }
+.sc-button-primary:hover { background: var(--sc-primary-hover); }
+.sc-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--sc-primary); font-size: 15px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; width: max-content; }
+
+/* Timetable strip */
+.sc-timetable { display: flex; align-items: stretch; gap: 12px; min-height: 76px; }
+.sc-timetable h2 { margin: 0; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--sc-muted); }
+.sc-timetable ol { flex: 1; display: flex; gap: 10px; margin: 0; padding: 0 0 2px; list-style: none; overflow-x: auto; scrollbar-width: thin; }
+.sc-period { flex: 1 0 150px; max-width: 220px; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 14px; background: var(--sc-card); border: 1px solid var(--sc-line); }
+.sc-period time { font-size: 14px; color: var(--sc-muted); font-variant-numeric: tabular-nums; }
+.sc-period b { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-period-state { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; min-height: 18px; }
+.sc-period-now { background: var(--sc-primary); border-color: var(--sc-primary); color: #fff; }
+.sc-period-now time { color: #d7ebe4; }
+.sc-period-done { opacity: .7; }
+.sc-period-done .sc-period-state { color: #1f7a4d; }
+.sc-timetable-empty { flex: 1; margin: 0; display: flex; align-items: center; padding: 0 16px; border-radius: 14px; border: 1px dashed var(--sc-line); color: var(--sc-muted); font-size: 16px; }
+
+/* Today's learning and Start lesson */
+.sc-learning { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 20px; border-radius: 18px; background: #fdf6e3; border: 1px solid #f0dfae; }
+.sc-learning-text { flex: 1; min-width: 0; }
+.sc-learning-text span { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8a6413; }
+.sc-learning-text p { margin: 2px 0 0; font-size: 18px; font-weight: 600; color: var(--sc-ink); overflow-wrap: anywhere; }
+.sc-start { min-height: 64px; padding: 0 28px; font-size: 18px; border-radius: 16px; }
+.sc-announcement { margin: 0; padding: 14px 18px; border-radius: 16px; background: var(--sc-card); border: 1px solid var(--sc-line); font-size: 18px; }
+
+/* Sample-data banner */
+.sc-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: #fbf1dc; border: 1px solid #e3cf9f; color: #6b4f12; font-size: 14px; }
+.sc-preview select, .sc-preview button { min-height: 40px; border: 1px solid #dcc79a; border-radius: 8px; padding: 4px 8px; background: #fffaf0; color: inherit; font: inherit; }
+.sc-preview button { margin-left: auto; }
+
+/* More dialog */
+.sc-more-tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.sc-more-tools button { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 76px; padding: 12px; border-radius: 14px; border: 1px solid #e1e8d8; background: #f0f5e8; color: #2f5233; font: inherit; font-size: 15px; font-weight: 600; text-align: left; }
+
+/* Student Mode: no rail or dock; the header keeps the clock and the way back */
+.cs-presenting .cs-header.sc-header { display: flex; }
+.cs-presenting .sc-home { left: 0; bottom: 0; padding: 20px 40px; gap: 16px; }
+.cs-presenting .cs-stage { top: calc(var(--sc-header) + 16px); left: 16px; bottom: 16px; }
+.cs-presenting .sc-welcome h1 { font-size: 40px; }
+.cs-presenting .sc-lesson-title { font-size: 40px; }
+
+/* Focus and motion */
+.sc-home button:focus-visible, .sc-rail button:focus-visible, .sc-header button:focus-visible { outline: 3px solid var(--sc-accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .sc-skeleton { animation: none; } }
+
+/* Larger classroom displays */
+@media (min-width: 1600px) {
+  .cs-workspace { --sc-header: 76px; --sc-rail: 92px; --sc-dock: 96px; }
+  .sc-home { font-size: 18px; padding: 20px 36px 12px; gap: 16px; }
+  .sc-welcome h1 { font-size: 38px; }
+  .sc-lesson-title { font-size: 40px; }
+  .sc-card { min-height: 230px; padding: 20px 24px; gap: 10px; }
+  .sc-card h2 { font-size: 16px; }
+  .sc-figure b { font-size: 56px; }
+  .sc-next-title { font-size: 32px; }
+  .sc-period { min-height: 96px; }
+  .sc-period b { font-size: 20px; }
+  .sc-learning-text p { font-size: 22px; }
+}
+/* Tablets and phones: the rail becomes a bottom-safe top strip and cards stack */
+@media (max-width: 900px) {
+  .cs-workspace { --sc-rail: 0px; }
+  .sc-rail { top: auto; bottom: calc(var(--sc-dock) + 8px); right: 0; width: auto; height: 64px; flex-direction: row; border-right: 0; border-top: 1px solid var(--sc-line); padding: 4px; overflow-x: auto; }
+  .sc-rail button { min-width: 72px; min-height: 56px; }
+  .sc-rail .sc-rail-signin { margin-top: 0; }
+  .sc-home { bottom: calc(var(--sc-dock) + 80px); padding: 12px 16px; }
+  .sc-cards { grid-template-columns: 1fr; }
+  .sc-student-mode .sc-cards { grid-template-columns: 1fr; }
+  .sc-learning { flex-wrap: wrap; }
+  .sc-header .sc-weather span, .sc-sync small, .sc-header .cs-school-brand small { display: none; }
+  .cs-header.sc-header { gap: 8px; padding: 0 10px; }
+}
+@media (max-width: 600px) {
+  .sc-sync span, .sc-header .cs-school-brand div { display: none; }
+  .sc-mode-button span { display: none; }
+}
