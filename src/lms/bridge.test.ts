@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { isAllowedLmsOrigin, lmsModeFromLocation } from './bridge';
 
 describe('LMS bridge', () => {
-  it('opens only the view and edit modes', () => {
+  it('opens only the view, edit and teach modes', () => {
     expect(lmsModeFromLocation('?lms=view')).toBe('view');
     expect(lmsModeFromLocation('?lms=edit')).toBe('edit');
+    expect(lmsModeFromLocation('?lms=teach')).toBe('teach');
     expect(lmsModeFromLocation('?lms=admin')).toBeNull();
     expect(lmsModeFromLocation('?join=ABC')).toBeNull();
   });

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eraser, FolderOpen, Hand, Highlighter, LibraryBig, Loader2, PenTool, Play, RotateCcw, Sparkles, Target, UploadCloud } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eraser, FolderOpen, Hand, Highlighter, LibraryBig, Loader2, LogOut, PenTool, Play, RotateCcw, Sparkles, Target, UploadCloud } from 'lucide-react';
 import {
   WhiteboardCanvas,
   BottomDock,
@@ -152,6 +152,21 @@ const LmsWhiteboard: React.FC<{ mode: LmsMode }> = ({ mode }) => {
 
   return (
     <div className={`wb-workspace lms-whiteboard lms-${mode} relative w-screen h-screen overflow-hidden bg-slate-950 flex flex-col select-none touch-none`}>
+      {mode === 'teach' && !isPresenterMode && <header className="wb-header wb-ui lms-teach-header">
+        <span className="wb-brand" aria-hidden="true">
+          <span className="wb-brand-mark"><Sparkles size={21} /></span>
+          <span className="wb-brand-name">Smartnotebook<small>TEACHING</small></span>
+        </span>
+        <div className="wb-document">
+          <span className="wb-document-name"><span>{title || doc.title}</span></span>
+          <div className="wb-save-status" role="status">Your notes stay on this screen and do not change the lesson</div>
+        </div>
+        <div className="wb-header-actions">
+          <button className="wb-header-button" onClick={() => openLibrary()}><LibraryBig size={16} /><span>Library</span></button>
+          <button className="wb-header-button" onClick={present}><Play size={15} /><span>Present</span></button>
+          <button className="wb-present-button" onClick={() => postToLms({ type: 'exit' })}><LogOut size={15} /><span>End lesson</span></button>
+        </div>
+      </header>}
       {mode === 'edit' && !isPresenterMode && <header className="wb-header wb-ui">
         <span className="wb-brand" aria-hidden="true">
           <span className="wb-brand-mark"><Sparkles size={21} /></span>
@@ -171,12 +186,12 @@ const LmsWhiteboard: React.FC<{ mode: LmsMode }> = ({ mode }) => {
         </div>
       </header>}
 
-      <main className={`relative flex-1 w-full h-full ${mode === 'edit' && !isPresenterMode ? 'wb-canvas-shell' : ''}`}>
+      <main className={`relative flex-1 w-full h-full ${mode !== 'view' && !isPresenterMode ? 'wb-canvas-shell' : ''}`}>
         <WhiteboardCanvas />
         {mode === 'view' && <ViewerToolbar onReset={() => original.current && void open(original.current.title, original.current.package)} onPageChange={() => setFitRequest((count) => count + 1)} />}
-        {mode === 'edit' && (isPresenterMode ? <PresenterToolbar /> : <><BottomDock /><PenNameToast /><PageDrawer /></>)}
+        {mode !== 'view' && (isPresenterMode ? <PresenterToolbar /> : <><BottomDock /><PenNameToast /><PageDrawer /></>)}
 
-        {mode === 'edit' && <>
+        {mode !== 'view' && <>
           <ExportModal />
           <SavedDocumentsModal />
           <LibraryModal />

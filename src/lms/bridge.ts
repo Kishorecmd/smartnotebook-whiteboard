@@ -1,8 +1,8 @@
 /**
  * postMessage contract between Smartnotebook and Jaihind LMS (lms.jaihind.school).
  *
- * The LMS embeds `/?lms=view` (students) or `/?lms=edit` (course teachers) in an
- * iframe. The LMS server has already checked the ERP sign-in and course access,
+ * The LMS embeds `/?lms=view` (students), `/?lms=edit` (course teachers) or
+ * `/?lms=teach` (a teacher teaching the lesson full screen) in an iframe. The LMS server has already checked the ERP sign-in and course access,
  * so the whiteboard never holds credentials: it only renders the board it is
  * given and hands the edited board back. Messages from any other origin are
  * ignored.
@@ -12,9 +12,11 @@
  *   whiteboard → LMS  { channel: 'jaihind-whiteboard', type: 'dirty', dirty }
  *   whiteboard → LMS  { channel: 'jaihind-whiteboard', type: 'save', requestId, package, pages }
  *   LMS → whiteboard  { channel: 'jaihind-lms', type: 'saved', requestId, ok, message? }
+ *   whiteboard → LMS  { channel: 'jaihind-whiteboard', type: 'exit' }   (teach mode: the lesson is over)
  */
 
-export type LmsMode = 'view' | 'edit';
+/** Teach opens the lesson in the full editor without saving back, so class annotations never change the lesson. */
+export type LmsMode = 'view' | 'edit' | 'teach';
 
 export type LmsInboundMessage =
   | { channel: 'jaihind-lms'; type: 'load'; title: string; package: string | null }
@@ -23,13 +25,19 @@ export type LmsInboundMessage =
 export type LmsOutboundMessage =
   | { type: 'ready'; mode: LmsMode }
   | { type: 'dirty'; dirty: boolean }
-  | { type: 'save'; requestId: string; package: string; pages: number };
+  | { type: 'save'; requestId: string; package: string; pages: number }
+  | { type: 'exit' };
 
 const DEFAULT_LMS_ORIGINS = ['https://lms.jaihind.school'];
 
+/** The school LMS home page, for opening lessons from the classroom. */
+export function lmsHomeUrl(): string {
+  return configuredOrigins()[0];
+}
+
 export function lmsModeFromLocation(search: string = window.location.search): LmsMode | null {
   const mode = new URLSearchParams(search).get('lms');
-  return mode === 'view' || mode === 'edit' ? mode : null;
+  return mode === 'view' || mode === 'edit' || mode === 'teach' ? mode : null;
 }
 
 function configuredOrigins(): string[] {

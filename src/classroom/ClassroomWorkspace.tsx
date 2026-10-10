@@ -5,6 +5,7 @@ import { WidgetContent } from './Widgets';
 import './classroom.css';
 import { AudioLines, Settings, LoaderPinwheel, Eraser, Shapes, Ruler, Triangle, DraftingCompass, StickyNote, PenTool } from 'lucide-react';
 import { openOnBoard, type BoardAction } from '../teaching-tools/launch';
+import { lmsHomeUrl } from '../lms/bridge';
 
 // Whiteboard tools in the dock open the board with the tool ready.
 const boardTools: [string, typeof PenTool, BoardAction, string][] = [
@@ -105,6 +106,8 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     else if (target === 'screens') { if (home) setHome(false); else setPanel(panel === 'screens' ? 'none' : 'screens'); }
     else if (target === 'attendance') { if (attendanceReady) setTaking(true); }
     else if (target === 'library') openInWhiteboard('library');
+    // LMS lessons open in their own tab, so this classroom screen stays as it is.
+    else if (target === 'lessons') window.open(lmsHomeUrl(), 'jaihind-lms', 'noopener');
     else if (target === 'games') setGamesOpen(true);
     else if (target === 'students') { if (attendanceReady) setRosterOpen(true); }
     else if (target === 'settings') setSettingsOpen(true);

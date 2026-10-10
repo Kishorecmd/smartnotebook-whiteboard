@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Settings, Users, Cake, Volume2, VolumeX, House, PenLine, LayoutGrid, ClipboardCheck, LibraryBig, Gamepad2, MoreHorizontal, LogIn, Sun, CloudSun, CloudRain, CircleAlert, Wifi, WifiOff, RefreshCw, QrCode, Globe, MonitorPlay, Settings2, LogOut, Lock } from 'lucide-react';
+import { BookOpen, ChevronDown, Settings, Users, Cake, Volume2, VolumeX, House, PenLine, LayoutGrid, ClipboardCheck, LibraryBig, Gamepad2, MoreHorizontal, LogIn, Sun, CloudSun, CloudRain, CircleAlert, Wifi, WifiOff, RefreshCw, QrCode, Globe, MonitorPlay, Settings2, LogOut, Lock } from 'lucide-react';
 import { weatherCondition, type Snapshot } from '../dashboard/model';
 import { Avatar } from '../dashboard/Avatar';
 import { setSoundOn, soundOn } from '../games/feedback';
@@ -7,13 +7,13 @@ import { classroomRequest, type ClassroomData } from '../dashboard/data';
 import { DashboardModal, QrDialog } from '../dashboard/dialogs';
 import type { SyncStatus, WeatherStatus } from './homeModel';
 
-export type RailTarget = 'home' | 'board' | 'screens' | 'attendance' | 'students' | 'library' | 'games' | 'more' | 'settings';
+export type RailTarget = 'home' | 'board' | 'screens' | 'attendance' | 'students' | 'lessons' | 'library' | 'games' | 'more' | 'settings';
 
 type RailProps = { active: 'home' | 'screens'; attendanceReady: boolean; signedIn: boolean; onNavigate: (target: RailTarget) => void; onSignIn: () => void };
 
 /** The left navigation rail: two-tap access to every classroom area. */
 export function NavRail({ active, attendanceReady, signedIn, onNavigate, onSignIn }: RailProps) {
-  const items: [RailTarget, string, typeof House][] = [['home', 'Home', House], ['board', 'Board', PenLine], ['screens', 'Screens', LayoutGrid], ['attendance', 'Attendance', ClipboardCheck], ['students', 'Students', Users], ['library', 'Library', LibraryBig], ['games', 'Games', Gamepad2], ['more', 'More', MoreHorizontal], ['settings', 'Settings', Settings]];
+  const items: [RailTarget, string, typeof House][] = [['home', 'Home', House], ['board', 'Board', PenLine], ['screens', 'Screens', LayoutGrid], ['attendance', 'Attendance', ClipboardCheck], ['students', 'Students', Users], ['lessons', 'Lessons', BookOpen], ['games', 'Games', Gamepad2], ['more', 'More', MoreHorizontal], ['settings', 'Settings', Settings]];
   return <nav className="sc-rail" aria-label="Classroom">
     {items.map(([target, label, Icon]) => <button key={target} onClick={() => onNavigate(target)} aria-current={target === active ? 'page' : undefined}
       disabled={(target === 'attendance' || target === 'students') && !attendanceReady} title={(target === 'attendance' || target === 'students') && !attendanceReady ? 'Sign in and choose your class first' : undefined}>
@@ -49,7 +49,7 @@ export function WeatherChip({ status, sample }: { status: WeatherStatus; sample:
   </>;
 }
 
-type MoreProps = { snapshot: Snapshot | null; data: ClassroomData; close: () => void; onConnection: () => void; onOpenWhiteboard: (dialog: 'website' | 'youtube') => void };
+type MoreProps = { snapshot: Snapshot | null; data: ClassroomData; close: () => void; onConnection: () => void; onOpenWhiteboard: (dialog: 'library' | 'website' | 'youtube') => void };
 
 /** Secondary information and tools, kept off the home screen to keep it calm. */
 export function MoreDialog({ snapshot, data, close, onConnection, onOpenWhiteboard }: MoreProps) {
@@ -58,6 +58,7 @@ export function MoreDialog({ snapshot, data, close, onConnection, onOpenWhiteboa
   if (qr) return <QrDialog close={() => setQr(false)} />;
   return <DashboardModal title="More for today" close={close}>
     <div className="sc-more-tools">
+      <button onClick={() => { close(); onOpenWhiteboard('library'); }}><LibraryBig size={22} />Board templates</button>
       <button onClick={() => setQr(true)}><QrCode size={22} />Show QR code</button>
       <button onClick={() => { close(); onOpenWhiteboard('website'); }}><Globe size={22} />Open website</button>
       <button onClick={() => { close(); onOpenWhiteboard('youtube'); }}><MonitorPlay size={22} />Play YouTube</button>
