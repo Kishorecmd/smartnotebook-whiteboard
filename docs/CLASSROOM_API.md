@@ -30,7 +30,7 @@ All routes use `https://erp.jaihind.school/public/index.php?url=ROUTE` by defaul
 | `teacher-app/attendance/save` | POST class_id, section_id, date, records | Today's register for the class teacher's own class (see below). The ERP sends its absence alert to families of students newly marked absent |
 | `teacher-portal/attendance` | Browser navigation | Existing ERP web editor, linked when no class is connected |
 
-Live photo URLs are suppressed; initials appear until authorized, non-cacheable photo delivery exists. Full dates of birth never reach the browser. Homework is limited to the teacher's latest 100 items and is not a complete class-wide feed; the ERP response currently omits class/section IDs.
+Student and teacher photos are shown through `/api/classroom/photo/:id`, never as ERP URLs. Each snapshot gives every photo a random address tied to that sign-in; the server resolves the ERP path (`uploads/photos/x.jpg` relative to the site root, or a bare file name in that folder), accepts only JPEG, PNG, WebP or GIF up to 3 MB from the ERP's own site, and returns it with `Cache-Control: no-store, private`, so nothing stays in a shared board's cache. The addresses stop working at sign-out or session expiry, and another teacher's session cannot use them. A missing or failed photo falls back to the initial. The ERP itself still serves `uploads/photos` publicly; restricting that is an ERP change. Full dates of birth never reach the browser. Homework is limited to the teacher's latest 100 items and is not a complete class-wide feed; the ERP response currently omits class/section IDs.
 
 ## Smartnotebook server routes
 
@@ -62,7 +62,7 @@ The server fetches today's ERP register first and saves only if the records cove
 
 Errors include ATTENDANCE_INCOMPLETE, SIGN_IN_REQUIRED, CLASS_TEACHER_REQUIRED, CLASS_ACCESS_DENIED, TRY_LATER, ERP_UNAVAILABLE, ORIGIN_DENIED and HTTPS_REQUIRED. No upstream stack traces are returned. Authentication errors clear the session and private snapshot. Other feed errors clear the snapshot while tools stay available. Optional timetable/homework/notices failures do not block attendance, but an auth failure from any feed invalidates access.
 
-Snapshot fields: date, updatedAt, academicYearId, teacher, attendance totals and minimal students (ID/name/photo=null/status), roster (ID/name/photo=null/birthday boolean), partial timetable, homework and notices. Late counts as present and separately as late; leave/half-day are not silently counted absent. Malformed/wrong-date attendance fails instead of fabricating totals.
+Snapshot fields: date, updatedAt, academicYearId, teacher, attendance totals and minimal students (ID/name/photo address/status), roster (ID/name/photo address/birthday boolean), teacherPhoto, partial timetable, homework and notices. Late counts as present and separately as late; leave/half-day are not silently counted absent. Malformed/wrong-date attendance fails instead of fabricating totals.
 
 ## Refresh and presentation
 
@@ -82,7 +82,7 @@ GET /api/classroom/weather uses server/classroom-weather.mjs, with no credential
 2. Academic year label and classroom context; year ID is available today.
 3. Corrected calendar scope: inspected teacher-app/calendar calls requireToken() without assigning $auth before using its teacher ID. Do not consume until corrected and audience/holiday semantics are verified.
 4. Lesson plans/current objectives linked to class/date/period. The existing lesson library and manual session-only objective remain available.
-5. Authorized no-store student photos; otherwise continue using initials.
+5. Restrict the ERP's public `uploads/photos` folder; the board already serves photos only to the signed-in class teacher.
 6. Homework class/section IDs and a complete class-scoped feed instead of name matching against recent teacher items.
 
 Admin APIs, admin-session api/academic_years.php and insufficiently authenticated api/v1/homework.php are not used.

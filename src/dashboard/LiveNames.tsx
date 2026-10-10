@@ -3,13 +3,15 @@ import { Shuffle } from 'lucide-react';
 import { useLiveClass } from './data';
 import { classStudents } from './model';
 import { makeGroups } from '../classroom/model';
+import { Avatar } from './Avatar';
+import type { Student } from './model';
 export function LiveNames({ groups = false }: {groups?: boolean}) {
   const { snapshot, presenting } = useLiveClass();
-  const [presentOnly,setPresentOnly] = useState(true), [count,setCount] = useState(3), [result,setResult] = useState<string[][]>([]);
-  useEffect(()=>{if(!snapshot) setResult([]);},[snapshot]);
+  const [presentOnly,setPresentOnly] = useState(true), [count,setCount] = useState(3), [result,setResult] = useState<string[][]>([]), [pick,setPick] = useState<Student|null>(null);
+  useEffect(()=>{if(!snapshot){setResult([]);setPick(null);}},[snapshot]);
   const students = classStudents(snapshot,presentOnly);
   if(presenting) return null;
-  return <div className="cs-names"><span className="cs-eyebrow">From your classroom · session only</span><label className="cs-custom-time"><input style={{width:18}} type="checkbox" checked={presentOnly} onChange={e=>{setPresentOnly(e.target.checked);setResult([]);}}/>Present students only</label>{!snapshot ? <p>Connect your classroom to load students.</p> : presentOnly && !snapshot.attendance.marked ? <p>Attendance not marked yet. Take attendance on the Home screen, or untick this to use all students.</p> : <p>{students.length} students available</p>}{groups && <label className="cs-custom-time">Groups <select aria-label="Number of classroom groups" value={count} onChange={e=>setCount(Number(e.target.value))}>{[2,3,4,5,6].map(n=><option key={n}>{n}</option>)}</select></label>}<div className="cs-group-results" aria-live="polite">{snapshot && result.map((g,i)=><div key={i}>{groups && <b>Group {i+1}</b>}<p>{g.join(', ')}</p></div>)}</div><button className="cs-primary" disabled={!students.length} onClick={()=>setResult(groups ? makeGroups(students.map(s=>s.name),count) : [[students[Math.floor(Math.random()*students.length)].name]])}><Shuffle size={17}/>{groups ? 'Make groups' : 'Pick a student'}</button></div>;
+  return <div className="cs-names"><span className="cs-eyebrow">From your classroom · session only</span><label className="cs-custom-time"><input style={{width:18}} type="checkbox" checked={presentOnly} onChange={e=>{setPresentOnly(e.target.checked);setResult([]);setPick(null);}}/>Present students only</label>{!snapshot ? <p>Connect your classroom to load students.</p> : presentOnly && !snapshot.attendance.marked ? <p>Attendance not marked yet. Take attendance on the Home screen, or untick this to use all students.</p> : <p>{students.length} students available</p>}{groups && <label className="cs-custom-time">Groups <select aria-label="Number of classroom groups" value={count} onChange={e=>setCount(Number(e.target.value))}>{[2,3,4,5,6].map(n=><option key={n}>{n}</option>)}</select></label>}<div className="cs-group-results" aria-live="polite">{snapshot && (groups ? result.map((g,i)=><div key={i}><b>Group {i+1}</b><p>{g.join(', ')}</p></div>) : pick && <div className="cs-pick"><Avatar name={pick.name} photo={pick.photo} className="live-avatar cs-pick-photo"/><p>{pick.name}</p></div>)}</div><button className="cs-primary" disabled={!students.length} onClick={()=>groups ? setResult(makeGroups(students.map(s=>s.name),count)) : setPick(students[Math.floor(Math.random()*students.length)])}><Shuffle size={17}/>{groups ? 'Make groups' : 'Pick a student'}</button></div>;
 }
 export function LiveTeams() {
   const { snapshot, presenting } = useLiveClass();

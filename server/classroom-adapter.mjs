@@ -16,19 +16,28 @@ export function classesFromTeacher(rows = []) {
 export function classesFromAdmin(rows = []) {
   return rows.flatMap(c => (c.sections || []).map(s => ({ classId: String(c.id), sectionId: String(s.id), grade: clean(c.name), section: clean(s.name) })));
 }
-export function photoUrl(value) {
-  if (!value) return null;
-  try { const url = new URL(value, 'https://erp.jaihind.school/'); return url.origin === 'https://erp.jaihind.school' && !url.username && !url.password ? url.href : null; } catch { return null; }
+/** An ERP photo as an absolute URL on the ERP's own site, or null. Student
+ * photos are stored as 'uploads/photos/x.jpg' relative to the site root, which
+ * is the folder above /public/index.php; a bare file name lives in that folder. */
+export function photoUrl(value, base = ERP_BASE) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const v = value.trim();
+  if (/^[a-z][a-z0-9+.-]*:/i.test(v) && !/^https?:\/\//i.test(v)) return null;
+  try {
+    const root = new URL('../', base);
+    const url = /^https?:\/\//i.test(v) ? new URL(v) : new URL((v.includes('/') ? v : `uploads/photos/${v}`).replace(/^\/+/, '').replace(/^public\//, ''), root);
+    return url.origin === root.origin && !url.username && !url.password && /\.(jpe?g|png|webp|gif)$/i.test(url.pathname) ? url.href : null;
+  } catch { return null; }
 }
-export function minimalStudents(rows, monthDay) {
-  return rows.map(s => ({ id: String(s.id), name: clean(s.full_name), photo: photoUrl(s.photo), birthday: typeof s.date_of_birth === 'string' && s.date_of_birth.slice(5, 10) === monthDay }));
+export function minimalStudents(rows, monthDay, base) {
+  return rows.map(s => ({ id: String(s.id), name: clean(s.full_name), photo: photoUrl(s.photo, base), birthday: typeof s.date_of_birth === 'string' && s.date_of_birth.slice(5, 10) === monthDay }));
 }
 // The ERP stores 'Half Day' and reports it lowercased with a space.
 export const ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'half_day', 'leave'];
 const statusFromERP = value => { const s = typeof value === 'string' ? value.trim().toLowerCase().replace(' ', '_') : ''; return ATTENDANCE_STATUSES.includes(s) ? s : 'unmarked'; };
 export const statusToERP = status => status === 'half_day' ? 'half day' : status;
-export function attendanceFromERP(payload) {
-  const students = (payload.data || []).map(s => ({ id: String(s.student_id), name: clean(s.full_name), photo: photoUrl(s.photo), status: statusFromERP(s.status) }));
+export function attendanceFromERP(payload, base) {
+  const students = (payload.data || []).map(s => ({ id: String(s.student_id), name: clean(s.full_name), photo: photoUrl(s.photo, base), status: statusFromERP(s.status) }));
   const present = students.filter(s => s.status === 'present' || s.status === 'late').length;
   const absent = students.filter(s => s.status === 'absent').length;
   const late = students.filter(s => s.status === 'late').length;

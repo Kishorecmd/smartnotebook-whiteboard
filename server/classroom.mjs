@@ -1,12 +1,14 @@
 import { randomBytes } from 'node:crypto';
 import express from 'express';
-import { erpBase, clean, classesFromTeacher, minimalStudents, attendanceFromERP, teacherLessons, dayParts, ATTENDANCE_STATUSES, statusToERP } from './classroom-adapter.mjs';
+import { erpBase, clean, classesFromTeacher, minimalStudents, attendanceFromERP, teacherLessons, dayParts, photoUrl, ATTENDANCE_STATUSES, statusToERP } from './classroom-adapter.mjs';
 
 const COOKIE = 'jhw_class_teacher';
 const IDLE = 30 * 60_000;
 const MAX_AGE = 8 * 60 * 60_000;
 const routes = new Set(['login', 'logout', 'profile', 'diary/sections', 'students', 'attendance', 'attendance/save', 'timetable', 'homework', 'notices']);
 const failure = (status, code) => Object.assign(new Error(code), { status, code });
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const PHOTO_MAX_BYTES = 3_000_000;
 
 // Tokens and private classroom responses never go into persistent storage.
 export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpBase() } = {}) {
@@ -73,6 +75,18 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpB
   function stillActive(req, s) {
     if (sessions.get(sessionId(req)) !== s || !valid(s)) throw failure(401, 'SIGN_IN_REQUIRED');
   }
+  // Photos reach the browser as random per-session addresses, never ERP URLs,
+  // so they stop working at sign-out and nothing about the ERP is exposed.
+  function photoRef(s, url) {
+    if (!url) return null;
+    let id = s.photoIds.get(url);
+    if (!id) {
+      if (s.photos.size >= 2000) return null;
+      id = randomBytes(16).toString('hex');
+      s.photoIds.set(url, id); s.photos.set(id, url);
+    }
+    return `/api/classroom/photo/${id}`;
+  }
   function mappingFrom(body, classes) {
     const selected = classes.find(c => c.classId === body?.classId && c.sectionId === body?.sectionId);
     if (!selected) throw failure(403, 'CLASS_ACCESS_DENIED');
@@ -94,7 +108,7 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpB
       const result = await erp('login', null, null, { username: credential, password, device_info: 'Jaihind Smart Classroom' });
       token = result.api_token;
       if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw failure(503, 'ERP_UNAVAILABLE');
-      const s = { token, name: clean(result.teacher_name), created: now(), lastSeen: now() };
+      const s = { token, name: clean(result.teacher_name), created: now(), lastSeen: now(), photos: new Map(), photoIds: new Map() };
       const classes = await scope(s);
       discard(sessionId(req));
       const id = randomBytes(32).toString('hex');
@@ -135,11 +149,10 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpB
       const [profile, students, attendance, timetable, homework, notices] = results.map(r => r.status === 'fulfilled' ? r.value : null);
       if (!Array.isArray(students.data) || !Array.isArray(attendance.data) || attendance.date !== date || typeof attendance.already_saved !== 'boolean' || !profile.data?.year_id) throw failure(503, 'ERP_UNAVAILABLE');
       stillActive(req, s);
-      // Show initials until the ERP provides authorized, non-cacheable photos.
-      const totals = attendanceFromERP(attendance);
-      totals.students = totals.students.map(student => ({ ...student, photo: null }));
-      res.json({ date, updatedAt: now(), academicYearId: String(profile.data.year_id), teacher: s.name, attendance: totals,
-        students: minimalStudents(students.data, date.slice(5)).map(student => ({ ...student, photo: null })),
+      const totals = attendanceFromERP(attendance, base);
+      totals.students = totals.students.map(student => ({ ...student, photo: photoRef(s, student.photo) }));
+      res.json({ date, updatedAt: now(), academicYearId: String(profile.data.year_id), teacher: s.name, teacherPhoto: photoRef(s, photoUrl(profile.data.photo, base)), attendance: totals,
+        students: minimalStudents(students.data, date.slice(5), base).map(student => ({ ...student, photo: photoRef(s, student.photo) })),
         timetable: { complete: false, periods: timetable ? teacherLessons(timetable, mapping, weekday, s.name) : [] },
         homework: (Array.isArray(homework?.data) ? homework.data : []).filter(h => h.class_name === mapping.grade && h.section_name === mapping.section && h.assigned_date === date).map(h => ({ title: clean(h.title), text: clean(h.description, 4000), subject: clean(h.subject_name) })),
         notices: (Array.isArray(notices?.data) ? notices.data : []).map(n => ({ title: clean(n.title), text: clean(n.message, 4000), public: n.target_scope === 'all' })),
@@ -171,6 +184,22 @@ export function classroomRouter({ fetchImpl = fetch, now = Date.now, base = erpB
       // The ERP replaces remarks on save, so keep each student's existing one.
       const result = await erp('attendance/save', s.token, null, { ...query, date, records: records.map(r => ({ student_id: Number(r.id), status: statusToERP(r.status), remarks: roster.get(r.id).remarks ?? null })) });
       res.json({ date, saved: Number(result.saved) || records.length, newlyAbsent });
+    } catch (e) { next(e); }
+  });
+  // Streams one photo from this session's snapshot to the signed-in teacher.
+  // The router's no-store headers keep it out of the shared board's cache.
+  router.get('/photo/:id', async (req, res, next) => {
+    try {
+      const s = active(req);
+      const url = /^[a-f0-9]{32}$/.test(req.params.id) ? s.photos.get(req.params.id) : undefined;
+      if (!url) return res.status(404).json({ code: 'PHOTO_NOT_FOUND' });
+      const upstream = await fetchImpl(new URL(url), { redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(() => null);
+      const type = upstream?.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+      if (!upstream?.ok || !PHOTO_TYPES.includes(type) || Number(upstream.headers.get('content-length')) > PHOTO_MAX_BYTES) return res.status(404).json({ code: 'PHOTO_NOT_FOUND' });
+      const bytes = Buffer.from(await upstream.arrayBuffer());
+      if (bytes.length > PHOTO_MAX_BYTES) return res.status(404).json({ code: 'PHOTO_NOT_FOUND' });
+      stillActive(req, s);
+      res.set({ 'Content-Type': type, 'Content-Security-Policy': "default-src 'none'", 'X-Content-Type-Options': 'nosniff' }).send(bytes);
     } catch (e) { next(e); }
   });
   router.use((error, req, res, _next) => {

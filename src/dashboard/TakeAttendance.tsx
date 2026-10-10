@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DashboardModal } from './ClassroomHome';
 import { classroomRequest, type ClassroomData } from './data';
 import type { Mapping, Snapshot } from './model';
+import { Avatar } from './Avatar';
 
 type Status = 'present' | 'absent' | 'late' | 'leave' | 'half_day';
 const STATUSES: [Status, string][] = [['present', 'Present'], ['absent', 'Absent'], ['late', 'Late'], ['leave', 'Leave'], ['half_day', 'Half day']];
@@ -38,7 +39,7 @@ export function TakeAttendance({ data, mapping, attendance, close }: { data: Cla
   return <DashboardModal title={attendance.marked ? 'Update attendance' : 'Take attendance'} close={close}>
     <p>{mapping.grade} · {mapping.section} · today. {attendance.marked ? 'Change any student, then save.' : 'Everyone starts as present. Tap the students who are not.'}</p>
     <div className="live-register-tools"><button type="button" className="live-button" disabled={busy} onClick={() => setStatuses(Object.fromEntries(attendance.students.map(s => [s.id, 'present'])))}>Mark everyone present</button><span>{count('present')} present · {count('absent')} absent{count('late') ? ` · ${count('late')} late` : ''}{count('leave') + count('half_day') ? ` · ${count('leave') + count('half_day')} other` : ''}</span></div>
-    <ul className="live-register">{attendance.students.map(s => <li key={s.id}><b>{s.name}</b><div role="group" aria-label={`Attendance for ${s.name}`}>{STATUSES.map(([value, label]) => <button key={value} type="button" disabled={busy} className={`is-${value}`} aria-pressed={statuses[s.id] === value} onClick={() => setStatuses(current => ({ ...current, [s.id]: value }))}>{label}</button>)}</div></li>)}</ul>
+    <ul className="live-register">{attendance.students.map(s => <li key={s.id}><span className="live-register-name"><Avatar name={s.name} photo={s.photo}/><b>{s.name}</b></span><div role="group" aria-label={`Attendance for ${s.name}`}>{STATUSES.map(([value, label]) => <button key={value} type="button" disabled={busy} className={`is-${value}`} aria-pressed={statuses[s.id] === value} onClick={() => setStatuses(current => ({ ...current, [s.id]: value }))}>{label}</button>)}</div></li>)}</ul>
     {newlyAbsent > 0 && <p className="live-register-note">Saving sends the school’s absence alert to the families of the {newlyAbsent} student{newlyAbsent === 1 ? '' : 's'} newly marked absent.</p>}
     {error && <p role="alert">{error}</p>}
     <button className="live-button live-primary" disabled={busy || !attendance.students.length} onClick={() => void save()}>{busy ? 'Saving…' : attendance.marked ? 'Save changes' : 'Save attendance'}</button>

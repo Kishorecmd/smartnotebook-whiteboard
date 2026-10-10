@@ -8,11 +8,13 @@ const classroom = { class_id: 3, section_id: 7, class_name: 'Grade 3', section_n
 const mapping = { classId: '3', sectionId: '7', timezone: 'Asia/Kolkata', device: 'Board' };
 let server, router, base, upstream, time, overrides;
 const ok = data => ({ status: 200, ok: true, json: async () => ({ status: 'success', ...data }) });
+const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+let photo = () => ({ ok: true, status: 200, headers: new Headers({ 'content-type': 'image/jpeg' }), arrayBuffer: async () => jpeg.buffer });
 const fixtures = {
   login: { api_token: token, teacher_name: 'Sample Teacher', email: 'private@example.test', classes: [{ class_id: 99, section_id: 99 }] },
   logout: {},
   'diary/sections': { data: [classroom], stats: { private: true } },
-  profile: { data: { year_id: 12, full_name: 'Sample Teacher', phone: 'private phone' } },
+  profile: { data: { year_id: 12, full_name: 'Sample Teacher', phone: 'private phone', photo: 'https://erp.jaihind.school/uploads/profile/teacher.jpg' } },
   students: { data: [{ id: 1, full_name: 'Sample Student', photo: '/student.jpg', date_of_birth: '2018-09-28', father_phone: 'private phone', admission_number: 'private number' }] },
   attendance: { date: '2026-09-28', already_saved: false, data: [{ student_id: 1, full_name: 'Sample Student', status: null, remarks: 'private remarks', photo: '/student.jpg' }] },
   timetable: { data: { Monday: [{ class_id: 3, section_id: 7, period: 1, subject_name: 'Maths', start_time: '09:00:00', end_time: '09:40:00' }, { class_id: 9, section_id: 9, period: 2, subject_name: 'Other class lesson' }] } },
@@ -25,6 +27,7 @@ beforeEach(async () => {
   upstream = vi.fn(async (url, options) => {
     expect(url.origin).toBe('https://erp.jaihind.school');
     expect(options.redirect).toBe('error');
+    if (!url.searchParams.has('url')) return photo(url);
     const route = url.searchParams.get('url').replace('teacher-app/', '');
     if (overrides[route]) return overrides[route](url, options);
     if (!fixtures[route]) throw new Error(`Unexpected route ${route}`);
@@ -80,11 +83,14 @@ it('rechecks class teacher assignments after login', async () => {
   expect(response.status).toBe(403);
   expect((await request('session', undefined, cookie)).status).toBe(401);
 });
-it('returns minimal class data with unmarked attendance and no persistent photo URLs', async () => {
+it('returns minimal class data with unmarked attendance and no ERP photo URLs', async () => {
   const cookie = await login(); const response = await request('snapshot', { mapping }, cookie);
   expect(response.status).toBe(200); const result = await response.json(); expect(SnapshotSchema.safeParse(result).success).toBe(true);
   expect(result.attendance).toMatchObject({ marked: false, total: 1, absent: 0, unmarked: 1 });
-  expect(result.students).toEqual([{ id: '1', name: 'Sample Student', photo: null, birthday: true }]);
+  expect(result.students).toEqual([{ id: '1', name: 'Sample Student', photo: expect.stringMatching(/^\/api\/classroom\/photo\/[a-f0-9]{32}$/), birthday: true }]);
+  expect(result.attendance.students[0].photo).toBe(result.students[0].photo);
+  expect(result.teacherPhoto).toMatch(/^\/api\/classroom\/photo\/[a-f0-9]{32}$/);
+  expect(JSON.stringify(result)).not.toMatch(/erp\.jaihind\.school|uploads/);
   expect(result.timetable.complete).toBe(false); expect(result.timetable.periods).toHaveLength(1); expect(result.homework).toHaveLength(1);
   expect(result.notices.map(n => n.public)).toEqual([false, true]);
   expect(JSON.stringify(result)).not.toMatch(/private phone|private number|private remarks|2018-09-28|Other class/);
@@ -165,4 +171,32 @@ it('does not save when the ERP register is for a different day', async () => {
   overrides.attendance = () => ok({ ...fixtures.attendance, date: '2026-09-27' });
   expect((await request('attendance', { mapping, records: [{ id: '1', status: 'present' }] }, cookie)).status).toBe(503);
   expect(saves()).toHaveLength(0);
+});
+
+const snapshot = async cookie => (await request('snapshot', { mapping }, cookie)).json();
+it('serves a snapshot photo only to its own session, without caching', async () => {
+  const cookie = await login(); const { students, teacherPhoto } = await snapshot(cookie);
+  const response = await fetch(base + students[0].photo, { headers: { Cookie: cookie } });
+  expect(response.status).toBe(200); expect(response.headers.get('content-type')).toBe('image/jpeg');
+  expect(response.headers.get('cache-control')).toContain('no-store'); expect(new Uint8Array(await response.arrayBuffer())).toEqual(jpeg);
+  expect(upstream.mock.calls.at(-1)[0].href).toBe('https://erp.jaihind.school/student.jpg');
+  expect((await fetch(base + teacherPhoto, { headers: { Cookie: cookie } })).status).toBe(200);
+  expect(upstream.mock.calls.at(-1)[0].href).toBe('https://erp.jaihind.school/uploads/profile/teacher.jpg');
+  expect((await fetch(base + students[0].photo)).status).toBe(401);
+  const other = await login();
+  expect((await fetch(base + students[0].photo, { headers: { Cookie: other } })).status).toBe(404);
+});
+it('stops serving photos after sign-out and rejects unknown ids', async () => {
+  const cookie = await login(); const { students } = await snapshot(cookie);
+  expect((await fetch(`${base}/api/classroom/photo/${'0'.repeat(32)}`, { headers: { Cookie: cookie } })).status).toBe(404);
+  await request('logout', {}, cookie);
+  expect((await fetch(base + students[0].photo, { headers: { Cookie: cookie } })).status).toBe(401);
+});
+it('refuses anything that is not a small image, and keeps the session', async () => {
+  const cookie = await login(); const { students } = await snapshot(cookie);
+  for (const reply of [{ ok: true, headers: new Headers({ 'content-type': 'text/html' }), arrayBuffer: async () => jpeg.buffer }, { ok: false, status: 404, headers: new Headers() }, { ok: true, headers: new Headers({ 'content-type': 'image/png', 'content-length': '9000000' }), arrayBuffer: async () => jpeg.buffer }]) {
+    photo = () => reply;
+    expect((await fetch(base + students[0].photo, { headers: { Cookie: cookie } })).status).toBe(404);
+  }
+  expect((await request('session', undefined, cookie)).status).toBe(200);
 });
