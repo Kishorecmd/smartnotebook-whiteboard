@@ -1,5 +1,5 @@
 import { Users, Clock3, BookOpen, CalendarClock, LogIn, RefreshCw, ArrowRight } from 'lucide-react';
-import { displayTime, type AttendanceStatus, type LessonStatus } from './homeModel';
+import { displayTime, NO_DATA_TEXT, type AttendanceStatus, type ClassDataState, type LessonStatus } from './homeModel';
 
 type AttendanceProps = {
   status: AttendanceStatus;
@@ -43,9 +43,9 @@ export function AttendanceCard({ status, canTake, onTake, onList, onSignIn, onRe
   </section>;
 }
 
-type LessonProps = { status: LessonStatus; partial: boolean; signedIn: boolean; hasClass: boolean; studentMode: boolean };
+type LessonProps = { status: LessonStatus; partial: boolean; dataState: ClassDataState; studentMode: boolean };
 
-export function LessonCard({ status, partial, signedIn, hasClass, studentMode }: LessonProps) {
+export function LessonCard({ status, partial, dataState, studentMode }: LessonProps) {
   const title = status.kind === 'now' ? status.current.subject
     : status.kind === 'holiday' ? status.name
     : status.kind === 'between' ? 'Short break'
@@ -63,7 +63,7 @@ export function LessonCard({ status, partial, signedIn, hasClass, studentMode }:
     </>}
     {status.kind === 'between' && <p className="sc-meta">Next lesson starts in {status.startsIn} min</p>}
     {status.kind === 'holiday' && <p className="sc-meta">Enjoy the break. Classroom tools are still here.</p>}
-    {status.kind === 'unknown' && <p className="sc-meta">{!signedIn ? 'Sign in to load today’s lessons. The whiteboard and tools work now.' : hasClass ? 'Loading today’s lessons…' : 'Choose your class to load today’s lessons.'}</p>}
+    {status.kind === 'unknown' && dataState !== 'ready' && <p className="sc-meta">{NO_DATA_TEXT[dataState]}</p>}
     {partial && !studentMode && ['now', 'between', 'done'].includes(status.kind) && <p className="sc-note">Your own lessons only. The full class timetable is not in the ERP yet.</p>}
   </section>;
 }

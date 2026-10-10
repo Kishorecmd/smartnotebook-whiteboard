@@ -6,7 +6,7 @@ import { DashboardModal } from '../dashboard/dialogs';
 import { Avatar } from '../dashboard/Avatar';
 import { AttendanceCard, LessonCard, NextCard } from './cards';
 import { TimetableStrip } from './TimetableStrip';
-import { attendanceStatus, greetingFor, lessonStatus, timetableItems } from './homeModel';
+import { attendanceStatus, classDataState, greetingFor, lessonStatus, NO_DATA_TEXT, timetableItems } from './homeModel';
 import './home.css';
 
 const SCENARIOS: [string, string][] = [['normal', 'Attendance marked'], ['unmarked', 'Not marked'], ['all', 'All present'], ['break', 'Break'], ['lunch', 'Lunch'], ['empty', 'No classes'], ['holiday', 'Holiday'], ['offline', 'ERP unavailable'], ['weather', 'Weather unavailable']];
@@ -35,7 +35,8 @@ export function HomeScreen({ now, mapping, snapshot, studentMode, data, preview,
   const timezone = mapping?.timezone || 'Asia/Kolkata';
   const signedIn = !!data.session;
   const lesson = lessonStatus(snapshot, now, timezone);
-  const attendance = attendanceStatus({ snapshot, loading: data.loading, error: data.error, signedIn, hasClass: !!mapping, preview });
+  const dataState = classDataState({ snapshot, error: data.error, signedIn, hasClass: !!mapping, preview });
+  const attendance = attendanceStatus(snapshot, dataState);
   const objective = goal ?? snapshot?.learning ?? '';
   const date = new Intl.DateTimeFormat('en-IN', { timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long' }).format(now);
   const publicNotice = snapshot?.notices.find(n => n.public);
@@ -59,11 +60,11 @@ export function HomeScreen({ now, mapping, snapshot, studentMode, data, preview,
 
     <div className="sc-cards">
       {!studentMode && <AttendanceCard status={attendance} canTake={!!mapping && !preview && !!snapshot} onTake={onTakeAttendance} onList={setList} onSignIn={onConnection} onRetry={data.refresh} />}
-      <LessonCard status={lesson} partial={!!snapshot && !snapshot.timetable.complete} signedIn={signedIn} hasClass={!!mapping} studentMode={studentMode} />
+      <LessonCard status={lesson} partial={!!snapshot && !snapshot.timetable.complete} dataState={dataState} studentMode={studentMode} />
       <NextCard status={lesson} />
     </div>
 
-    <TimetableStrip items={timetableItems(snapshot, now, timezone)} holiday={snapshot?.timetable.holiday} emptyText={snapshot ? 'No lessons scheduled today.' : !signedIn ? 'Sign in to see today’s lessons.' : mapping ? 'Loading today’s lessons…' : 'Choose your class to see today’s lessons.'} />
+    <TimetableStrip items={timetableItems(snapshot, now, timezone)} holiday={snapshot?.timetable.holiday} emptyText={dataState === 'ready' ? 'No lessons scheduled today.' : NO_DATA_TEXT[dataState]} />
 
     <section className="sc-learning" aria-label="Today's learning">
       <div className="sc-learning-text">

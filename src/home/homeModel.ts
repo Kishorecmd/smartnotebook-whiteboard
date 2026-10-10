@@ -49,6 +49,29 @@ export function timetableItems(snapshot: Snapshot | null, now: number, timezone:
     }));
 }
 
+export type ClassDataState = 'ready' | 'signed-out' | 'no-class' | 'loading' | 'unavailable';
+
+/**
+ * Where the class data stands, shared by every card so they never disagree.
+ * A sample preview without data stands for the ERP being down.
+ */
+export function classDataState(input: { snapshot: Snapshot | null; error: string; signedIn: boolean; hasClass: boolean; preview: boolean }): ClassDataState {
+  const { snapshot, error, signedIn, hasClass, preview } = input;
+  if (snapshot) return 'ready';
+  if (preview) return 'unavailable';
+  if (!signedIn) return 'signed-out';
+  if (!hasClass) return 'no-class';
+  return error ? 'unavailable' : 'loading';
+}
+
+/** What a card says when there is no class data. */
+export const NO_DATA_TEXT: Record<Exclude<ClassDataState, 'ready'>, string> = {
+  'signed-out': 'Sign in to see today’s lessons. The whiteboard and tools work now.',
+  'no-class': 'Choose your class to see today’s lessons.',
+  loading: 'Loading today’s lessons…',
+  unavailable: 'Today’s lessons can’t be loaded right now. The whiteboard and tools still work.',
+};
+
 export type AttendanceStatus =
   | { kind: 'signed-out' }
   | { kind: 'no-class' }
@@ -57,18 +80,14 @@ export type AttendanceStatus =
   | { kind: 'unmarked'; total: number }
   | { kind: 'marked'; total: number; present: number; absent: number; late: number; other: number; unmarked: number; percentage: number | null };
 
-export function attendanceStatus(input: { snapshot: Snapshot | null; loading: boolean; error: string; signedIn: boolean; hasClass: boolean; preview: boolean }): AttendanceStatus {
-  const { snapshot, error, signedIn, hasClass, preview } = input;
+export function attendanceStatus(snapshot: Snapshot | null, state: ClassDataState): AttendanceStatus {
   const attendance = snapshot?.attendance;
   if (attendance) {
     if (!attendance.marked) return { kind: 'unmarked', total: attendance.total };
     const { total, present, absent, late, other, unmarked, percentage } = attendance;
     return { kind: 'marked', total, present, absent, late, other, unmarked, percentage };
   }
-  if (!signedIn && !preview) return { kind: 'signed-out' };
-  if (!hasClass && !preview) return { kind: 'no-class' };
-  // Signed in with a class but no snapshot yet: it is on its way unless a request failed.
-  return error ? { kind: 'unavailable' } : { kind: 'loading' };
+  return { kind: state === 'ready' ? 'loading' : state };
 }
 
 export type SyncStatus = { kind: 'sample' | 'connected' | 'syncing' | 'error' | 'offline' | 'local'; label: string; detail?: string };

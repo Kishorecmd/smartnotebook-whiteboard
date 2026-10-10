@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Snapshot } from '../dashboard/model';
-import { ago, attendanceStatus, displayTime, greetingFor, lessonStatus, syncStatus, timetableItems, weatherStatus } from './homeModel';
+import { ago, attendanceStatus, classDataState, displayTime, greetingFor, lessonStatus, syncStatus, timetableItems, weatherStatus } from './homeModel';
 
 const tz = 'Asia/Kolkata';
 // 10:15 IST on a school day.
@@ -47,24 +47,34 @@ describe('timetableItems', () => {
   });
 });
 
+describe('classDataState', () => {
+  const base = { snapshot: null, error: '', signedIn: true, hasClass: true, preview: false };
+  it('is ready whenever a snapshot exists', () => {
+    expect(classDataState({ ...base, snapshot: snapshot(), error: 'ERP_UNAVAILABLE' })).toBe('ready');
+  });
+  it('asks for sign-in, then a class, before loading', () => {
+    expect(classDataState({ ...base, signedIn: false, hasClass: false })).toBe('signed-out');
+    expect(classDataState({ ...base, hasClass: false })).toBe('no-class');
+    expect(classDataState(base)).toBe('loading');
+  });
+  it('reports an ERP failure as unavailable rather than loading forever', () => {
+    expect(classDataState({ ...base, error: 'ERP_UNAVAILABLE' })).toBe('unavailable');
+  });
+  it('treats a sample preview without data as the ERP being down, not as signed out', () => {
+    expect(classDataState({ ...base, signedIn: false, preview: true })).toBe('unavailable');
+  });
+});
+
 describe('attendanceStatus', () => {
-  const base = { loading: false, error: '', signedIn: true, hasClass: true, preview: false };
   it('gives marked totals including late and other statuses', () => {
-    expect(attendanceStatus({ ...base, snapshot: snapshot() })).toMatchObject({ kind: 'marked', present: 21, absent: 2, late: 1, other: 1 });
+    expect(attendanceStatus(snapshot(), 'ready')).toMatchObject({ kind: 'marked', present: 21, absent: 2, late: 1, other: 1 });
   });
   it('separates unmarked attendance from absence', () => {
     const s = snapshot(); s.attendance = { ...s.attendance, marked: false };
-    expect(attendanceStatus({ ...base, snapshot: s })).toEqual({ kind: 'unmarked', total: 24 });
+    expect(attendanceStatus(s, 'ready')).toEqual({ kind: 'unmarked', total: 24 });
   });
-  it('asks for sign-in before anything else when signed out', () => {
-    expect(attendanceStatus({ ...base, signedIn: false, snapshot: null })).toEqual({ kind: 'signed-out' });
-  });
-  it('treats a signed-in class without a snapshot yet as loading, not unavailable', () => {
-    expect(attendanceStatus({ ...base, loading: false, snapshot: null })).toEqual({ kind: 'loading' });
-    expect(attendanceStatus({ ...base, loading: true, error: 'ERP_UNAVAILABLE', snapshot: null })).toEqual({ kind: 'unavailable' });
-  });
-  it('asks a signed-in teacher to choose a class first', () => {
-    expect(attendanceStatus({ ...base, hasClass: false, snapshot: null })).toEqual({ kind: 'no-class' });
+  it('follows the class data state when there is no snapshot', () => {
+    for (const state of ['signed-out', 'no-class', 'loading', 'unavailable'] as const) expect(attendanceStatus(null, state)).toEqual({ kind: state });
   });
 });
 
