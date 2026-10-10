@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import { House, PenLine, LayoutGrid, ClipboardCheck, LibraryBig, MoreHorizontal, LogIn, Sun, CloudSun, CloudRain, CircleAlert, Wifi, WifiOff, RefreshCw, QrCode, Globe, MonitorPlay, Settings2, LogOut, Lock } from 'lucide-react';
+import { House, PenLine, LayoutGrid, ClipboardCheck, LibraryBig, Gamepad2, MoreHorizontal, LogIn, Sun, CloudSun, CloudRain, CircleAlert, Wifi, WifiOff, RefreshCw, QrCode, Globe, MonitorPlay, Settings2, LogOut, Lock } from 'lucide-react';
 import { weatherCondition, type Snapshot } from '../dashboard/model';
 import { classroomRequest, type ClassroomData } from '../dashboard/data';
 import { DashboardModal, QrDialog } from '../dashboard/dialogs';
 import type { SyncStatus, WeatherStatus } from './homeModel';
 
-export type RailTarget = 'home' | 'board' | 'screens' | 'attendance' | 'library' | 'more';
+export type RailTarget = 'home' | 'board' | 'screens' | 'attendance' | 'library' | 'games' | 'more';
 
 type RailProps = { active: 'home' | 'screens'; attendanceReady: boolean; signedIn: boolean; onNavigate: (target: RailTarget) => void; onSignIn: () => void };
 
 /** The left navigation rail: two-tap access to every classroom area. */
 export function NavRail({ active, attendanceReady, signedIn, onNavigate, onSignIn }: RailProps) {
-  const items: [RailTarget, string, typeof House][] = [['home', 'Home', House], ['board', 'Board', PenLine], ['screens', 'Screens', LayoutGrid], ['attendance', 'Attendance', ClipboardCheck], ['library', 'Library', LibraryBig], ['more', 'More', MoreHorizontal]];
+  const items: [RailTarget, string, typeof House][] = [['home', 'Home', House], ['board', 'Board', PenLine], ['screens', 'Screens', LayoutGrid], ['attendance', 'Attendance', ClipboardCheck], ['library', 'Library', LibraryBig], ['games', 'Games', Gamepad2], ['more', 'More', MoreHorizontal]];
   return <nav className="sc-rail" aria-label="Classroom">
     {items.map(([target, label, Icon]) => <button key={target} onClick={() => onNavigate(target)} aria-current={target === active ? 'page' : undefined}
       disabled={target === 'attendance' && !attendanceReady} title={target === 'attendance' && !attendanceReady ? 'Sign in and choose your class to take attendance' : undefined}>

@@ -58,6 +58,12 @@ If the frontend and API are hosted separately, build the frontend with `VITE_HAN
 
 A Hostinger static-file deployment by itself will return 404 for handwriting requests. Use a Hostinger Node application or another Node host and point the frontend at it. For a reverse proxy, preserve the client IP and set `TRUST_PROXY` appropriately so per-IP rate limiting works.
 
+## Learning games
+
+**Games** on the classroom rail opens seven games for KG (LKG and UKG) and Grades 1–2: Letter Sounds, Build a Word, Count and Choose, Number Order, Shape Match, Memory Match and Trace It. The level follows the connected class and can be changed. **Preview** lets the teacher try a game; **Play with class** switches the board to Student Mode first, so leaving afterwards needs the teacher.
+
+Every game has hints, sound and spoken words that can be turned off, start over, and a kind summary of how many were right first time. There are no rankings or leaderboards. The games use emoji and drawn shapes, so they work offline, and nothing about the children is saved. The games code loads only when first opened.
+
 ## Classroom sound level
 
 Open **Sound level** from the classroom dock, or **Teaching Tools → Sound Level** on the whiteboard. Set **Max. noise**, optionally enable the bell, then choose **Start microphone**. The meter uses a relative 0–100 scale, not calibrated decibels. Sensitivity can be adjusted for the room and microphone.

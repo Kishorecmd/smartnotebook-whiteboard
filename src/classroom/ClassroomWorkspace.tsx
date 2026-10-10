@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Type, Timer, Clock3, Shuffle, Users, VolumeX, TrafficCone, Dices, Trophy, Image, Plus, X, GripHorizontal, Copy, MonitorSmartphone, Lock, PenLine, LayoutTemplate, Download, Upload, Check, Sparkles, ArrowUpRight, Undo2 } from 'lucide-react';
 import { backgrounds, initialWorkspace, labels, makeScreen, makeWidget, parseWorkspace, restoreWidget, STORAGE_KEY, widgetKinds, type ClassroomWidget, type ClassroomWorkspace as Workspace, type WidgetKind } from './model';
 import { WidgetContent } from './Widgets';
@@ -12,6 +12,12 @@ import { HomeScreen } from '../home/HomeScreen';
 import { MoreDialog, NavRail, StudentModeUnlock, SyncIndicator, WeatherChip, type RailTarget } from '../home/chrome';
 import { syncStatus, weatherStatus } from '../home/homeModel';
 import { readStudentMode, writeStudentMode } from '../home/studentMode';
+import { levelForGrade, type Level } from '../games/logic';
+import type { GameId } from '../games/catalog';
+
+// The games load the first time they are opened, so the classroom starts as fast as before.
+const GamesLibrary = lazy(() => import('../games/GamesLibrary').then(m => ({ default: m.GamesLibrary })));
+const GameShell = lazy(() => import('../games/GamesLibrary').then(m => ({ default: m.GameShell })));
 import { useWhiteboardStore } from '../store';
 
 const icons = { text: Type, timer: Timer, clock: Clock3, sound: AudioLines, random: Shuffle, groups: Users, symbols: VolumeX, traffic: TrafficCone, dice: Dices, score: Trophy };
@@ -33,6 +39,8 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   const [unlocking, setUnlocking] = useState(false);
   const [more, setMore] = useState(false);
   const [taking, setTaking] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
+  const [playing, setPlaying] = useState<{ id: GameId; level: Level; withClass: boolean } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [saveError, setSaveError] = useState(false);
@@ -87,6 +95,7 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     else if (target === 'screens') { if (home) setHome(false); else setPanel(panel === 'screens' ? 'none' : 'screens'); }
     else if (target === 'attendance') { if (attendanceReady) setTaking(true); }
     else if (target === 'library') openInWhiteboard('library');
+    else if (target === 'games') setGamesOpen(true);
     else setMore(true);
   };
   const sync = syncStatus({ preview: !!preview, checked: live.checked, ready: live.ready, signedIn: !!live.session, hasClass: !!mapping, error: live.error, snapshot, now });
@@ -200,6 +209,13 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     {connection && !presenting && <ConnectionDialog data={live} close={()=>setConnection(false)}/>}
     {more && !presenting && <MoreDialog snapshot={snapshot} data={live} close={() => setMore(false)} onConnection={() => setConnection(true)} onOpenWhiteboard={openInWhiteboard} />}
     {taking && !presenting && attendanceReady && snapshot && mapping && <TakeAttendance data={live} mapping={mapping} attendance={snapshot.attendance} close={() => setTaking(false)} />}
+    <Suspense fallback={null}>
+      {gamesOpen && !playing && <GamesLibrary defaultLevel={levelForGrade(mapping?.grade)} close={() => setGamesOpen(false)}
+        onPlay={(id, level, withClass) => { if (withClass) enterStudentMode(); setPlaying({ id, level, withClass }); }} />}
+      {playing && <GameShell id={playing.id} level={playing.level} withClass={playing.withClass}
+        close={() => { setPlaying(null); setGamesOpen(false); }}
+        backToLibrary={() => { setPlaying(null); setGamesOpen(!presenting); }} />}
+    </Suspense>
     {unlocking && presenting && <StudentModeUnlock data={live} close={() => setUnlocking(false)} onUnlocked={() => { setUnlocking(false); setPresenting(false); }} />}
     <input ref={upload} type="file" accept="application/json,.json" hidden onChange={e => void importScreens(e.target.files?.[0])} />
     {(removed || notice || saveError) && <div className="cs-notice" role="status"><span>{notice || (saveError ? 'Could not save locally. Download a backup of your screens.' : 'Widget removed.')}</span>{removed && <button onClick={() => { if (workspace.screens.find(s => s.id === removed.screenId)?.widgets.length === 60) { setNotice('This screen is full. Remove a widget to make room before restoring.'); return; } setWorkspace(w => restoreWidget(w, removed.screenId, removed.widget)); setRemoved(null); setNotice(''); }}><Undo2 size={14} />Undo</button>}{saveError && <button onClick={exportScreens}>Download</button>}<button aria-label="Dismiss message" onClick={() => { setRemoved(null); setNotice(''); }}><X size={14} /></button></div>}
