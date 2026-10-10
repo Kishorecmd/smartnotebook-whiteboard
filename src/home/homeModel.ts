@@ -129,3 +129,16 @@ export function displayTime(time: string | null) {
   const hour = Math.floor(minutes / 60), minute = minutes % 60;
   return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
 }
+
+/** Up to five learning objectives from one-per-line text, each starting unticked. */
+export type Objective = { text: string; done: boolean };
+export function parseObjectives(text: string, previous: Objective[] = []): Objective[] {
+  return text.split('\n').map(line => line.trim().slice(0, 160)).filter(Boolean).slice(0, 5)
+    .map(line => ({ text: line, done: previous.find(o => o.text === line)?.done ?? false }));
+}
+
+/** The same picture word all day, a different one each day, from a "YYYY-MM-DD" date. */
+export function wordOfTheDay<T>(date: string, words: readonly T[]): T {
+  const day = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86_400_000);
+  return words[((Number.isFinite(day) ? day : 0) % words.length + words.length) % words.length];
+}

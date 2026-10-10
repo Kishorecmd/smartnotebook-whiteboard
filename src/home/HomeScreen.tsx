@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Play, Pencil, Sparkles } from 'lucide-react';
-import { minuteOfDay, type Mapping, type Snapshot } from '../dashboard/model';
+import { dateKey, minuteOfDay, type Mapping, type Snapshot } from '../dashboard/model';
 import type { ClassroomData } from '../dashboard/data';
 import { DashboardModal } from '../dashboard/dialogs';
 import { Avatar } from '../dashboard/Avatar';
 import { AttendanceCard, LessonCard, NextCard } from './cards';
 import { TimetableStrip } from './TimetableStrip';
-import { attendanceStatus, classDataState, greetingFor, lessonStatus, NO_DATA_TEXT, timetableItems } from './homeModel';
+import { attendanceStatus, classDataState, greetingFor, lessonStatus, NO_DATA_TEXT, parseObjectives, timetableItems, type Objective } from './homeModel';
+import { BirthdayCard, ObjectivesCard, WordOfTheDay } from './extras';
 import './home.css';
 
 const SCENARIOS: [string, string][] = [['normal', 'Attendance marked'], ['unmarked', 'Not marked'], ['all', 'All present'], ['break', 'Break'], ['lunch', 'Lunch'], ['empty', 'No classes'], ['holiday', 'Holiday'], ['offline', 'ERP unavailable'], ['weather', 'Weather unavailable']];
@@ -28,7 +28,9 @@ type Props = {
 export function HomeScreen({ now, mapping, snapshot, studentMode, data, preview, onPreview, onStartLesson, onConnection, onTakeAttendance }: Props) {
   const [list, setList] = useState<'present' | 'absent' | null>(null);
   const [editingGoal, setEditingGoal] = useState(false);
-  const [goal, setGoal] = useState<string | null>(null);
+  // Objectives are kept for this session only, like the old single goal.
+  const [objectives, setObjectives] = useState<Objective[] | null>(null);
+  const [draft, setDraft] = useState('');
   const [scenario, setScenario] = useState('normal');
   useEffect(() => { if (studentMode) { setList(null); setEditingGoal(false); } }, [studentMode]);
 
@@ -37,7 +39,9 @@ export function HomeScreen({ now, mapping, snapshot, studentMode, data, preview,
   const lesson = lessonStatus(snapshot, now, timezone);
   const dataState = classDataState({ snapshot, error: data.error, signedIn, hasClass: !!mapping, preview });
   const attendance = attendanceStatus(snapshot, dataState);
-  const objective = goal ?? snapshot?.learning ?? '';
+  const goals = objectives ?? parseObjectives(snapshot?.learning ?? '');
+  const birthdays = snapshot?.students.filter(s => s.birthday) ?? [];
+  const openEditor = () => { setDraft(goals.map(o => o.text).join('\n')); setEditingGoal(true); };
   const date = new Intl.DateTimeFormat('en-IN', { timeZone: timezone, weekday: 'long', day: 'numeric', month: 'long' }).format(now);
   const publicNotice = snapshot?.notices.find(n => n.public);
   const students = snapshot?.attendance.students.filter(s => list === 'present' ? s.status === 'present' || s.status === 'late' : s.status === 'absent') ?? [];
@@ -60,20 +64,18 @@ export function HomeScreen({ now, mapping, snapshot, studentMode, data, preview,
 
     <div className="sc-cards">
       {!studentMode && <AttendanceCard status={attendance} canTake={!!mapping && !preview && !!snapshot} onTake={onTakeAttendance} onList={setList} onSignIn={onConnection} onRetry={data.refresh} />}
-      <LessonCard status={lesson} partial={!!snapshot && !snapshot.timetable.complete} dataState={dataState} studentMode={studentMode} />
+      <LessonCard status={lesson} partial={!!snapshot && !snapshot.timetable.complete} dataState={dataState} studentMode={studentMode} onStart={onStartLesson} />
       <NextCard status={lesson} />
     </div>
 
     <TimetableStrip items={timetableItems(snapshot, now, timezone)} holiday={snapshot?.timetable.holiday} emptyText={dataState === 'ready' ? 'No lessons scheduled today.' : NO_DATA_TEXT[dataState]} />
 
-    <section className="sc-learning" aria-label="Today's learning">
-      <div className="sc-learning-text">
-        <span><Sparkles size={16} aria-hidden="true" />Today’s learning</span>
-        <p>{objective || (studentMode ? 'Let’s learn something new today.' : 'Add a learning goal for the class.')}</p>
-      </div>
-      {!studentMode && <button className="sc-button" onClick={() => setEditingGoal(true)}><Pencil size={17} />{objective ? 'Edit goal' : 'Add goal'}</button>}
-      {!studentMode && <button className="sc-button sc-button-primary sc-start" onClick={onStartLesson}><Play size={20} />Start lesson</button>}
-    </section>
+    <div className="sc-extras">
+      <ObjectivesCard objectives={goals} studentMode={studentMode} onEdit={openEditor}
+        onToggle={i => setObjectives(goals.map((o, j) => (j === i ? { ...o, done: !o.done } : o)))} />
+      <WordOfTheDay date={dateKey(now, timezone)} />
+      {!studentMode && birthdays.length > 0 && <BirthdayCard students={birthdays} />}
+    </div>
 
     {studentMode && publicNotice && <p className="sc-announcement" role="status">{publicNotice.text}</p>}
 
@@ -81,10 +83,10 @@ export function HomeScreen({ now, mapping, snapshot, studentMode, data, preview,
       <div className="live-student-list">{students.map(s => <div key={s.id}><Avatar name={s.name} photo={s.photo} className="" /><b>{s.name}</b><small>{s.status}</small></div>)}</div>
       {list === 'absent' && students.length === 0 && <p>Everyone is here today.</p>}
     </DashboardModal>}
-    {!studentMode && editingGoal && <DashboardModal title="Today's learning" close={() => setEditingGoal(false)}>
-      <label>Learning goal<textarea maxLength={500} defaultValue={objective} onChange={e => setGoal(e.target.value)} placeholder="We will learn how to…" /></label>
-      <p className="live-muted">Shown in Student Mode. Kept for this session only.</p>
-      <button className="live-button live-primary" onClick={() => setEditingGoal(false)}>Done</button>
+    {!studentMode && editingGoal && <DashboardModal title="Today's learning objectives" close={() => setEditingGoal(false)}>
+      <label>One objective per line, up to five<textarea maxLength={900} value={draft} onChange={e => setDraft(e.target.value)} placeholder={'Recognise the letter sound\nFind pictures that start with it\nWrite the letter'} /></label>
+      <p className="live-muted">Shown in Student Mode. Tick them off as the lesson goes. Kept for this session only.</p>
+      <button className="live-button live-primary" onClick={() => { setObjectives(parseObjectives(draft, goals)); setEditingGoal(false); }}>Save objectives</button>
     </DashboardModal>}
   </div>;
 }

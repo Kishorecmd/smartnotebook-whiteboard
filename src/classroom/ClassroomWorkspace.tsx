@@ -1,15 +1,23 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Type, Timer, Clock3, Shuffle, Users, VolumeX, TrafficCone, Dices, Trophy, Image, Plus, X, GripHorizontal, Copy, MonitorSmartphone, Lock, PenLine, LayoutTemplate, Download, Upload, Check, Sparkles, ArrowUpRight, Undo2 } from 'lucide-react';
+import { Type, Timer, Clock3, Shuffle, Users, VolumeX, TrafficCone, Dices, Trophy, Image, Plus, X, GripHorizontal, Copy, MonitorSmartphone, Lock, LayoutTemplate, Download, Upload, Check, Sparkles, ArrowUpRight, Undo2 } from 'lucide-react';
 import { backgrounds, initialWorkspace, labels, makeScreen, makeWidget, parseWorkspace, restoreWidget, STORAGE_KEY, widgetKinds, type ClassroomWidget, type ClassroomWorkspace as Workspace, type WidgetKind } from './model';
 import { WidgetContent } from './Widgets';
 import './classroom.css';
-import { AudioLines } from 'lucide-react';
+import { AudioLines, Settings, LoaderPinwheel, Eraser, Shapes, Ruler, Triangle, DraftingCompass, StickyNote, PenTool } from 'lucide-react';
+import { openOnBoard, type BoardAction } from '../teaching-tools/launch';
+
+// Whiteboard tools in the dock open the board with the tool ready.
+const boardTools: [string, typeof PenTool, BoardAction, string][] = [
+  ['Pen', PenTool, { tool: 'pen' }, 'draw'], ['Eraser', Eraser, { tool: 'eraser' }, 'eraser'], ['Shapes', Shapes, { tool: 'shape' }, 'shapes'],
+  ['Ruler', Ruler, { teachingTool: 'ruler' }, 'ruler'], ['Protractor', Triangle, { teachingTool: 'protractor' }, 'protractor'],
+  ['Compass', DraftingCompass, { teachingTool: 'compass' }, 'compass'], ['Sticky notes', StickyNote, { teachingTool: 'sticky-notes' }, 'sticky'],
+];
 import { ConnectionDialog } from '../dashboard/dialogs';
 import { TakeAttendance } from '../dashboard/TakeAttendance';
 import { LiveClassContext, useClassroomData } from '../dashboard/data';
 import type { Mapping, Snapshot, Weather } from '../dashboard/model';
 import { HomeScreen } from '../home/HomeScreen';
-import { MoreDialog, NavRail, StudentModeUnlock, SyncIndicator, WeatherChip, type RailTarget } from '../home/chrome';
+import { ClassSwitcher, MoreDialog, NavRail, SettingsDialog, StudentModeUnlock, StudentsDialog, SyncIndicator, WeatherChip, type RailTarget } from '../home/chrome';
 import { syncStatus, weatherStatus } from '../home/homeModel';
 import { readStudentMode, writeStudentMode } from '../home/studentMode';
 import { levelForGrade, type Level } from '../games/logic';
@@ -20,7 +28,7 @@ const GamesLibrary = lazy(() => import('../games/GamesLibrary').then(m => ({ def
 const GameShell = lazy(() => import('../games/GamesLibrary').then(m => ({ default: m.GameShell })));
 import { useWhiteboardStore } from '../store';
 
-const icons = { text: Type, timer: Timer, clock: Clock3, sound: AudioLines, random: Shuffle, groups: Users, symbols: VolumeX, traffic: TrafficCone, dice: Dices, score: Trophy };
+const icons = { text: Type, timer: Timer, clock: Clock3, sound: AudioLines, random: Shuffle, groups: Users, symbols: VolumeX, traffic: TrafficCone, dice: Dices, score: Trophy, spinner: LoaderPinwheel };
 const backgroundNames = { meadow: 'Quiet meadow', sunrise: 'Golden hour', lavender: 'Lavender skies', paper: 'Clean paper', midnight: 'Night class' };
 const uid = () => crypto.randomUUID();
 const load = (): Workspace => { try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? parseWorkspace(raw) : initialWorkspace(); } catch { return initialWorkspace(); } };
@@ -40,7 +48,9 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   const [more, setMore] = useState(false);
   const [taking, setTaking] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
-  const [playing, setPlaying] = useState<{ id: GameId; level: Level; withClass: boolean } | null>(null);
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [playing, setPlaying] = useState<{ id: Exclude<GameId, 'drawing'>; level: Level; withClass: boolean } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [saveError, setSaveError] = useState(false);
@@ -71,7 +81,7 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   }, []);
   // A signed-in teacher's data stays hidden until the teacher confirms their password.
   const locked = !!live.session && !preview;
-  const enterStudentMode = () => { setPresenting(true); setPanel('none'); setConnection(false); setMore(false); setTaking(false); };
+  const enterStudentMode = () => { setPresenting(true); setPanel('none'); setConnection(false); setMore(false); setTaking(false); setRosterOpen(false); setSettingsOpen(false); };
   const leaveStudentMode = () => { if (locked) setUnlocking(true); else setPresenting(false); };
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -96,6 +106,8 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     else if (target === 'attendance') { if (attendanceReady) setTaking(true); }
     else if (target === 'library') openInWhiteboard('library');
     else if (target === 'games') setGamesOpen(true);
+    else if (target === 'students') { if (attendanceReady) setRosterOpen(true); }
+    else if (target === 'settings') setSettingsOpen(true);
     else setMore(true);
   };
   const sync = syncStatus({ preview: !!preview, checked: live.checked, ready: live.ready, signedIn: !!live.session, hasClass: !!mapping, error: live.error, snapshot, now });
@@ -164,10 +176,12 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   return <div className={`cs-workspace cs-bg-${screen.background} ${presenting ? 'cs-presenting' : ''}`}>
     <div className="cs-landscape" aria-hidden="true"><div className="cs-sun" /><div className="cs-hill cs-hill-back" /><div className="cs-hill cs-hill-front" /></div>
     <header className="cs-header sc-header" inert={panel !== 'none'}>
-      <div className="cs-school-brand"><img src="/jaihind-school-logo.webp" alt="Jaihind International School logo"/><div><b>Jaihind International School</b><small>SMART CLASSROOM{mapping ? ` · ${mapping.grade} ${mapping.section}` : ''}</small></div></div>
+      <div className="cs-school-brand"><img src="/jaihind-school-logo.webp" alt="Jaihind International School logo"/><div><b>Jaihind International School</b><small>SMART CLASSROOM</small></div></div>
+      {presenting ? mapping && <span className="sc-class-switch sc-class-static"><b>{mapping.grade} · {mapping.section}</b></span> : <ClassSwitcher data={live} onSetup={() => setConnection(true)} />}
       {!presenting && <SyncIndicator status={sync} onClick={() => setConnection(true)} />}
       <WeatherChip status={weatherStatus(weather, now)} sample={!!preview} />
       <div className="sc-clock"><strong>{new Intl.DateTimeFormat('en-IN',{timeZone:timezone,hour:'numeric',minute:'2-digit',hour12:true}).format(now)}</strong><span>{new Intl.DateTimeFormat('en-IN',{timeZone:timezone,weekday:'short',day:'numeric',month:'short'}).format(now)}</span></div>
+      {!presenting && <button className="sc-icon-button" aria-label="Settings" onClick={() => setSettingsOpen(true)}><Settings size={22} /></button>}
       {presenting
         ? <button className="sc-mode-button sc-mode-locked" onClick={leaveStudentMode}><Lock size={18}/><span>Teacher mode</span></button>
         : <button className="sc-mode-button" onClick={enterStudentMode}><MonitorSmartphone size={18}/><span>Student mode</span></button>}
@@ -175,7 +189,7 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     {!presenting && <NavRail active={home ? 'home' : 'screens'} attendanceReady={attendanceReady} signedIn={!!live.session} onNavigate={navigate} onSignIn={() => setConnection(true)} />}
     <LiveClassContext.Provider value={{mapping,snapshot,presenting}}>
     {home && <HomeScreen now={now} mapping={mapping} snapshot={snapshot} studentMode={presenting} data={live} preview={!!preview} onPreview={(...args)=>void showPreview(...args)} onStartLesson={onWhiteboard} onConnection={()=>setConnection(true)} onTakeAttendance={()=>setTaking(true)}/>}
-    {!home && !presenting && <div className="sc-screens-bar"><button className="cs-screen-switch" onClick={() => setPanel(panel === 'screens' ? 'none' : 'screens')}><span className="cs-screen-number">{workspace.screens.findIndex(s => s.id === screen.id) + 1}</span><span>{screen.title || 'Untitled screen'}</span><small>{workspace.screens.length} {workspace.screens.length === 1 ? 'screen' : 'screens'}</small></button><button className="cs-template-link" onClick={() => setPanel(panel === 'templates' ? 'none' : 'templates')}><LayoutTemplate size={16} />Templates<ArrowUpRight size={14} /></button></div>}
+    {!home && !presenting && <div className="sc-screens-bar"><button className="cs-screen-switch" onClick={() => setPanel(panel === 'screens' ? 'none' : 'screens')}><span className="cs-screen-number">{workspace.screens.findIndex(s => s.id === screen.id) + 1}</span><span>{screen.title || 'Untitled screen'}</span><small>{workspace.screens.length} {workspace.screens.length === 1 ? 'screen' : 'screens'}</small></button><div className="sc-screens-actions"><button className="cs-template-link" onClick={() => setPanel(panel === 'backgrounds' ? 'none' : 'backgrounds')}><Image size={16} />Background</button><button className="cs-template-link" onClick={() => setPanel(panel === 'templates' ? 'none' : 'templates')}><LayoutTemplate size={16} />Templates<ArrowUpRight size={14} /></button></div></div>}
     <main className={`cs-stage ${home ? 'cs-widget-stage-hidden' : ''}`} ref={stage} aria-label="Classroom screen" inert={panel !== 'none'}>
       {screen.widgets.length === 0 && <div className="cs-empty"><Sparkles size={40} strokeWidth={1} /><h1>A little space.<br />A world of possibilities.</h1><p>Add a widget below, or start with a ready-made screen.</p><button className="cs-primary" onClick={() => setPanel('templates')}><LayoutTemplate size={17} />Explore templates</button></div>}
       {screen.widgets.map(widget => {
@@ -198,7 +212,7 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
       })}
     </main></LiveClassContext.Provider>
     <footer className="cs-footer sc-dock-bar" inert={panel !== 'none'}>
-      <nav className="cs-dock" aria-label="Classroom widgets"><button className={panel === 'backgrounds' ? 'is-active' : ''} onClick={() => setPanel(panel === 'backgrounds' ? 'none' : 'backgrounds')}><span className="cs-dock-icon cs-color-background"><Image size={24} /></span><span>Background</span></button><i />{widgetKinds.map(kind => { const Icon = icons[kind]; return <button key={kind} onClick={() => addWidget(kind)} aria-label={`Add ${labels[kind]} widget`}><span className={`cs-dock-icon cs-color-${kind}`}><Icon size={24} /></span><span>{labels[kind]}</span></button>; })}<i /><button onClick={onWhiteboard}><span className="cs-dock-icon cs-color-draw"><PenLine size={24} /></span><span>Draw</span></button></nav>
+      <nav className="cs-dock" aria-label="Classroom tools">{boardTools.map(([label, Icon, action, colour]) => <button key={label} aria-label={`Open the whiteboard with ${label.toLowerCase()}`} onClick={() => { onWhiteboard(); openOnBoard(action); }}><span className={`cs-dock-icon cs-color-${colour}`}><Icon size={24} /></span><span>{label}</span></button>)}<i />{widgetKinds.map(kind => { const Icon = icons[kind]; return <button key={kind} onClick={() => addWidget(kind)} aria-label={`Add ${labels[kind]} widget`}><span className={`cs-dock-icon cs-color-${kind}`}><Icon size={24} /></span><span>{labels[kind]}</span></button>; })}</nav>
     </footer>
     {panel !== 'none' && <div className="cs-panel-shade" onClick={() => setPanel('none')}><section ref={dialog} className="cs-panel" role="dialog" aria-modal="true" aria-label={panel === 'backgrounds' ? 'Choose a background' : panel === 'templates' ? 'Classroom templates' : 'Your screens'} onClick={e => e.stopPropagation()}>
       <header><div><span className="cs-eyebrow">MAKE IT YOURS</span><h2>{panel === 'backgrounds' ? 'Set the mood.' : panel === 'templates' ? 'A little inspiration.' : 'Your classroom screens.'}</h2></div><button className="cs-icon-button" aria-label="Close classroom panel" onClick={() => setPanel('none')}><X size={20} /></button></header>
@@ -207,11 +221,14 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
       {panel === 'screens' && <><div className="cs-screen-list">{workspace.screens.map((s, i) => <button key={s.id} aria-current={s.id === screen.id ? 'page' : undefined} onClick={() => { setHome(false); setWorkspace(w => ({ ...w, activeId: s.id })); setPanel('none'); setSelected(null); }}><span className={`cs-screen-thumb cs-bg-${s.background}`}>{i + 1}</span><span><b>{s.title || 'Untitled screen'}</b><small>{s.widgets.length} widgets</small></span>{s.id === screen.id && <Check size={18} />}</button>)}</div><div className="cs-screen-actions"><button className="cs-primary" onClick={() => addScreen('blank')}><Plus size={16} />New screen</button><button className="cs-subtle" onClick={exportScreens}><Download size={16} />Download backup</button><button className="cs-subtle" onClick={() => upload.current?.click()}><Upload size={16} />Import screens</button></div><p className="cs-storage-note">Saved in this browser. Download a backup to move your screens to another device.</p></>}
     </section></div>}
     {connection && !presenting && <ConnectionDialog data={live} close={()=>setConnection(false)}/>}
+    {rosterOpen && !presenting && snapshot && <StudentsDialog snapshot={snapshot} close={() => setRosterOpen(false)} />}
+    {settingsOpen && !presenting && <SettingsDialog data={live} close={() => setSettingsOpen(false)} onSetup={() => setConnection(true)} />}
     {more && !presenting && <MoreDialog snapshot={snapshot} data={live} close={() => setMore(false)} onConnection={() => setConnection(true)} onOpenWhiteboard={openInWhiteboard} />}
     {taking && !presenting && attendanceReady && snapshot && mapping && <TakeAttendance data={live} mapping={mapping} attendance={snapshot.attendance} close={() => setTaking(false)} />}
     <Suspense fallback={null}>
       {gamesOpen && !playing && <GamesLibrary defaultLevel={levelForGrade(mapping?.grade)} close={() => setGamesOpen(false)}
-        onPlay={(id, level, withClass) => { if (withClass) enterStudentMode(); setPlaying({ id, level, withClass }); }} />}
+        onPlay={(id, level, withClass) => { if (id === 'drawing') return; if (withClass) enterStudentMode(); setPlaying({ id, level, withClass }); }}
+        onDraw={() => { setGamesOpen(false); onWhiteboard(); openOnBoard({ tool: 'crayon' }); }} />}
       {playing && <GameShell id={playing.id} level={playing.level} withClass={playing.withClass}
         close={() => { setPlaying(null); setGamesOpen(false); }}
         backToLibrary={() => { setPlaying(null); setGamesOpen(!presenting); }} />}

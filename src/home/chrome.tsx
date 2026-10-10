@@ -1,20 +1,22 @@
 import { useState } from 'react';
-import { House, PenLine, LayoutGrid, ClipboardCheck, LibraryBig, Gamepad2, MoreHorizontal, LogIn, Sun, CloudSun, CloudRain, CircleAlert, Wifi, WifiOff, RefreshCw, QrCode, Globe, MonitorPlay, Settings2, LogOut, Lock } from 'lucide-react';
+import { ChevronDown, Settings, Users, Cake, Volume2, VolumeX, House, PenLine, LayoutGrid, ClipboardCheck, LibraryBig, Gamepad2, MoreHorizontal, LogIn, Sun, CloudSun, CloudRain, CircleAlert, Wifi, WifiOff, RefreshCw, QrCode, Globe, MonitorPlay, Settings2, LogOut, Lock } from 'lucide-react';
 import { weatherCondition, type Snapshot } from '../dashboard/model';
+import { Avatar } from '../dashboard/Avatar';
+import { setSoundOn, soundOn } from '../games/feedback';
 import { classroomRequest, type ClassroomData } from '../dashboard/data';
 import { DashboardModal, QrDialog } from '../dashboard/dialogs';
 import type { SyncStatus, WeatherStatus } from './homeModel';
 
-export type RailTarget = 'home' | 'board' | 'screens' | 'attendance' | 'library' | 'games' | 'more';
+export type RailTarget = 'home' | 'board' | 'screens' | 'attendance' | 'students' | 'library' | 'games' | 'more' | 'settings';
 
 type RailProps = { active: 'home' | 'screens'; attendanceReady: boolean; signedIn: boolean; onNavigate: (target: RailTarget) => void; onSignIn: () => void };
 
 /** The left navigation rail: two-tap access to every classroom area. */
 export function NavRail({ active, attendanceReady, signedIn, onNavigate, onSignIn }: RailProps) {
-  const items: [RailTarget, string, typeof House][] = [['home', 'Home', House], ['board', 'Board', PenLine], ['screens', 'Screens', LayoutGrid], ['attendance', 'Attendance', ClipboardCheck], ['library', 'Library', LibraryBig], ['games', 'Games', Gamepad2], ['more', 'More', MoreHorizontal]];
+  const items: [RailTarget, string, typeof House][] = [['home', 'Home', House], ['board', 'Board', PenLine], ['screens', 'Screens', LayoutGrid], ['attendance', 'Attendance', ClipboardCheck], ['students', 'Students', Users], ['library', 'Library', LibraryBig], ['games', 'Games', Gamepad2], ['more', 'More', MoreHorizontal], ['settings', 'Settings', Settings]];
   return <nav className="sc-rail" aria-label="Classroom">
     {items.map(([target, label, Icon]) => <button key={target} onClick={() => onNavigate(target)} aria-current={target === active ? 'page' : undefined}
-      disabled={target === 'attendance' && !attendanceReady} title={target === 'attendance' && !attendanceReady ? 'Sign in and choose your class to take attendance' : undefined}>
+      disabled={(target === 'attendance' || target === 'students') && !attendanceReady} title={(target === 'attendance' || target === 'students') && !attendanceReady ? 'Sign in and choose your class first' : undefined}>
       <Icon size={24} aria-hidden="true" /><span>{label}</span>
     </button>)}
     {!signedIn && <button className="sc-rail-signin" onClick={onSignIn}><LogIn size={24} aria-hidden="true" /><span>Sign in</span></button>}
@@ -88,5 +90,56 @@ export function StudentModeUnlock({ data, close, onUnlocked }: { data: Classroom
       <button className="live-button live-primary" disabled={busy}>{busy ? 'Checking…' : 'Unlock teacher mode'}</button>
       {error && <p role="alert">{error}</p>}
     </form>
+  </DashboardModal>;
+}
+
+/** The class shown on this board; one tap to switch between the teacher's classes. */
+export function ClassSwitcher({ data, onSetup }: { data: ClassroomData; onSetup: () => void }) {
+  const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const mapping = data.mapping, classes = data.session?.classes ?? [];
+  const label = mapping ? `${mapping.grade} · ${mapping.section}` : 'Choose class';
+  const choose = async (c: typeof classes[number]) => {
+    setBusy(true); setError('');
+    try { const result = await classroomRequest('mapping', { ...c, device: mapping?.device ?? '', timezone: mapping?.timezone ?? 'Asia/Kolkata' }); data.saveMapping(result.mapping); setOpen(false); }
+    catch { setError('That class could not be opened. Check your sign-in and try again.'); }
+    finally { setBusy(false); }
+  };
+  return <>
+    <button className="sc-class-switch" aria-label={`Class: ${label}. Change class`} onClick={() => (data.session ? setOpen(true) : onSetup())}><b>{label}</b><ChevronDown size={18} aria-hidden="true" /></button>
+    {open && <DashboardModal title="Your classes" close={() => setOpen(false)}>
+      <div className="sc-class-list">{classes.map(c => { const current = c.classId === mapping?.classId && c.sectionId === mapping?.sectionId; return <button key={`${c.classId}/${c.sectionId}`} disabled={busy} aria-current={current ? 'true' : undefined} onClick={() => (current ? setOpen(false) : void choose(c))}>{c.grade} · {c.section}{current && <small>On this board</small>}</button>; })}</div>
+      {classes.length <= 1 && <p className="live-muted">You are class teacher of one class.</p>}
+      <button className="live-button" onClick={() => { setOpen(false); onSetup(); }}><Settings2 size={18} />Smartboard setup</button>
+      {error && <p role="alert">{error}</p>}
+    </DashboardModal>}
+  </>;
+}
+
+/** Board settings in one place. */
+export function SettingsDialog({ data, close, onSetup }: { data: ClassroomData; close: () => void; onSetup: () => void }) {
+  const [sound, setSound] = useState(soundOn);
+  return <DashboardModal title="Settings" close={close}>
+    <div className="sc-more-tools">
+      <button onClick={() => { close(); onSetup(); }}><Settings2 size={22} />Class and smartboard</button>
+      <button aria-pressed={sound} onClick={() => { setSoundOn(!sound); setSound(!sound); }}>{sound ? <Volume2 size={22} /> : <VolumeX size={22} />}Game sounds: {sound ? 'on' : 'off'}</button>
+      {data.session && <button onClick={() => { close(); void data.logout(); }}><LogOut size={22} />Sign out</button>}
+    </div>
+    <p className="live-muted">Student Mode hides attendance and student names. Leaving it asks for the signed-in teacher’s ERP password.</p>
+  </DashboardModal>;
+}
+
+const STATUS_LABEL: Record<string, string> = { present: 'Present', absent: 'Absent', late: 'Late', leave: 'Leave', half_day: 'Half day', unmarked: 'Not marked' };
+
+/** The class list with photos, today's attendance and birthdays, searchable by name. */
+export function StudentsDialog({ snapshot, close }: { snapshot: Snapshot; close: () => void }) {
+  const [query, setQuery] = useState('');
+  const status = new Map(snapshot.attendance.students.map(s => [s.id, s.status ?? 'unmarked']));
+  const list = snapshot.students.filter(s => s.name.toLowerCase().includes(query.trim().toLowerCase()));
+  return <DashboardModal title={`Students (${snapshot.students.length})`} close={close}>
+    <label>Find a student<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Type a name" autoFocus /></label>
+    <div className="live-student-list">
+      {list.map(s => { const st = status.get(s.id) ?? 'unmarked'; return <div key={s.id}><Avatar name={s.name} photo={s.photo} className="" /><b>{s.name}</b>{s.birthday && <Cake size={18} aria-label="Birthday today" />}<small className={`sc-status-${st}`}>{STATUS_LABEL[st]}</small></div>; })}
+      {!list.length && <p className="live-muted">No student matches “{query}”.</p>}
+    </div>
   </DashboardModal>;
 }

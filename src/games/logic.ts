@@ -79,13 +79,36 @@ export function traceCoverage(guide: Uint8ClampedArray, ink: Uint8ClampedArray, 
   return guided ? covered / guided : 0;
 }
 
-/** How a game ended: rounds right first time out of all rounds. Never a rank. */
-export type GameResult = { firstTry: number; total: number; hints: number };
+/**
+ * How a game ended: rounds right first time out of all rounds. Never a rank.
+ * Creative games have no right answers, so they report pieces made instead.
+ */
+export type GameResult = { firstTry: number; total: number; hints: number; creative?: boolean };
 
-export function encouragement({ firstTry, total }: GameResult) {
+export function encouragement({ firstTry, total, creative }: GameResult) {
+  if (creative) return total === 1 ? 'Beautiful work!' : `${total} beautiful pieces. Lovely work!`;
   const share = total ? firstTry / total : 0;
   return share === 1 ? 'Every one right first time. Wonderful!'
     : share >= 0.7 ? 'Great work. You are learning fast!'
     : share >= 0.4 ? 'Good effort. Practice makes it easier!'
     : 'Well done for finishing. Let’s try again together!';
 }
+
+/** Picture puzzle: the pieces in a shuffled order that is never already solved. */
+export function scrambled(pieces: number, rng: Rng): number[] {
+  const order = Array.from({ length: pieces }, (_, i) => i);
+  let out = shuffle(order, rng);
+  while (pieces > 1 && isSolved(out)) out = shuffle(order, rng);
+  return out;
+}
+
+export function swapPieces(order: number[], a: number, b: number): number[] {
+  const out = [...order];
+  [out[a], out[b]] = [out[b], out[a]];
+  return out;
+}
+
+export const isSolved = (order: number[]) => order.every((piece, slot) => piece === slot);
+
+/** Pieces per side: 2×2 for KG, 3×3 for Grade 1–2. */
+export const puzzleSide = (level: Level) => (level === 'kg' ? 2 : 3);

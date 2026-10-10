@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Snapshot } from '../dashboard/model';
-import { ago, attendanceStatus, classDataState, displayTime, greetingFor, lessonStatus, syncStatus, timetableItems, weatherStatus } from './homeModel';
+import { ago, attendanceStatus, classDataState, displayTime, greetingFor, lessonStatus, parseObjectives, syncStatus, timetableItems, weatherStatus, wordOfTheDay } from './homeModel';
 
 const tz = 'Asia/Kolkata';
 // 10:15 IST on a school day.
@@ -113,5 +113,21 @@ describe('weather and time helpers', () => {
   });
   it('greets by time of day', () => {
     expect([greetingFor(9 * 60), greetingFor(13 * 60), greetingFor(18 * 60)]).toEqual(['Good morning', 'Good afternoon', 'Good evening']);
+  });
+});
+
+describe('objectives and word of the day', () => {
+  it('takes up to five trimmed lines and keeps ticks for unchanged objectives', () => {
+    const first = parseObjectives(' Say the sound \n\nFind pictures\nWrite the letter\n4\n5\n6');
+    expect(first.map(o => o.text)).toEqual(['Say the sound', 'Find pictures', 'Write the letter', '4', '5']);
+    expect(first.every(o => !o.done)).toBe(true);
+    const ticked = first.map((o, i) => ({ ...o, done: i === 0 }));
+    expect(parseObjectives('Say the sound\nSomething new', ticked)).toEqual([{ text: 'Say the sound', done: true }, { text: 'Something new', done: false }]);
+  });
+  it('picks one word per day and changes the next day', () => {
+    const words = ['apple', 'ball', 'cat', 'dog'];
+    expect(wordOfTheDay('2026-10-10', words)).toBe(wordOfTheDay('2026-10-10', words));
+    expect(wordOfTheDay('2026-10-10', words)).not.toBe(wordOfTheDay('2026-10-11', words));
+    expect(words).toContain(wordOfTheDay('not a date', words));
   });
 });

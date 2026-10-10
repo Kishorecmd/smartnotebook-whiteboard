@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const widgetKinds = ['text', 'timer', 'clock', 'sound', 'random', 'groups', 'symbols', 'traffic', 'dice', 'score'] as const;
+export const widgetKinds = ['text', 'timer', 'clock', 'sound', 'random', 'groups', 'symbols', 'traffic', 'dice', 'score', 'spinner'] as const;
 export type WidgetKind = typeof widgetKinds[number];
 export const backgrounds = ['meadow', 'sunrise', 'lavender', 'paper', 'midnight'] as const;
 const value = z.union([z.string().max(30000), z.number().finite(), z.boolean(), z.null()]);
@@ -16,7 +16,7 @@ export type ClassroomScreen = z.infer<typeof screenSchema>;
 export type ClassroomWorkspace = z.infer<typeof workspaceSchema>;
 export const STORAGE_KEY = 'jhw_classroom_workspace_v1';
 const id = () => crypto.randomUUID();
-export const labels: Record<WidgetKind, string> = { text: 'Text', timer: 'Timer', clock: 'Clock', sound: 'Sound level', random: 'Random name', groups: 'Group maker', symbols: 'Work symbols', traffic: 'Traffic light', dice: 'Dice', score: 'Scoreboard' };
+export const labels: Record<WidgetKind, string> = { text: 'Text', timer: 'Timer', clock: 'Clock', sound: 'Sound level', random: 'Random name', groups: 'Group maker', symbols: 'Work symbols', traffic: 'Traffic light', dice: 'Dice', score: 'Scoreboard', spinner: 'Spinner' };
 export function makeWidget(kind: WidgetKind, index = 0): ClassroomWidget {
   const data: ClassroomWidget['data'] = {};
   if (kind === 'text') Object.assign(data, { heading: 'Today’s focus', text: 'Write your instructions here.\n\nWhat will we learn today?' });
@@ -27,7 +27,8 @@ export function makeWidget(kind: WidgetKind, index = 0): ClassroomWidget {
   if (kind === 'dice') Object.assign(data, { count: 1, result: '1' });
   if (kind === 'random' || kind === 'groups') Object.assign(data, { names: '', result: '', groupCount: 3 });
   if (kind === 'score') Object.assign(data, { nameA: 'Team Sun', nameB: 'Team Moon', scoreA: 0, scoreB: 0 });
-  return { id: id(), kind, x: 0.06 + (index % 3) * 0.29, y: 0.13 + (Math.floor(index / 3) % 5) * 0.08, width: kind === 'text' ? 390 : kind === 'sound' ? 340 : 300, height: kind === 'text' ? 380 : kind === 'sound' ? 480 : kind === 'clock' ? 390 : kind === 'timer' ? 350 : 300, data };
+  if (kind === 'spinner') Object.assign(data, { options: '1\n2\n3\n4\n5\n6', result: '', turn: 0 });
+  return { id: id(), kind, x: 0.06 + (index % 3) * 0.29, y: 0.13 + (Math.floor(index / 3) % 5) * 0.08, width: kind === 'text' ? 390 : kind === 'sound' ? 340 : 300, height: kind === 'text' ? 380 : kind === 'sound' ? 480 : kind === 'clock' ? 390 : kind === 'timer' ? 350 : kind === 'spinner' ? 420 : 300, data };
 }
 export function makeScreen(template: 'welcome' | 'focus' | 'teams' | 'blank' = 'blank'): ClassroomScreen {
   const screen: ClassroomScreen = { id: id(), title: { welcome: 'Morning welcome', focus: 'Quiet focus', teams: 'Team challenge', blank: 'Untitled screen' }[template], background: 'meadow', widgets: [] };
@@ -74,4 +75,22 @@ export function restoreWidget(workspace: ClassroomWorkspace, screenId: string, w
   const screen = workspace.screens.find(s => s.id === screenId);
   if (!screen || screen.widgets.length >= 60 || screen.widgets.some(w => w.id === widget.id)) return workspace;
   return { ...workspace, screens: workspace.screens.map(s => s.id === screenId ? { ...s, widgets: [...s.widgets, widget] } : s) };
+}
+
+/**
+ * Spinner maths. The wheel turns clockwise by `turn` degrees and the pointer
+ * sits at the top, so the slice under it is found from the remaining angle.
+ */
+export function segmentAt(turn: number, count: number): number {
+  const slice = 360 / count;
+  const under = ((360 - (turn % 360)) % 360 + 360) % 360;
+  return Math.min(count - 1, Math.floor(under / slice));
+}
+
+/** The next turn: at least five full spins further, stopping mid-way through slice `index`. */
+export function spinTo(index: number, count: number, turn: number, spins = 5): number {
+  const slice = 360 / count;
+  const target = (360 - (index + 0.5) * slice) % 360;
+  const base = turn - (turn % 360) + spins * 360;
+  return base + target;
 }

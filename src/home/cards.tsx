@@ -1,4 +1,4 @@
-import { Users, Clock3, BookOpen, CalendarClock, LogIn, RefreshCw, ArrowRight } from 'lucide-react';
+import { Users, Clock3, BookOpen, CalendarClock, LogIn, RefreshCw, ArrowRight, Play } from 'lucide-react';
 import { displayTime, NO_DATA_TEXT, type AttendanceStatus, type ClassDataState, type LessonStatus } from './homeModel';
 
 type AttendanceProps = {
@@ -31,11 +31,11 @@ export function AttendanceCard({ status, canTake, onTake, onList, onSignIn, onRe
       {canTake && <button className="sc-button sc-button-primary" onClick={onTake}>Take attendance</button>}
     </>}
     {status.kind === 'marked' && <>
-      <p className="sc-figure"><b>{status.present}<small>/{status.total}</small></b><span>present today</span></p>
-      <div className="sc-counts">
-        <button onClick={() => onList('present')} aria-label={`${status.present} present, show list`}><span className="sc-dot sc-dot-present" />{status.present} present</button>
-        <button onClick={() => onList('absent')} aria-label={`${status.absent} absent, show list`}><span className="sc-dot sc-dot-absent" />{status.absent} absent</button>
-        {status.late > 0 && <span><span className="sc-dot sc-dot-late" />{status.late} late</span>}
+      <p className="sc-figure"><b>{status.total}</b><span>students in class</span></p>
+      <div className="sc-tiles">
+        <button className="sc-tile sc-tile-present" onClick={() => onList('present')} aria-label={`${status.present} present, show list`}><b>{status.present}</b>Present</button>
+        <button className="sc-tile sc-tile-absent" onClick={() => onList('absent')} aria-label={`${status.absent} absent, show list`}><b>{status.absent}</b>Absent</button>
+        <span className="sc-tile sc-tile-late"><b>{status.late}</b>Late</span>
       </div>
       {(status.other > 0 || status.unmarked > 0) && <p className="sc-meta">{[status.other && `${status.other} on leave or half day`, status.unmarked && `${status.unmarked} not marked`].filter(Boolean).join(' · ')}</p>}
       {canTake && <button className="sc-link" onClick={onTake}>Edit attendance <ArrowRight size={16} /></button>}
@@ -43,9 +43,9 @@ export function AttendanceCard({ status, canTake, onTake, onList, onSignIn, onRe
   </section>;
 }
 
-type LessonProps = { status: LessonStatus; partial: boolean; dataState: ClassDataState; studentMode: boolean };
+type LessonProps = { status: LessonStatus; partial: boolean; dataState: ClassDataState; studentMode: boolean; onStart: () => void };
 
-export function LessonCard({ status, partial, dataState, studentMode }: LessonProps) {
+export function LessonCard({ status, partial, dataState, studentMode, onStart }: LessonProps) {
   const title = status.kind === 'now' ? status.current.subject
     : status.kind === 'holiday' ? status.name
     : status.kind === 'between' ? 'Short break'
@@ -57,14 +57,14 @@ export function LessonCard({ status, partial, dataState, studentMode }: LessonPr
     <h2><BookOpen size={18} aria-hidden="true" />{label}</h2>
     <p className="sc-lesson-title">{title}</p>
     {status.kind === 'now' && <>
-      <p className="sc-lesson-time">{displayTime(status.current.start)} – {displayTime(status.current.end)}</p>
+      <p className="sc-lesson-time">{displayTime(status.current.start)} – {displayTime(status.current.end)}<span className="sc-meta"><Clock3 size={15} aria-hidden="true" />{status.remaining} min left</span></p>
       <div className="sc-progress" role="progressbar" aria-label="Lesson time used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(status.progress * 100)}><span style={{ width: `${status.progress * 100}%` }} /></div>
-      <p className="sc-meta"><Clock3 size={15} aria-hidden="true" />{status.remaining} min left</p>
     </>}
     {status.kind === 'between' && <p className="sc-meta">Next lesson starts in {status.startsIn} min</p>}
     {status.kind === 'holiday' && <p className="sc-meta">Enjoy the break. Classroom tools are still here.</p>}
     {status.kind === 'unknown' && dataState !== 'ready' && <p className="sc-meta">{NO_DATA_TEXT[dataState]}</p>}
     {partial && !studentMode && ['now', 'between', 'done'].includes(status.kind) && <p className="sc-note">Your own lessons only. The full class timetable is not in the ERP yet.</p>}
+    {!studentMode && <button className="sc-button sc-button-primary sc-start" onClick={onStart}><Play size={20} />Start lesson</button>}
   </section>;
 }
 

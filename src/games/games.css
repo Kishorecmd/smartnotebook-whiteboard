@@ -88,3 +88,20 @@
   .gm-library-header { flex-wrap: wrap; padding: 14px 16px 6px; } .gm-filters, .gm-grid { padding-left: 16px; padding-right: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .is-shake { animation: none; } .gm-option { transition: none; } }
+/* Colouring */
+.gm-colouring, .gm-puzzle { display: flex; flex-direction: column; align-items: center; width: min(1100px, 100%); }
+.gm-colour-area { display: flex; align-items: center; gap: 24px; }
+.gm-colour-picture { width: min(440px, 58vh); aspect-ratio: 1; border-radius: 20px; background: #fff; border: 3px solid #d9e2dc; }
+.gm-colour-picture g { stroke: #1d1d1d; stroke-width: 1.4; cursor: pointer; }
+.gm-colour-picture g:focus-visible { outline: 3px solid #e9b653; }
+.gm-palette { display: grid; grid-template-columns: repeat(2, 60px); gap: 10px; }
+.gm-palette button { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #d9e2dc; }
+.gm-palette button.is-on { border-color: #14302b; box-shadow: 0 0 0 4px #e9b653; }
+/* Picture puzzle */
+.gm-puzzle-board { display: grid; gap: 6px; width: min(460px, 60vh); aspect-ratio: 1; padding: 6px; border-radius: 20px; background: #fff; border: 3px solid #d9e2dc; }
+.gm-puzzle-board.is-done { border-color: #1f7a4d; gap: 0; }
+.gm-piece { border: 0; border-radius: 10px; background-color: #eef2ef; background-repeat: no-repeat; }
+.gm-piece.is-picked { outline: 5px solid var(--gm-accent); outline-offset: -5px; transform: scale(.96); }
+.gm-piece.is-hint { outline: 5px solid #e9b653; outline-offset: -5px; }
+.gm-puzzle-board.is-done .gm-piece { border-radius: 0; }
+@media (max-width: 700px) { .gm-colour-area { flex-direction: column; } .gm-palette { grid-template-columns: repeat(6, 44px); } .gm-palette button { width: 44px; height: 44px; } }

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Search, Star, Clock, Target, Beaker, Brush, Users, Presentation, Gamepad2, Wrench, GraduationCap, ArrowUpRight, Check } from 'lucide-react';
 import { useWhiteboardStore } from '../store';
 import { TeachingToolRegistry } from './TeachingToolRegistry';
+import { launchTeachingTool } from './launch';
 import { ToolCategory } from './types';
 import './teaching-tools.css';
 
@@ -21,8 +22,8 @@ const categories = [
 const actions = { 'pointer-tool': 'Use on board', 'overlay-ui': 'Open tool', 'canvas-object': 'Add to board', background: 'Apply background' };
 
 export const TeachingToolsPanel: React.FC = () => {
-  const { isTeachingPanelOpen, setTeachingPanelOpen, toggleOverlayTool, activeOverlayTools,
-    favoriteTools, recentTools, toggleFavoriteTool, addRecentTool } = useWhiteboardStore();
+  const { isTeachingPanelOpen, setTeachingPanelOpen, activeOverlayTools,
+    favoriteTools, recentTools, toggleFavoriteTool } = useWhiteboardStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<Category>('ALL');
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -47,31 +48,7 @@ export const TeachingToolsPanel: React.FC = () => {
   if (!isTeachingPanelOpen) return null;
 
   const handleToolClick = (toolId: string) => {
-    const toolDef = TeachingToolRegistry.getTool(toolId);
-    if (!toolDef) return;
-    addRecentTool(toolId);
-    const engine = useWhiteboardStore.getState().engine;
-    if (toolDef.type === 'overlay-ui') {
-      // Reopening a running tool must preserve its state.
-      if (!activeOverlayTools.includes(toolId)) toggleOverlayTool(toolId);
-    } else if (toolDef.type === 'canvas-object' && engine && toolDef.objectFactory) {
-      const rect = engine.getCanvas().getBoundingClientRect();
-      const center = engine.getTransformer().screenToWorld({ x: rect.width / 2, y: Math.max(120, (rect.height - 180) / 2) });
-      const object = toolDef.objectFactory(center);
-      const zoom = engine.getTransformer().getZoom();
-      const scale = Math.min(1, (rect.width - 40) / (object.width * zoom), Math.max(100, rect.height - 240) / (object.height * zoom));
-      object.width *= scale;
-      object.height *= scale;
-      object.x = center.x - object.width / 2;
-      object.y = center.y - object.height / 2;
-      if (object.type === 'compass') object.radius *= scale;
-      engine.addObject(object);
-      useWhiteboardStore.getState().setTool('select');
-      engine.setSelectedIds([object.id]);
-    } else {
-      toolDef.onActivate?.(engine);
-    }
-    setTeachingPanelOpen(false);
+    if (launchTeachingTool(toolId)) setTeachingPanelOpen(false);
   };
   const resetFilters = () => { setSearchQuery(''); setActiveCategory('ALL'); };
   return (

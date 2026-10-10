@@ -31,7 +31,9 @@ describe('Student Mode', () => {
     const sample = previewData('Grade 3', 'normal', Date.now());
     const html = home({ ...sample, preview: true });
     expect(html).toContain('Today&#x27;s attendance');
-    expect(html).toContain('present today');
+    expect(html).toContain('students in class');
+    for (const tile of ['Present', 'Absent', 'Late']) expect(html).toContain(`</b>${tile}<`);
+    expect(html).toContain('Word of the day');
     expect(html).toContain('Start lesson');
   });
 });

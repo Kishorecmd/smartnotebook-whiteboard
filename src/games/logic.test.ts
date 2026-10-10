@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CVC_WORDS, LETTER_PICTURES, MEMORY_PICTURES, SHAPES_BY_LEVEL } from './content';
-import { countRounds, encouragement, letterRounds, levelForGrade, memoryDeck, orderRounds, shapeRounds, traceCoverage, traceRounds, wordRounds } from './logic';
+import { countRounds, encouragement, isSolved, letterRounds, levelForGrade, memoryDeck, orderRounds, puzzleSide, scrambled, shapeRounds, swapPieces, traceCoverage, traceRounds, wordRounds } from './logic';
 import { sample, seeded, shuffle } from './random';
 
 describe('content', () => {
@@ -90,5 +90,21 @@ describe('scoring', () => {
   });
   it('always encourages and never ranks', () => {
     for (const firstTry of [0, 3, 7, 10]) expect(encouragement({ firstTry, total: 10, hints: 0 })).toMatch(/well|good|great|wonderful/i);
+  });
+});
+
+describe('picture puzzle', () => {
+  it('never starts solved, keeps every piece, and is solved when sorted', () => {
+    for (let seed = 1; seed < 40; seed++) {
+      const order = scrambled(4, seeded(seed));
+      expect(isSolved(order)).toBe(false);
+      expect([...order].sort()).toEqual([0, 1, 2, 3]);
+    }
+    expect(isSolved(swapPieces([1, 0, 2, 3], 0, 1))).toBe(true);
+    expect(puzzleSide('kg')).toBe(2);
+    expect(puzzleSide('g1')).toBe(3);
+  });
+  it('praises creative work without counting right answers', () => {
+    expect(encouragement({ firstTry: 0, total: 3, hints: 0, creative: true })).toMatch(/beautiful/i);
   });
 });

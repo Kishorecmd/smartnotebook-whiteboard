@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { initialWorkspace, makeGroups, makeScreen, makeWidget, parseWorkspace, readNames, remainingSeconds, restoreWidget, widgetSchema } from './model';
+import { initialWorkspace, makeGroups, makeScreen, makeWidget, parseWorkspace, readNames, remainingSeconds, restoreWidget, segmentAt, spinTo, widgetSchema } from './model';
 
 describe('Classroom screens', () => {
   it('saves sound settings without a live microphone session or audio', () => {
@@ -80,5 +80,21 @@ describe('Undo at the screen capacity limit', () => {
     expect(restored.screens[0].widgets.at(-1)).toEqual(removed);
     expect(restoreWidget(restored, screen.id, removed)).toBe(restored);
     expect(parseWorkspace(JSON.stringify(restored))).toEqual(restored);
+  });
+});
+
+describe('spinner', () => {
+  it('always lands in the middle of the chosen slice after at least five turns', () => {
+    for (const count of [2, 3, 6, 12]) for (const index of [0, count - 1, Math.floor(count / 2)]) for (const turn of [0, 37, 1795, 3600]) {
+      const next = spinTo(index, count, turn);
+      expect(segmentAt(next, count)).toBe(index);
+      expect(next - turn).toBeGreaterThanOrEqual(4 * 360);
+    }
+  });
+  it('reads the slice under the top pointer', () => {
+    expect(segmentAt(0, 4)).toBe(0);
+    expect(segmentAt(-1, 4)).toBe(0);
+    expect(segmentAt(1, 4)).toBe(3);
+    expect(segmentAt(360 - 135, 4)).toBe(1);
   });
 });

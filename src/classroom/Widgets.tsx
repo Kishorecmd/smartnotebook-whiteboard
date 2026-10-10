@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Play, Pause, RotateCcw, Shuffle, VolumeX, Volume1, Users, UserRound, Pencil, Check, Plus, Minus, Sun, Moon } from 'lucide-react';
-import { type ClassroomWidget, remainingSeconds, readNames, makeGroups } from './model';
+import { type ClassroomWidget, remainingSeconds, readNames, makeGroups, segmentAt, spinTo } from './model';
 import { SoundMonitor } from '../sound/SoundMonitor';
 import { AnalogClock } from '../clock/AnalogClock';
 import { LiveNames, LiveTeams } from '../dashboard/LiveNames';
@@ -65,6 +65,46 @@ function NamesWidget({ widget, update, classPending }: Props & { classPending?: 
     </>}
   </div>;
 }
+const SPINNER_COLOURS = ['#e85d75', '#3a86ff', '#f4a51c', '#2a9d8f', '#8f5bd9', '#ef6f2e', '#4cb944', '#d6457f'];
+/** A wheel of up to 12 choices that spins and stops on a random one. */
+function SpinnerWidget({ widget, update }: Props) {
+  const options = readNames(str(widget, 'options')).slice(0, 12);
+  const [editing, setEditing] = useState(options.length < 2);
+  const [spinning, setSpinning] = useState(false);
+  const turn = num(widget, 'turn');
+  const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const spin = () => {
+    if (spinning || options.length < 2) return;
+    const index = Math.floor(Math.random() * options.length);
+    const next = spinTo(index, options.length, turn);
+    setSpinning(true); update({ turn: next, result: '' });
+    window.setTimeout(() => { setSpinning(false); update({ turn: next, result: options[segmentAt(next, options.length)] }); }, reduced ? 50 : 3200);
+  };
+  if (editing) return <div className="cs-names">
+    <label className="cs-field-label">Spinner choices · one per line, 2 to 12<textarea aria-label="Spinner choices" value={str(widget, 'options')} maxLength={2000} onChange={e => update({ options: e.target.value, result: '' })} /></label>
+    <button className="cs-primary" disabled={options.length < 2} onClick={() => setEditing(false)}><Check size={16} />Use {options.length} choices</button>
+  </div>;
+  const slice = 360 / options.length;
+  const point = (angle: number, r: number) => [50 + r * Math.sin(angle * Math.PI / 180), 50 - r * Math.cos(angle * Math.PI / 180)];
+  return <div className="cs-spinner">
+    <div className="cs-spinner-wheel-wrap">
+      <span className="cs-spinner-pointer" aria-hidden="true" />
+      <svg viewBox="0 0 100 100" className="cs-spinner-wheel" style={{ transform: `rotate(${turn}deg)`, transition: spinning && !reduced ? 'transform 3.1s cubic-bezier(.17,.67,.21,1)' : 'none' }} aria-hidden="true">
+        {options.map((option, i) => {
+          const [x1, y1] = point(i * slice, 48), [x2, y2] = point((i + 1) * slice, 48), [tx, ty] = point((i + 0.5) * slice, 30);
+          return <g key={i}>
+            <path d={`M50 50 L${x1} ${y1} A48 48 0 ${slice > 180 ? 1 : 0} 1 ${x2} ${y2} Z`} fill={SPINNER_COLOURS[i % SPINNER_COLOURS.length]} stroke="#fff" strokeWidth="0.8" />
+            <text x={tx} y={ty} transform={`rotate(${(i + 0.5) * slice} ${tx} ${ty})`} textAnchor="middle" dominantBaseline="middle" fontSize={options.length > 8 ? 4.5 : 6} fontWeight="700" fill="#fff">{option.length > 10 ? option.slice(0, 9) + '…' : option}</text>
+          </g>;
+        })}
+        <circle cx="50" cy="50" r="6" fill="#fff" />
+      </svg>
+    </div>
+    <div className="cs-picked" aria-live="polite">{spinning ? 'Spinning…' : str(widget, 'result') || 'Ready to spin!'}</div>
+    <button className="cs-primary" disabled={spinning} onClick={spin}><Shuffle size={17} />Spin</button>
+    <button className="cs-subtle" disabled={spinning} onClick={() => setEditing(true)}><Pencil size={14} />Edit {options.length} choices</button>
+  </div>;
+}
 function ScoreWidget({ widget, update }: Props) {
   return <div className="cs-score">{(['A', 'B'] as const).map((team, i) => <div key={team} className={`cs-team cs-team-${team}`}>
     {i === 0 ? <Sun size={28} /> : <Moon size={28} />}<input aria-label={`Team ${team} name`} value={str(widget, `name${team}`)} maxLength={30} onChange={e => update({ [`name${team}`]: e.target.value })} />
@@ -81,6 +121,7 @@ export function WidgetContent(props: Props) {
     // The class list is used only once it has loaded. Signed out, ERP down or
     // still loading, the widgets keep working with typed names and plain teams.
     case 'random': case 'groups': return liveClass.mapping && liveClass.snapshot ? <LiveNames key={liveClass.mapping.classId + liveClass.mapping.sectionId + widget.kind} groups={widget.kind === 'groups'}/> : <NamesWidget {...props} classPending={!!liveClass.mapping} />;
+    case 'spinner': return <SpinnerWidget {...props} />;
     case 'score': return liveClass.mapping && liveClass.snapshot ? <LiveTeams key={liveClass.mapping.classId + liveClass.mapping.sectionId}/> : <ScoreWidget {...props} />;
     case 'clock': return <AnalogClock time={new Date(now)} timeZone={liveClass.mapping?.timezone} />;
     case 'traffic': return <div className="cs-traffic"><div className="cs-lights">{['red', 'amber', 'green'].map(light => <button key={light} className={`cs-light cs-${light} ${widget.data.light === light ? 'is-lit' : ''}`} aria-label={`${light} light`} aria-pressed={widget.data.light === light} onClick={() => update({ light })} />)}</div><h2>{widget.data.light === 'red' ? 'Pause & listen' : widget.data.light === 'amber' ? 'Get ready' : 'Let’s get started'}</h2><p>Tap a light to guide the room.</p></div>;

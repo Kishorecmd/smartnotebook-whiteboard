@@ -1,19 +1,20 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { X, Lightbulb, Volume2, VolumeX, RotateCcw, Play, Eye, PartyPopper } from 'lucide-react';
-import { CATEGORIES, GAMES, gameById, type GameCategory, type GameId } from './catalog';
+import { BOARD_ACTIVITIES, CATEGORIES, GAMES, gameById, type GameCategory, type GameId } from './catalog';
 import { BuildAWord, CountAndChoose, LetterSounds, MemoryMatch, NumberOrder, ShapeMatch, TraceIt, type GameProps } from './games';
+import { Colouring, PicturePuzzle } from './creative';
 import { encouragement, type GameResult, type Level } from './logic';
 import { randomSeed } from './random';
 import { playFinish, setSoundOn, soundOn } from './feedback';
 import './games.css';
 
-const COMPONENTS: Record<GameId, ComponentType<GameProps>> = { letters: LetterSounds, words: BuildAWord, count: CountAndChoose, order: NumberOrder, shapes: ShapeMatch, memory: MemoryMatch, trace: TraceIt };
+const COMPONENTS: Record<Exclude<GameId, 'drawing'>, ComponentType<GameProps>> = { letters: LetterSounds, words: BuildAWord, count: CountAndChoose, order: NumberOrder, shapes: ShapeMatch, memory: MemoryMatch, puzzle: PicturePuzzle, trace: TraceIt, colouring: Colouring };
 const LEVELS: [Level, string][] = [['kg', 'KG (LKG and UKG)'], ['g1', 'Grade 1 and 2']];
 
-type LibraryProps = { defaultLevel: Level; close: () => void; onPlay: (id: GameId, level: Level, withClass: boolean) => void };
+type LibraryProps = { defaultLevel: Level; close: () => void; onPlay: (id: GameId, level: Level, withClass: boolean) => void; onDraw: () => void };
 
 /** Where a teacher chooses a game: preview it alone, or play it with the class in Student Mode. */
-export function GamesLibrary({ defaultLevel, close, onPlay }: LibraryProps) {
+export function GamesLibrary({ defaultLevel, close, onPlay, onDraw }: LibraryProps) {
   const [category, setCategory] = useState<GameCategory | 'all'>('all');
   const [level, setLevel] = useState<Level>(defaultLevel);
   useEffect(() => { const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key); }, [close]);
@@ -34,15 +35,17 @@ export function GamesLibrary({ defaultLevel, close, onPlay }: LibraryProps) {
         <p>{g.description}</p>
         <small>{CATEGORIES.find(c => c.id === g.category)!.title} · {g.skill}</small>
         <div className="gm-tile-actions">
-          <button className="gm-small" onClick={() => onPlay(g.id, level, false)}><Eye size={18} />Preview</button>
-          <button className="gm-small gm-primary" onClick={() => onPlay(g.id, level, true)}><Play size={18} />Play with class</button>
+          {BOARD_ACTIVITIES.includes(g.id)
+            ? <button className="gm-small gm-primary" onClick={onDraw}><Play size={18} />Open drawing board</button>
+            : <><button className="gm-small" onClick={() => onPlay(g.id, level, false)}><Eye size={18} />Preview</button>
+              <button className="gm-small gm-primary" onClick={() => onPlay(g.id, level, true)}><Play size={18} />Play with class</button></>}
         </div>
       </li>)}
     </ul>
   </div>;
 }
 
-type ShellProps = { id: GameId; level: Level; withClass: boolean; close: () => void; backToLibrary: () => void };
+type ShellProps = { id: Exclude<GameId, 'drawing'>; level: Level; withClass: boolean; close: () => void; backToLibrary: () => void };
 
 /** Full-screen play: progress, hint, sound, start over, and a kind summary at the end. */
 export function GameShell({ id, level, withClass, close, backToLibrary }: ShellProps) {
@@ -73,7 +76,7 @@ export function GameShell({ id, level, withClass, close, backToLibrary }: ShellP
         <PartyPopper size={64} aria-hidden="true" />
         <h3>All done!</h3>
         <p className="gm-summary-main">{encouragement(result)}</p>
-        <p>{result.firstTry} of {result.total} right first time{result.hints ? ` · ${result.hints} ${result.hints === 1 ? 'hint' : 'hints'} used` : ''}</p>
+        {!result.creative && <p>{result.firstTry} of {result.total} right first time{result.hints ? ` · ${result.hints} ${result.hints === 1 ? 'hint' : 'hints'} used` : ''}</p>}
         <div className="gm-tile-actions">
           <button className="gm-small gm-primary" onClick={restart}><RotateCcw size={18} />Play again</button>
           <button className="gm-small" onClick={backToLibrary}>{withClass ? 'Finish' : 'More games'}</button>

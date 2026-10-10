@@ -63,7 +63,8 @@
 /* Quick tools dock */
 .cs-footer.sc-dock-bar { left: calc(var(--sc-rail) + 12px); right: 12px; bottom: 6px; max-width: none; }
 .sc-dock-bar .cs-dock { height: var(--sc-dock); padding: 6px 10px; border-radius: 18px; background: var(--sc-card); border: 1px solid var(--sc-line); }
-.sc-dock-bar .cs-dock > button { min-width: 72px; min-height: 64px; font-size: 12px; font-weight: 600; color: var(--sc-ink); gap: 4px; }
+.sc-dock-bar .cs-dock > button { flex: 1 0 60px; min-width: 60px; min-height: 64px; padding: 4px 2px; font-size: 11px; font-weight: 600; line-height: 1.15; white-space: normal; text-align: center; color: var(--sc-ink); gap: 4px; }
+.sc-dock-bar .cs-dock > i { margin: 0 3px; }
 .sc-dock-bar .cs-dock > button:hover { background: var(--sc-success); }
 
 /* Welcome strip */
@@ -179,3 +180,65 @@
   .sc-sync span, .sc-header .cs-school-brand div { display: none; }
   .sc-mode-button span { display: none; }
 }
+
+/* Attendance tiles: present, absent, late */
+.sc-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sc-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px; border-radius: 14px; border: 0; font-size: 14px; font-weight: 600; }
+.sc-tile b { font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+.sc-tile-present { background: #dceee4; color: #1f6b44; }
+.sc-tile-absent { background: #f9e1de; color: #9b3a31; }
+.sc-tile-late { background: #fbefd5; color: #8a5a0b; }
+
+/* Start lesson sits at the foot of the lesson card */
+.sc-lesson .sc-start { margin-top: auto; align-self: flex-start; }
+
+/* Bottom row: objectives, word of the day, birthdays */
+.sc-extras { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--sc-gap); }
+.sc-extras:has(> :nth-child(2):last-child) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.sc-card.sc-mini { min-height: 0; padding: 12px 16px; gap: 6px; }
+.sc-objectives ul, .sc-birthday ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.sc-objectives li > button, .sc-objectives li > span { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 2px 4px; border: 0; border-radius: 10px; background: transparent; color: var(--sc-ink); font-size: 16px; text-align: left; }
+.sc-objectives li > button:hover { background: var(--sc-success); }
+.sc-objectives svg { flex: none; color: #9fb2ab; }
+.sc-objectives .is-done svg { color: #1f7a4d; }
+.sc-objectives .is-done { color: var(--sc-muted); }
+.sc-word-body { display: flex; align-items: center; gap: 12px; flex: 1; }
+.sc-word-picture { font-size: 52px; line-height: 1; }
+.sc-word-body b { flex: 1; font-size: 28px; color: var(--sc-primary); }
+.sc-say { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--sc-activity); color: #fff; flex: none; }
+.sc-birthday li { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.sc-birthday h2 svg { color: #d6457f; }
+.cs-presenting .sc-word-body b { font-size: 34px; }
+@media (max-width: 900px) { .sc-extras, .sc-extras:has(> :nth-child(2):last-child) { grid-template-columns: 1fr; } }
+
+/* Class switcher, settings button, roster */
+.sc-class-switch { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--sc-line); background: var(--sc-card); color: var(--sc-primary); font-size: 17px; white-space: nowrap; }
+.sc-class-static { border-color: transparent; background: transparent; }
+.sc-icon-button { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--sc-line); background: var(--sc-card); color: var(--sc-primary); flex: none; }
+.sc-class-list { display: grid; gap: 8px; margin-bottom: 12px; }
+.sc-class-list button { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 0 16px; border-radius: 12px; border: 1px solid #d4dfc9; background: #fff; font: inherit; font-size: 17px; font-weight: 600; color: #314e3e; }
+.sc-class-list button[aria-current="true"] { border-color: #164a44; background: #edf5f0; }
+.sc-class-list small { font-size: 13px; font-weight: 500; color: #1f7a4d; }
+.sc-status-present, .sc-status-late { color: #1f6b44 !important; } .sc-status-absent { color: #9b3a31 !important; }
+.sc-rail button { min-height: 56px; }
+@media (max-width: 900px) { .sc-class-switch { font-size: 14px; padding: 0 10px; } }
+
+.sc-dock-bar .cs-dock { gap: 1px; }
+.sc-screens-actions { display: flex; gap: 10px; }
+
+/* Fit five objectives and the attendance tiles at 1280×720 without scrolling */
+.sc-card h2 .sc-card-action { margin-left: auto; min-height: 32px; font-size: 14px; text-transform: none; letter-spacing: 0; }
+.sc-objectives ul { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; }
+.sc-objectives li > button, .sc-objectives li > span { min-height: 32px; font-size: 15px; }
+.sc-student-mode .sc-objectives li > span { font-size: 18px; min-height: 36px; }
+.sc-attendance .sc-figure b { font-size: 34px; }
+.sc-tile { min-height: 54px; }
+.sc-tile b { font-size: 24px; }
+.sc-card { min-height: 160px; }
+
+.sc-lesson-time { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 14px; }
+.sc-lesson-time .sc-meta { font-weight: 500; }
+.sc-lesson .sc-start { min-height: 56px; }
+.sc-card { gap: 5px; }
+.sc-home { padding-top: 10px; padding-bottom: 4px; }
+.sc-objectives ul { max-height: 104px; overflow-y: auto; scrollbar-width: thin; }
