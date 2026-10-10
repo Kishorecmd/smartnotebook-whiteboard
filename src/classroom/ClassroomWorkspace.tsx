@@ -11,6 +11,7 @@ import type { Mapping, Snapshot, Weather } from '../dashboard/model';
 import { HomeScreen } from '../home/HomeScreen';
 import { MoreDialog, NavRail, StudentModeUnlock, SyncIndicator, WeatherChip, type RailTarget } from '../home/chrome';
 import { syncStatus, weatherStatus } from '../home/homeModel';
+import { readStudentMode, writeStudentMode } from '../home/studentMode';
 import { useWhiteboardStore } from '../store';
 
 const icons = { text: Type, timer: Timer, clock: Clock3, sound: AudioLines, random: Shuffle, groups: Users, symbols: VolumeX, traffic: TrafficCone, dice: Dices, score: Trophy };
@@ -25,8 +26,10 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
   const [connection, setConnection] = useState(false);
   const [preview, setPreview] = useState<{mapping:Mapping;snapshot:Snapshot|null;weather:Weather|null}|null>(null);
   const [panel, setPanel] = useState<'none' | 'backgrounds' | 'templates' | 'screens'>('none');
-  // Student Mode hides attendance, student lists and teacher controls.
-  const [presenting, setPresenting] = useState(false);
+  // Student Mode hides attendance, student lists and teacher controls. It is
+  // remembered on the device so reloading the page does not leave it.
+  const [presenting, setPresenting] = useState(readStudentMode);
+  useEffect(() => { writeStudentMode(presenting); }, [presenting]);
   const [unlocking, setUnlocking] = useState(false);
   const [more, setMore] = useState(false);
   const [taking, setTaking] = useState(false);
@@ -86,7 +89,7 @@ export const ClassroomWorkspace: React.FC<Props> = ({ onWhiteboard }) => {
     else if (target === 'library') openInWhiteboard('library');
     else setMore(true);
   };
-  const sync = syncStatus({ preview: !!preview, ready: live.ready, signedIn: !!live.session, hasClass: !!mapping, error: live.error, snapshot, now });
+  const sync = syncStatus({ preview: !!preview, checked: live.checked, ready: live.ready, signedIn: !!live.session, hasClass: !!mapping, error: live.error, snapshot, now });
   const timezone = mapping?.timezone || 'Asia/Kolkata';
   useEffect(() => {
     if (panel === 'none' || !dialog.current) return;

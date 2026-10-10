@@ -93,9 +93,10 @@ export function attendanceStatus(snapshot: Snapshot | null, state: ClassDataStat
 export type SyncStatus = { kind: 'sample' | 'connected' | 'syncing' | 'error' | 'offline' | 'local'; label: string; detail?: string };
 
 /** The ERP indicator in the header, with the time since the last good snapshot. */
-export function syncStatus(input: { preview: boolean; ready: boolean; signedIn: boolean; hasClass: boolean; error: string; snapshot: Snapshot | null; now: number }): SyncStatus {
-  const { preview, ready, signedIn, hasClass, error, snapshot, now } = input;
+export function syncStatus(input: { preview: boolean; checked: boolean; ready: boolean; signedIn: boolean; hasClass: boolean; error: string; snapshot: Snapshot | null; now: number }): SyncStatus {
+  const { preview, checked, ready, signedIn, hasClass, error, snapshot, now } = input;
   if (preview) return { kind: 'sample', label: 'Sample data' };
+  if (!checked) return { kind: 'syncing', label: 'Connecting…' };
   if (!ready) return { kind: 'offline', label: 'ERP offline', detail: 'Classroom tools still work' };
   if (!signedIn) return { kind: 'local', label: 'Not signed in' };
   if (error) return { kind: 'error', label: 'ERP unavailable', detail: 'Retrying shortly' };

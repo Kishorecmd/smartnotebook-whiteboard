@@ -10,7 +10,7 @@ const noop = () => {};
 const teacher = { role: 'teacher' as const, name: 'Sample teacher', classes: [] };
 // A complete ClassroomData with inert actions; tests override only what they exercise.
 const fakeData = (overrides: Partial<ClassroomData> = {}): ClassroomData => ({
-  mapping: null, snapshot: null, weather: null, session: null, ready: true, erpBase: '', error: '', loading: false,
+  mapping: null, snapshot: null, weather: null, session: null, ready: true, checked: true, erpBase: '', error: '', loading: false,
   refresh: noop, setSession: noop, saveMapping: noop, logout: async () => {}, ...overrides,
 });
 const home = (props: Partial<Parameters<typeof HomeScreen>[0]>) => renderToStaticMarkup(<HomeScreen now={Date.now()} mapping={null} snapshot={null} studentMode={false} data={fakeData()} preview={false} onPreview={noop} onStartLesson={noop} onConnection={noop} onTakeAttendance={noop} {...props} />);

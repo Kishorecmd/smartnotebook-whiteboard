@@ -79,7 +79,7 @@ describe('attendanceStatus', () => {
 });
 
 describe('syncStatus', () => {
-  const base = { preview: false, ready: true, signedIn: true, hasClass: true, error: '', snapshot: snapshot(), now: at('10:05') };
+  const base = { preview: false, checked: true, ready: true, signedIn: true, hasClass: true, error: '', snapshot: snapshot(), now: at('10:05') };
   it('labels sample data, offline service, signed out, errors and syncing distinctly', () => {
     expect(syncStatus({ ...base, preview: true }).kind).toBe('sample');
     expect(syncStatus({ ...base, ready: false }).kind).toBe('offline');
@@ -87,6 +87,10 @@ describe('syncStatus', () => {
     expect(syncStatus({ ...base, error: 'ERP_UNAVAILABLE' }).kind).toBe('error');
     expect(syncStatus({ ...base, snapshot: null })).toMatchObject({ kind: 'syncing', label: 'Syncing…' });
     expect(syncStatus({ ...base, hasClass: false, snapshot: null })).toMatchObject({ kind: 'local', label: 'Choose a class' });
+  });
+  it('says Connecting, not offline, until the first health check answers', () => {
+    expect(syncStatus({ ...base, checked: false, ready: false, signedIn: false, snapshot: null })).toEqual({ kind: 'syncing', label: 'Connecting…' });
+    expect(syncStatus({ ...base, checked: true, ready: false })).toMatchObject({ kind: 'offline', label: 'ERP offline' });
   });
   it('reports the age of the last successful sync', () => {
     expect(syncStatus(base)).toEqual({ kind: 'connected', label: 'ERP connected', detail: '5 min ago' });

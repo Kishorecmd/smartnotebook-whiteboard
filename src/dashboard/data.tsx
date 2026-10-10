@@ -33,6 +33,8 @@ export function useClassroomData(now: number) {
   const [session, storeSession] = useState<ClassTeacherSession | null>(null);
   const authEpoch = useRef(0);
   const [ready, setReady] = useState(false);
+  // False until the first health check answers, so the board can say "Connecting" rather than "offline".
+  const [checked, setChecked] = useState(false);
   const [weatherReady, setWeatherReady] = useState(false);
   const [erpBase, setErpBase] = useState(DEFAULT_ERP_BASE);
   const [error, setError] = useState('');
@@ -44,13 +46,14 @@ export function useClassroomData(now: number) {
   useEffect(() => {
     const abort = new AbortController(); const epoch = authEpoch.current;
     classroomHealth(abort.signal).then(async h => {
+      if (!abort.signal.aborted) setChecked(true);
       if (abort.signal.aborted || epoch !== authEpoch.current) return;
       setWeatherReady(h?.classroomWeather === true);
       setErpBase(typeof h?.erpBase === 'string' ? h.erpBase : DEFAULT_ERP_BASE);
       if (!h?.classroomAPI) { setReady(false); storeSession(null); setSnapshot(null); return; }
       setReady(true);
       try { const s = await classroomRequest('session', undefined, abort.signal); if (!abort.signal.aborted && epoch === authEpoch.current) storeSession(s); } catch { if (!abort.signal.aborted && epoch === authEpoch.current) { storeSession(null); setSnapshot(null); } }
-    }).catch(() => {});
+    }).catch(() => { if (!abort.signal.aborted) setChecked(true); });
     return () => abort.abort();
   }, [revision]);
   useEffect(() => {
@@ -86,6 +89,6 @@ export function useClassroomData(now: number) {
   }, [now, mapping, snapshot, refresh]);
   const saveMapping = (value: Mapping) => { const parsed = MappingSchema.parse(value); localStorage.setItem(MAPPING_KEY, JSON.stringify(parsed)); setSnapshot(null); setMapping(parsed); refresh(); };
   const logout = async () => { authEpoch.current++; setSnapshot(null); storeSession(null); try { await classroomRequest('logout', {}); setError(''); } catch { setError('SIGN_OUT_UNCONFIRMED'); } };
-  return { mapping, snapshot: snapshot && mapping && snapshot.date === dateKey(now, mapping.timezone) ? snapshot : null, weather, session, ready, erpBase, error, loading, refresh, setSession, saveMapping, logout };
+  return { mapping, snapshot: snapshot && mapping && snapshot.date === dateKey(now, mapping.timezone) ? snapshot : null, weather, session, ready, checked, erpBase, error, loading, refresh, setSession, saveMapping, logout };
 }
 export type ClassroomData = ReturnType<typeof useClassroomData>;
